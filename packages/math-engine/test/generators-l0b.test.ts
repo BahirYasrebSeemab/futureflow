@@ -10,6 +10,7 @@ import { checkAnswer } from '../src/check';
 import { decimalText } from '../src/format';
 import { percentsGenerator } from '../src/generators/percents';
 import { ratiosAndRatesGenerator } from '../src/generators/ratios-and-rates';
+import { exponentsAndRootsGenerator } from '../src/generators/exponents-and-roots';
 
 const numberAnswer = (answer: { type: string; value?: { num: number; den: number } }): number => {
   if (answer.type !== 'number' || answer.value === undefined) throw new Error('expected a number');
@@ -123,6 +124,20 @@ describe('ratios-and-rates oracle', () => {
         }
         const [lhs = '', rhs = ''] = promptMath(problem.prompt).split('=');
         expect(evaluate(lhs, { x })).toBeCloseTo(evaluate(rhs, { x }), 9);
+      }),
+      RUNS,
+    );
+  });
+});
+
+expectGeneratorContract(exponentsAndRootsGenerator);
+
+describe('exponents-and-roots oracle', () => {
+  it('matches the CAS', () => {
+    fc.assert(
+      fc.property(seedAndDifficulty, ([seed, d]) => {
+        const problem = exponentsAndRootsGenerator.generate(seed, d);
+        expect(evaluate(promptMath(problem.prompt))).toBeCloseTo(numberAnswer(problem.answer), 9);
       }),
       RUNS,
     );
