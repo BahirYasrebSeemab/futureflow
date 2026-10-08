@@ -8,6 +8,7 @@ import { factorsAndMultiplesGenerator } from '../src/generators/factors-and-mult
 import { decimalsGenerator } from '../src/generators/decimals';
 import { checkAnswer } from '../src/check';
 import { decimalText } from '../src/format';
+import { percentsGenerator } from '../src/generators/percents';
 
 const numberAnswer = (answer: { type: string; value?: { num: number; den: number } }): number => {
   if (answer.type !== 'number' || answer.value === undefined) throw new Error('expected a number');
@@ -76,5 +77,32 @@ describe('decimals oracle', () => {
       }),
       RUNS,
     );
+  });
+});
+
+expectGeneratorContract(percentsGenerator);
+
+describe('percents oracle', () => {
+  it('agrees with plain arithmetic parsed from the prompt', () => {
+    fc.assert(
+      fc.property(seedAndDifficulty, ([seed, d]) => {
+        const problem = percentsGenerator.generate(seed, d);
+        const value = numberAnswer(problem.answer);
+        const of = /^What is (\d+)% of (\d+)\?$/.exec(problem.prompt);
+        const whatPercent = /^What percent of (\d+) is (\d+)\?$/.exec(problem.prompt);
+        const increase = /^Increase (\d+) by (\d+)%$/.exec(problem.prompt);
+        if (of) expect(value).toBeCloseTo((Number(of[1]) * Number(of[2])) / 100, 9);
+        else if (whatPercent)
+          expect(value).toBeCloseTo((Number(whatPercent[2]) / Number(whatPercent[1])) * 100, 9);
+        else if (increase)
+          expect(value).toBeCloseTo(Number(increase[1]) * (1 + Number(increase[2]) / 100), 9);
+        else throw new Error(`unexpected prompt: ${problem.prompt}`);
+      }),
+      RUNS,
+    );
+  });
+
+  it('only uses the harder forms from their difficulty', () => {
+    expect(percentsGenerator.generate(3, 1).prompt).toMatch(/^What is /);
   });
 });
