@@ -62,3 +62,10 @@ describe('registry', () => {
     expect(() => createRegistry([integersGenerator, integersGenerator])).toThrow();
   });
 });
+
+describe('L0 completeness', () => {
+  it('has a generator for every L0 topic, in a registry that matches the graph order', () => {
+    const l0 = ONTARIO_GRAPH.topics.filter((t) => t.level === 'L0').map((t) => t.id);
+    expect(l0.every((id) => DEFAULT_REGISTRY.has(id))).toBe(true);
+  });
+});
