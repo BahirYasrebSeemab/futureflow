@@ -2,7 +2,7 @@ import { ComputeEngine } from '@cortex-js/compute-engine';
 import { equals, parseRational, toNumber, toText, type Rational } from './rational';
 
 export type Answer =
-  | Readonly<{ type: 'number'; value: Rational; unit?: 'percent' }>
+  | Readonly<{ type: 'number'; value: Rational; unit?: 'percent'; tolerance?: number }>
   | Readonly<{ type: 'expression'; text: string; maxTerms?: number; form?: 'monomial' }>
   | Readonly<{ type: 'set'; items: readonly Rational[] }>
   | Readonly<{ type: 'point'; coords: readonly Rational[] }>
@@ -59,6 +59,7 @@ const normalize = (text: string): string =>
 const cleanNumber = (text: string): string =>
   text
     .replace(/\s*(?:mm|cm|km|m)(?:²|³|\^\{?[23]\}?|[23])?$/i, '')
+    .replace(/^\$\s*/, '')
     .replace(/\s*%$/, '')
     .replace(/^\((.*)\)$/, '$1')
     .trim()
@@ -85,13 +86,23 @@ const splitList = (text: string): string[] =>
     .map((part) => part.trim())
     .filter((part) => part !== '');
 
-function checkNumber(expected: Rational, given: string, unit?: 'percent'): CheckOutcome {
+function checkNumber(
+  expected: Rational,
+  given: string,
+  unit?: 'percent',
+  tolerance?: number,
+): CheckOutcome {
   const typed = stripAssignment(normalize(given));
   const text = cleanNumber(typed);
   const value = parseRational(text);
   if (value === null) return 'unreadable';
   // "10%" for an amount of 10 is the classic percent/amount mix-up: a real mistake, not a typo.
   if (/%\s*$/.test(typed) && unit !== 'percent') return 'incorrect';
+  if (tolerance !== undefined) {
+    return Math.abs(toNumber(value) - toNumber(expected)) <= tolerance + 1e-9
+      ? 'correct'
+      : 'incorrect';
+  }
   if (text.includes('.')) {
     return closeEnough(toNumber(value), toNumber(expected)) ? 'correct' : 'incorrect';
   }
@@ -233,7 +244,7 @@ function checkChoice(optionCount: number, correctIndex: number, given: string): 
 export function checkAnswer(expected: Answer, given: string): CheckOutcome {
   switch (expected.type) {
     case 'number':
-      return checkNumber(expected.value, given, expected.unit);
+      return checkNumber(expected.value, given, expected.unit, expected.tolerance);
     case 'expression':
       return checkExpression(expected.text, given, expected.maxTerms, expected.form);
     case 'set':

@@ -1,4 +1,5 @@
 import type { Generator } from '../types';
+import { financialLiteracyGenerator } from './financial-literacy';
 import { dataAndStatisticsGenerator } from './data-and-statistics';
 import { measurementAndGeometryGenerator } from './measurement-and-geometry';
 import { exponentLawsGenerator } from './exponent-laws';
@@ -41,4 +42,5 @@ export const DEFAULT_REGISTRY: GeneratorRegistry = createRegistry([
   exponentLawsGenerator,
   measurementAndGeometryGenerator,
   dataAndStatisticsGenerator,
+  financialLiteracyGenerator,
 ]);

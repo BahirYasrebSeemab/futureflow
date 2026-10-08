@@ -8,6 +8,7 @@ import { linearRelationsGenerator } from '../src/generators/linear-relations';
 import { exponentLawsGenerator } from '../src/generators/exponent-laws';
 import { measurementAndGeometryGenerator } from '../src/generators/measurement-and-geometry';
 import { dataAndStatisticsGenerator } from '../src/generators/data-and-statistics';
+import { financialLiteracyGenerator } from '../src/generators/financial-literacy';
 
 const holds = (left: number, op: string, right: number): boolean =>
   op === '<'
@@ -170,6 +171,43 @@ describe('data-and-statistics oracle', () => {
           range: (sorted.at(-1) ?? 0) - (sorted[0] ?? 0),
         };
         expect(numberAnswer(problem.answer)).toBeCloseTo(expected[stat] ?? Number.NaN, 9);
+      }),
+      RUNS,
+    );
+  });
+});
+
+expectGeneratorContract(financialLiteracyGenerator);
+
+describe('financial-literacy oracle', () => {
+  it('agrees with plain arithmetic on the prompt numbers, within a cent where rounding applies', () => {
+    fc.assert(
+      fc.property(seedAndDifficulty, ([seed, d]) => {
+        const problem = financialLiteracyGenerator.generate(seed, d);
+        const n = [...problem.prompt.matchAll(/\d+(?:\.\d+)?/g)].map((m) => Number(m[0]));
+        const text = problem.prompt;
+        const expected = /simple interest/.test(text)
+          ? (n[0] ?? 0) * ((n[1] ?? 0) / 100) * (n[2] ?? 0)
+          : /HST/.test(text)
+            ? (n[0] ?? 0) * 1.13
+            : /off/.test(text)
+              ? (n[0] ?? 0) * (1 - (n[1] ?? 0) / 100)
+              : /per 100 g/.test(text)
+                ? ((n[1] ?? 0) / (n[0] ?? 1)) * 100
+                : (n[0] ?? 0) * (1 + (n[1] ?? 0) / 100) ** (n[2] ?? 0);
+        expect(Math.abs(numberAnswer(problem.answer) - expected)).toBeLessThan(1e-6);
+      }),
+      RUNS,
+    );
+  });
+
+  it('asks for rounding exactly when the answer needs it', () => {
+    fc.assert(
+      fc.property(seedAndDifficulty, ([seed, d]) => {
+        const problem = financialLiteracyGenerator.generate(seed, d);
+        if (problem.answer.type !== 'number') throw new Error('expected a number');
+        const asksToRound = /nearest cent/.test(problem.prompt);
+        expect(problem.answer.tolerance === 0.005).toBe(asksToRound);
       }),
       RUNS,
     );

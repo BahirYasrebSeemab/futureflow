@@ -246,3 +246,17 @@ describe('checkAnswer: π and units', () => {
     expect(checkAnswer(num(28), given)).toBe('correct');
   });
 });
+
+describe('checkAnswer: money', () => {
+  const total: Answer = { type: 'number', value: rational(564887, 10000), tolerance: 0.005 };
+
+  it.each([
+    ['56.49', 'correct'],
+    ['$56.49', 'correct'],
+    ['56.4887', 'correct'],
+    ['56.48', 'incorrect'],
+    ['56.5', 'incorrect'],
+  ])('56.4887 (to the cent) vs %j is %s', (given, outcome) => {
+    expect(checkAnswer(total, given)).toBe(outcome);
+  });
+});
