@@ -170,3 +170,39 @@ describe('checkAnswer: percent sign', () => {
     expect(checkAnswer(num(10), '10%')).toBe('incorrect');
   });
 });
+
+describe('checkAnswer: inequality', () => {
+  const greater: Answer = { type: 'inequality', variable: 'x', op: '>', bound: rational(3) };
+  const atLeast: Answer = { type: 'inequality', variable: 'x', op: '≥', bound: rational(3) };
+
+  it.each([
+    ['x > 3', 'correct'],
+    ['x>3', 'correct'],
+    ['3 < x', 'correct'],
+    ['x > 6/2', 'correct'],
+    ['x >= 3', 'incorrect'],
+    ['x < 3', 'incorrect'],
+    ['x > 4', 'incorrect'],
+    ['y > 3', 'unreadable'],
+    ['x >', 'unreadable'],
+    ['banana', 'unreadable'],
+  ])('x > 3 vs %j is %s', (given, outcome) => {
+    expect(checkAnswer(greater, given)).toBe(outcome);
+  });
+
+  it.each(['x >= 3', 'x => 3', 'x ≥ 3', '3 <= x', '3 ≤ x'])('x ≥ 3 accepts %j', (given) => {
+    expect(checkAnswer(atLeast, given)).toBe('correct');
+  });
+
+  it('round-trips through answerText', () => {
+    expect(answerText(atLeast)).toBe('x ≥ 3');
+    expect(checkAnswer(atLeast, answerText(atLeast))).toBe('correct');
+  });
+});
+
+describe('checkAnswer: y = prefix on expressions', () => {
+  it('accepts "y = …" when y is not part of the expected expression', () => {
+    expect(checkAnswer({ type: 'expression', text: '2x+1' }, 'y = 2x + 1')).toBe('correct');
+    expect(checkAnswer({ type: 'expression', text: '2x+1' }, 'y = 2x + 3')).toBe('incorrect');
+  });
+});

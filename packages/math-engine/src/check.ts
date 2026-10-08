@@ -6,7 +6,10 @@ export type Answer =
   | Readonly<{ type: 'expression'; text: string; maxTerms?: number }>
   | Readonly<{ type: 'set'; items: readonly Rational[] }>
   | Readonly<{ type: 'point'; coords: readonly Rational[] }>
-  | Readonly<{ type: 'choice'; options: readonly string[]; correctIndex: number }>;
+  | Readonly<{ type: 'choice'; options: readonly string[]; correctIndex: number }>
+  | Readonly<{ type: 'inequality'; variable: string; op: InequalityOp; bound: Rational }>;
+
+export type InequalityOp = '<' | '≤' | '>' | '≥';
 
 /** `unreadable` means "ask again", never "wrong": malformed input must not cost rating. */
 export type CheckOutcome = 'correct' | 'incorrect' | 'unreadable';
@@ -112,13 +115,15 @@ function sampleEqual(a: Expr, b: Expr): boolean {
 }
 
 function checkExpression(expected: string, given: string, maxTerms?: number): CheckOutcome {
-  const text = normalize(given);
+  const target = ce().parse(normalize(expected));
+  const allowed = new Set(target.unknowns);
+  // "y = 2x + 1" for an expected "2x + 1": drop the label when y isn't part of the answer.
+  const prefixed = /^([a-z])\s*=\s*(.+)$/i.exec(normalize(given));
+  const text = prefixed && !allowed.has(prefixed[1] ?? '') ? (prefixed[2] ?? '') : normalize(given);
   if (text === '') return 'unreadable';
   const parsed = ce().parse(text);
   if (!parsed.isValid || parsed.operator === 'Equal') return 'unreadable';
-  const target = ce().parse(normalize(expected));
   // Letters the answer can't contain mean a typo (or a word), not a wrong answer.
-  const allowed = new Set(target.unknowns);
   if (parsed.unknowns.some((symbol) => !allowed.has(symbol))) return 'unreadable';
   if (maxTerms !== undefined && (text.includes('(') || countTerms(text) > maxTerms)) {
     return 'incorrect';
@@ -126,6 +131,57 @@ function checkExpression(expected: string, given: string, maxTerms?: number): Ch
   // Only `true` is a proof: the CAS answers `false` for some true identities (2^x·2 vs 2^(x+1)).
   if (target.isIdenticallyEqual(parsed) === true) return 'correct';
   return sampleEqual(target, parsed) ? 'correct' : 'incorrect';
+}
+
+const FLIP: Readonly<Record<InequalityOp, InequalityOp>> = {
+  '<': '>',
+  '>': '<',
+  '≤': '≥',
+  '≥': '≤',
+};
+
+const readOp = (raw: string): InequalityOp => {
+  if (raw === '<=' || raw === '=<' || raw === '≤') return '≤';
+  if (raw === '>=' || raw === '=>' || raw === '≥') return '≥';
+  return raw === '<' ? '<' : '>';
+};
+
+const RELATION = '(<=|>=|=<|=>|≤|≥|<|>)';
+const VARIABLE_FIRST = new RegExp(`^([a-z])\\s*${RELATION}\\s*(.+)$`, 'i');
+const VARIABLE_LAST = new RegExp(`^(.+?)\\s*${RELATION}\\s*([a-z])$`, 'i');
+
+type ReadInequality = Readonly<{ variable: string; op: InequalityOp; boundText: string }>;
+
+/** Reads "x ≥ 3", "x >= 3" and the reversed "3 <= x" (flipped so the variable is on the left). */
+function readInequality(text: string): ReadInequality | null {
+  const first = VARIABLE_FIRST.exec(text);
+  if (first) {
+    return {
+      variable: (first[1] ?? '').toLowerCase(),
+      op: readOp(first[2] ?? ''),
+      boundText: first[3] ?? '',
+    };
+  }
+  const last = VARIABLE_LAST.exec(text);
+  if (last) {
+    return {
+      variable: (last[3] ?? '').toLowerCase(),
+      op: FLIP[readOp(last[2] ?? '')],
+      boundText: last[1] ?? '',
+    };
+  }
+  return null;
+}
+
+function checkInequality(
+  expected: Readonly<{ variable: string; op: InequalityOp; bound: Rational }>,
+  given: string,
+): CheckOutcome {
+  const read = readInequality(normalize(given));
+  if (read === null || read.variable !== expected.variable) return 'unreadable';
+  const bound = parseRational(cleanNumber(read.boundText));
+  if (bound === null) return 'unreadable';
+  return read.op === expected.op && equals(bound, expected.bound) ? 'correct' : 'incorrect';
 }
 
 function parseAll(parts: readonly string[]): Rational[] | null {
@@ -172,6 +228,8 @@ export function checkAnswer(expected: Answer, given: string): CheckOutcome {
       return checkSet(expected.items, given);
     case 'point':
       return checkPoint(expected.coords, given);
+    case 'inequality':
+      return checkInequality(expected, given);
     case 'choice':
       return checkChoice(expected.options.length, expected.correctIndex, given);
   }
@@ -190,5 +248,7 @@ export function answerText(answer: Answer): string {
       return `(${answer.coords.map(toText).join(', ')})`;
     case 'choice':
       return String(answer.correctIndex);
+    case 'inequality':
+      return `${answer.variable} ${answer.op} ${toText(answer.bound)}`;
   }
 }
