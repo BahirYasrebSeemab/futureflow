@@ -1,5 +1,7 @@
 import { ComputeEngine } from '@cortex-js/compute-engine';
 import fc from 'fast-check';
+import type { Answer } from '../src/check';
+import { toNumber } from '../src/rational';
 import { DIFFICULTIES } from '../src/types';
 
 const ce = new ComputeEngine();
@@ -28,3 +30,9 @@ export const seedAndDifficulty = fc.tuple(
 );
 
 export const RUNS = { numRuns: 200 };
+
+/** The numeric value of a number answer; throws for any other answer type. */
+export const numberAnswer = (answer: Answer): number => {
+  if (answer.type !== 'number') throw new Error(`expected a number answer, got ${answer.type}`);
+  return toNumber(answer.value);
+};

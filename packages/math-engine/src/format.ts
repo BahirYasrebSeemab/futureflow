@@ -27,3 +27,6 @@ export function decimalText(r: Rational): string {
   }
   throw new RangeError(`${r.num}/${r.den} has no terminating decimal`);
 }
+
+/** Negatives in brackets so steps never read "4 - -3". */
+export const show = (n: number): string => (n < 0 ? `(${n})` : String(n));

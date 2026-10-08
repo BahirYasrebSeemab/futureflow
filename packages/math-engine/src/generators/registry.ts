@@ -1,4 +1,5 @@
 import type { Generator } from '../types';
+import { linearInequalitiesGenerator } from './linear-inequalities';
 import { exponentsAndRootsGenerator } from './exponents-and-roots';
 import { ratiosAndRatesGenerator } from './ratios-and-rates';
 import { percentsGenerator } from './percents';
@@ -31,4 +32,5 @@ export const DEFAULT_REGISTRY: GeneratorRegistry = createRegistry([
   factorsAndMultiplesGenerator,
   algebraicExpressionsGenerator,
   linearEquationsGenerator,
+  linearInequalitiesGenerator,
 ]);
