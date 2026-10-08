@@ -50,8 +50,23 @@ describe('LedgerEventSchema', () => {
     ['fractional seconds', { ...event, seconds: 1.5 }],
     ['non-uuid id', { ...event, id: 'e-1' }],
     ['bad day', { ...event, day: '2026-13-01' }],
+    ['spend that adds time', { ...event, kind: 'usage_spend', seconds: 100_000 }],
+    ['positive expiry', { ...event, kind: 'expire', seconds: 300 }],
+    ['negative earning', { ...event, kind: 'task_reward', seconds: -60, refId: 't1' }],
+    ['earning above the daily cap', { ...event, kind: 'task_reward', seconds: 9_999_999 }],
+    ['spend longer than a day', { ...event, kind: 'usage_spend', seconds: -86_401 }],
   ])('rejects %s', (_label, value) => {
     expect(LedgerEventSchema.safeParse(value).success).toBe(false);
+  });
+
+  it.each([
+    ['earning at the cap', { ...event, kind: 'task_reward', seconds: 7_200, refId: 't1' }],
+    ['zero-second capped reward', { ...event, kind: 'math_reward', seconds: 0, refId: 'a1' }],
+    ['debt repayment', { ...event, kind: 'borrow_repay', seconds: -600, refId: 'r1' }],
+    ['negative correction', { ...event, kind: 'correction', seconds: -120 }],
+    ['positive correction', { ...event, kind: 'correction', seconds: 120 }],
+  ])('accepts %s', (_label, value) => {
+    expect(LedgerEventSchema.safeParse(value).success).toBe(true);
   });
 });
 

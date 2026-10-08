@@ -1,4 +1,4 @@
-import { LEDGER_EVENT_KINDS, parseDayKey, VERIFIER_KINDS } from '@mflow/core';
+import { LEDGER_EVENT_KINDS, parseDayKey, VERIFIER_KINDS, type LedgerEventKind } from '@mflow/core';
 import { z } from 'zod';
 
 export const MAX_EVENTS_PER_BATCH = 500;
@@ -16,15 +16,40 @@ const isValidDayKey = (value: string): boolean => {
 
 export const DayKeySchema = z.string().refine(isValidDayKey, { message: 'invalid day key' });
 
-export const LedgerEventSchema = z.object({
-  id: z.uuid(),
-  day: DayKeySchema,
-  at: z.number().int().nonnegative(),
-  kind: z.enum(LEDGER_EVENT_KINDS),
-  seconds: z.number().int(),
-  refId: z.string().min(1).max(128).optional(),
-  reason: z.string().max(500).optional(),
-});
+const SECONDS_PER_DAY = 86_400;
+
+/** Allowed `seconds` range per kind: grants add time, spends remove it, corrections go either way. */
+const SECONDS_RANGE: Readonly<Record<LedgerEventKind, readonly [min: number, max: number]>> = {
+  base_grant: [0, MAX_TASK_SECONDS],
+  task_reward: [0, MAX_TASK_SECONDS],
+  all_done_bonus: [0, MAX_TASK_SECONDS],
+  math_reward: [0, MAX_TASK_SECONDS],
+  unlock_borrow: [0, MAX_TASK_SECONDS],
+  usage_spend: [-SECONDS_PER_DAY, 0],
+  borrow_repay: [-SECONDS_PER_DAY, 0],
+  expire: [-SECONDS_PER_DAY, 0],
+  correction: [-SECONDS_PER_DAY, SECONDS_PER_DAY],
+};
+
+const hasValidSeconds = (e: { kind: LedgerEventKind; seconds: number }): boolean => {
+  const [min, max] = SECONDS_RANGE[e.kind];
+  return e.seconds >= min && e.seconds <= max;
+};
+
+export const LedgerEventSchema = z
+  .object({
+    id: z.uuid(),
+    day: DayKeySchema,
+    at: z.number().int().nonnegative(),
+    kind: z.enum(LEDGER_EVENT_KINDS),
+    seconds: z.number().int(),
+    refId: z.string().min(1).max(128).optional(),
+    reason: z.string().max(500).optional(),
+  })
+  .refine(hasValidSeconds, {
+    message: 'seconds has the wrong sign or size for this kind',
+    path: ['seconds'],
+  });
 
 export const LedgerEventBatchSchema = z.object({
   events: z.array(LedgerEventSchema).min(1).max(MAX_EVENTS_PER_BATCH),
