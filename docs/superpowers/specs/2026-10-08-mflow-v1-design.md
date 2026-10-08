@@ -151,13 +151,14 @@ mflow/
 type Identity     = { id; title; why; deadline? }                      // "Senior software engineer"
 type Skill        = { id; identityId; name; rubric; restWeekday? }     // "Debugging", rest on Fri
 type Milestone    = { id; skillId; title; targetDate?; doneAt? }
-type TaskSpec     = { id; skillId; title; when; verifier: VerifierKind; criteria; minutes }
+type TaskVersion  = { title; criteria; seconds }
+type TaskSpec     = { id; skillId; when; verifier: VerifierKind; full: TaskVersion; twoMinute: TaskVersion }
 type Plan         = { date; status: 'draft' | 'locked'; tasks: TaskSpec[]; lockedAt? }
 type DayType      = 'normal' | 'bad' | 'away'                          // rest is per skill, derived
-type AwayWindow   = { id; place; from; to; keptTaskIds; verified: 'yes' | 'no' | 'unknown' }
+type AwayWindow   = { id; place; from; to; keptTaskIds; verified: 'pending' | 'yes' | 'no' | 'unknown' }  // core stores one DayRecord per day the window covers
 type Evidence     = { id; taskId?; kind; ref; capturedAt; payload }     // commit SHA, attempt id…
 type Verdict      = { evidenceId; taskId; outcome: 'pass' | 'fail' | 'pending'; confidence; by }
-type LedgerEvent  = { id; at; kind; minutes; reason; refId? }
+type LedgerEvent  = { id; day; at; kind; seconds; reason?; refId? }   // integer seconds; rules are configured in seconds too
 type VerifierKind = 'github' | 'math' | 'reading' | 'usage'
 ```
 
