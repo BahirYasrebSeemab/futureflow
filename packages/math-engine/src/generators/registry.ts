@@ -1,6 +1,8 @@
 import type { Generator } from '../types';
+import { algebraicExpressionsGenerator } from './algebraic-expressions';
 import { fractionsGenerator } from './fractions';
 import { integersGenerator } from './integers';
+import { linearEquationsGenerator } from './linear-equations';
 import { orderOfOperationsGenerator } from './order-of-operations';
 
 export type GeneratorRegistry = ReadonlyMap<string, Generator>;
@@ -15,4 +17,6 @@ export const DEFAULT_REGISTRY: GeneratorRegistry = createRegistry([
   integersGenerator,
   fractionsGenerator,
   orderOfOperationsGenerator,
+  algebraicExpressionsGenerator,
+  linearEquationsGenerator,
 ]);
