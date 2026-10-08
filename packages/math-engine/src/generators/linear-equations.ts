@@ -3,6 +3,22 @@ import { rational } from '../rational';
 import { createRng } from '../rng';
 import type { Generator } from '../types';
 
+/** "Subtract 4 from both sides" or "Add 4 to both sides"; null when there is nothing to remove. */
+const removeConstant = (b: number): string | null => {
+  if (b === 0) return null;
+  return b > 0 ? `Subtract ${b} from both sides` : `Add ${-b} to both sides`;
+};
+
+/** Steps from `k·x + b = rhs` to `x = solution`, skipping steps that do nothing. */
+function isolate(k: number, b: number, rhs: number, x: number): string[] {
+  const remove = removeConstant(b);
+  const steps = [
+    remove === null ? null : `${remove}: ${formatLinear(k, 0)} = ${rhs - b}`,
+    k === 1 ? null : `Divide both sides by ${k}: x = ${x}`,
+  ].filter((step): step is string => step !== null);
+  return steps.length > 0 ? steps : [`x = ${x}`];
+}
+
 export const linearEquationsGenerator: Generator = {
   topicId: 'linear-equations',
   generate(seed, difficulty) {
@@ -24,10 +40,7 @@ export const linearEquationsGenerator: Generator = {
       return {
         ...base,
         prompt: `Solve for x: ${formatLinear(a, b)} = ${c}`,
-        steps: [
-          `Subtract ${b} from both sides: ${a}x = ${c - b}`,
-          `Divide both sides by ${a}: x = ${x}`,
-        ],
+        steps: isolate(a, b, c, x),
       };
     }
 
@@ -35,14 +48,11 @@ export const linearEquationsGenerator: Generator = {
     const drawn = nonZero(6);
     const e = drawn === a ? -a : drawn;
     const f = (a - e) * x + b;
+    const k = a - e;
     return {
       ...base,
       prompt: `Solve for x: ${formatLinear(a, b)} = ${formatLinear(e, f)}`,
-      steps: [
-        `Move the x terms to the left: ${formatLinear(a - e, b)} = ${f}`,
-        `Subtract ${b} from both sides: ${a - e}x = ${f - b}`,
-        `Divide both sides by ${a - e}: x = ${x}`,
-      ],
+      steps: [`Move the x terms to the left: ${formatLinear(k, b)} = ${f}`, ...isolate(k, b, f, x)],
     };
   },
 };

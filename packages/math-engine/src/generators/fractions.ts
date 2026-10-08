@@ -21,7 +21,7 @@ export const fractionsGenerator: Generator = {
       topicId: 'fractions',
       seed,
       difficulty,
-      prompt: `Calculate and simplify: ${a}/${b} ${op} ${c}/${d}`,
+      prompt: `Calculate: ${a}/${b} ${op} ${c}/${d}`,
       answer: { type: 'number', value },
       hints: [
         'Rewrite both fractions with the same denominator first.',
