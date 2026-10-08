@@ -53,15 +53,43 @@ export const sumKind = (events: readonly LedgerEvent[], kind: LedgerEventKind): 
 export const outstandingBorrowSeconds = (events: readonly LedgerEvent[]): number =>
   Math.max(0, sumKind(events, 'unlock_borrow') + sumKind(events, 'borrow_repay'));
 
-/** Idempotent union by event id. Inputs are not mutated. */
+const ONCE_PER_DAY: ReadonlySet<LedgerEventKind> = new Set([
+  'base_grant',
+  'all_done_bonus',
+  'expire',
+]);
+const ONCE_PER_REF: ReadonlySet<LedgerEventKind> = new Set(['task_reward', 'math_reward']);
+
+/** Business identity: two writers (phone, server) creating "the same" grant share this key. */
+function semanticKey(e: LedgerEvent): string | null {
+  if (ONCE_PER_DAY.has(e.kind)) return `${e.day}:${e.kind}`;
+  if (ONCE_PER_REF.has(e.kind) && e.refId !== undefined) return `${e.kind}:${e.refId}`;
+  return null;
+}
+
+/**
+ * Idempotent union by event id AND by business identity, so a grant created by two
+ * writers is kept once. A `borrow_repay` whose reward was dropped is dropped too
+ * (rewards precede their repayment, as `earn` emits them). Inputs are not mutated.
+ */
 export function mergeEvents(
   existing: readonly LedgerEvent[],
   incoming: readonly LedgerEvent[],
 ): { events: LedgerEvent[]; added: LedgerEvent[] } {
-  const seen = new Set(existing.map((e) => e.id));
+  const seenIds = new Set(existing.map((e) => e.id));
+  const seenKeys = new Set(existing.map(semanticKey).filter((k) => k !== null));
+  const droppedIds = new Set<string>();
+
   const added = incoming.filter((e) => {
-    if (seen.has(e.id)) return false;
-    seen.add(e.id);
+    if (seenIds.has(e.id)) return false;
+    const key = semanticKey(e);
+    const orphanRepay = e.kind === 'borrow_repay' && droppedIds.has(e.refId ?? '');
+    if ((key !== null && seenKeys.has(key)) || orphanRepay) {
+      droppedIds.add(e.id);
+      return false;
+    }
+    seenIds.add(e.id);
+    if (key !== null) seenKeys.add(key);
     return true;
   });
   return { events: [...existing, ...added], added };

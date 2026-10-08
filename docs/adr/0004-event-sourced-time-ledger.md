@@ -24,3 +24,14 @@ are new `correction` events; nothing is updated or deleted.
 - Every balance is explainable ("why 37 minutes?").
 - Retries are safe.
 - Reads sum events. Per-day volume is small (< 200 events), so no snapshots are needed in v1.
+
+## Amendment (2026-10-08, after Phase 1 review)
+
+- **Two identities per event.** Besides its unique `id`, an event has a _business key_:
+  `(day, kind)` for `base_grant`, `all_done_bonus` and `expire`; `(kind, refId)` for
+  `task_reward` and `math_reward`. `mergeEvents` keeps only the first event per key, so a grant
+  created by both the offline phone and the server is paid once. A `borrow_repay` pointing at a
+  dropped reward is dropped with it.
+- **Expiry pays debt first.** `expireDay` reads the full history and expires
+  `min(today's leftover, running balance)`. Unused time first repays an earlier overspend, and only
+  the rest expires. Debt never silently lowers every future day's allowance.

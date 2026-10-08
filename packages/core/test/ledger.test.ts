@@ -78,6 +78,34 @@ describe('mergeEvents', () => {
     expect(result.added.map((e) => e.id)).toEqual(['b']);
     expect(existing).toHaveLength(1);
   });
+
+  it('keeps one base grant per day even when phone and server each created one', () => {
+    const phone = ev({ id: 'phone', kind: 'base_grant', seconds: 900 });
+    const server = ev({ id: 'server', kind: 'base_grant', seconds: 900 });
+    const nextDay = ev({ id: 'next', kind: 'base_grant', seconds: 900, day: '2026-10-09' });
+
+    const result = mergeEvents([phone], [server, nextDay]);
+
+    expect(result.events.map((e) => e.id)).toEqual(['phone', 'next']);
+  });
+
+  it.each(['all_done_bonus', 'expire'] as const)('keeps one %s per day', (kind) => {
+    const first = ev({ id: 'x1', kind, seconds: kind === 'expire' ? -60 : 900 });
+    const second = ev({ id: 'x2', kind, seconds: kind === 'expire' ? -60 : 900 });
+    expect(mergeEvents([first], [second]).added).toEqual([]);
+  });
+
+  it('pays a task or math attempt once across writers, and drops the duplicate repayment', () => {
+    const existing = [ev({ id: 'r1', kind: 'task_reward', seconds: 1200, refId: 't1' })];
+    const incoming = [
+      ev({ id: 'r2', kind: 'task_reward', seconds: 1200, refId: 't1' }),
+      ev({ id: 'p2', kind: 'borrow_repay', seconds: -600, refId: 'r2' }),
+      ev({ id: 'm1', kind: 'math_reward', seconds: 180, refId: 'a1' }),
+      ev({ id: 'm2', kind: 'math_reward', seconds: 180, refId: 'a1' }),
+    ];
+
+    expect(mergeEvents(existing, incoming).added.map((e) => e.id)).toEqual(['m1']);
+  });
 });
 
 describe('DEFAULT_RULES', () => {
