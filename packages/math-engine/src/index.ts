@@ -8,3 +8,4 @@ export * from './curriculum';
 export * from './elo';
 export * from './mastery';
 export * from './scheduler';
+export * from './placement';
