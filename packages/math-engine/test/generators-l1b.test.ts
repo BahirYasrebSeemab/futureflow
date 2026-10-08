@@ -3,7 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { linearInequalitiesGenerator } from '../src/generators/linear-inequalities';
 import { toNumber } from '../src/rational';
 import { expectGeneratorContract } from './contract';
-import { evaluate, RUNS, seedAndDifficulty } from './oracle';
+import { evaluate, numberAnswer, RUNS, seedAndDifficulty } from './oracle';
+import { linearRelationsGenerator } from '../src/generators/linear-relations';
 
 const holds = (left: number, op: string, right: number): boolean =>
   op === '<'
@@ -42,5 +43,44 @@ describe('linear-inequalities oracle', () => {
     ).filter((p) => /^Solve: -/.test(p.prompt));
     expect(flipped.length).toBeGreaterThan(0);
     for (const p of flipped) expect(p.steps.join(' ')).toMatch(/flip/);
+  });
+});
+
+expectGeneratorContract(linearRelationsGenerator);
+
+describe('linear-relations oracle', () => {
+  it('values, slopes and equations agree with the numbers in the prompt', () => {
+    fc.assert(
+      fc.property(seedAndDifficulty, ([seed, d]) => {
+        const problem = linearRelationsGenerator.generate(seed, d);
+        const points = [...problem.prompt.matchAll(/\((-?\d+), (-?\d+)\)/g)].map((m) => [
+          Number(m[1]),
+          Number(m[2]),
+        ]);
+        const evaluateAt = /^For y = (.+), find y when x = (-?\d+)\.$/.exec(problem.prompt);
+        if (evaluateAt) {
+          expect(numberAnswer(problem.answer)).toBeCloseTo(
+            evaluate(evaluateAt[1] ?? '', { x: Number(evaluateAt[2]) }),
+            9,
+          );
+        } else if (/^Find the slope/.test(problem.prompt)) {
+          const [[x1, y1] = [], [x2, y2] = []] = points;
+          expect(numberAnswer(problem.answer)).toBeCloseTo(
+            ((y2 ?? 0) - (y1 ?? 0)) / ((x2 ?? 0) - (x1 ?? 1)),
+            9,
+          );
+        } else {
+          if (problem.answer.type !== 'expression') throw new Error('expected an equation');
+          for (const [x = 0, y = 0] of points)
+            expect(evaluate(problem.answer.text, { x })).toBeCloseTo(y, 9);
+          const slope = /slope (-?\d+)/.exec(problem.prompt);
+          if (slope)
+            expect(
+              evaluate(problem.answer.text, { x: 1 }) - evaluate(problem.answer.text, { x: 0 }),
+            ).toBeCloseTo(Number(slope[1]), 9);
+        }
+      }),
+      RUNS,
+    );
   });
 });

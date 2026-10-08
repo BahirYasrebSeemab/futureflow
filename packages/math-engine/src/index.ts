@@ -23,3 +23,4 @@ export * from './generators/percents';
 export * from './generators/ratios-and-rates';
 export * from './generators/exponents-and-roots';
 export * from './generators/linear-inequalities';
+export * from './generators/linear-relations';
