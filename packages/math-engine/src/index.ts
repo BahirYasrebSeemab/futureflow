@@ -16,3 +16,4 @@ export * from './generators/order-of-operations';
 export * from './generators/algebraic-expressions';
 export * from './generators/linear-equations';
 export * from './mock-exam';
+export * from './generators/whole-number-operations';

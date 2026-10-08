@@ -1,4 +1,5 @@
 import type { Generator } from '../types';
+import { wholeNumberOperationsGenerator } from './whole-number-operations';
 import { algebraicExpressionsGenerator } from './algebraic-expressions';
 import { fractionsGenerator } from './fractions';
 import { integersGenerator } from './integers';
@@ -14,6 +15,7 @@ export function createRegistry(generators: readonly Generator[]): GeneratorRegis
 }
 
 export const DEFAULT_REGISTRY: GeneratorRegistry = createRegistry([
+  wholeNumberOperationsGenerator,
   integersGenerator,
   fractionsGenerator,
   orderOfOperationsGenerator,
