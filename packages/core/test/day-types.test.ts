@@ -72,6 +72,12 @@ describe('applyAwayVerification', () => {
     expect(applyAwayVerification([], record, 'yes', R).away?.verified).toBe('yes');
   });
 
+  it('keeps a confirmed away day when a later check has no location fix', () => {
+    const confirmed = applyAwayVerification([], record, 'yes', R);
+    const history = [awayUnknown('2026-10-02'), awayUnknown('2026-10-05')];
+    expect(applyAwayVerification(history, confirmed, 'unknown', R)).toBe(confirmed);
+  });
+
   it('cancels away mode when the owner is found at home', () => {
     expect(applyAwayVerification([], record, 'no', R)).toEqual({
       day: '2026-10-10',

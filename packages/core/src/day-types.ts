@@ -48,6 +48,8 @@ export function applyAwayVerification(
   if (record.kind !== 'away' || record.away === undefined) return record;
   const normal: DayRecord = { day: record.day, kind: 'normal' };
   if (verified === 'no') return normal;
+  // A confirmed away day stays confirmed; only being found at home ('no') overturns it.
+  if (record.away.verified === 'yes') return record;
 
   if (verified === 'unknown') {
     const month = monthKey(record.day);
