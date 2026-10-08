@@ -34,8 +34,10 @@ export const ratiosAndRatesGenerator: Generator = {
       return problem;
     }
 
-    const [a, c] = [rng.int(2, 3 * b), rng.int(2, 12)];
-    const value = rational(b * c, a);
+    // Built backwards from a whole-number x, so dividing on paper never ends in a repeating decimal.
+    const [a, t] = [rng.int(2, 3 * b), rng.int(2, 2 + difficulty)];
+    const [c, x] = [a * t, b * t];
+    const value = rational(x);
     return {
       ...base,
       prompt: `Solve for x: ${a}/${b} = ${c}/x`,

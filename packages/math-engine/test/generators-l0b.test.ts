@@ -143,3 +143,84 @@ describe('exponents-and-roots oracle', () => {
     );
   });
 });
+
+describe('review fixes: L0 generators', () => {
+  const hard = fc.tuple(
+    fc.integer({ min: 0, max: 2 ** 31 - 1 }),
+    fc.constantFrom(4 as const, 5 as const),
+  );
+
+  it('ratios at d4-5 always have a whole-number x', () => {
+    fc.assert(
+      fc.property(hard, ([seed, d]) => {
+        expect(
+          Number.isInteger(numberAnswer(ratiosAndRatesGenerator.generate(seed, d).answer)),
+        ).toBe(true);
+      }),
+      RUNS,
+    );
+  });
+
+  it('decimals prompts always contain a decimal', () => {
+    fc.assert(
+      fc.property(seedAndDifficulty, ([seed, d]) => {
+        expect(decimalsGenerator.generate(seed, d).prompt).toMatch(/\d\.\d/);
+      }),
+      RUNS,
+    );
+  });
+
+  it('decimal × and ÷ steps teach the method, not just the result', () => {
+    fc.assert(
+      fc.property(hard, ([seed, d]) => {
+        const problem = decimalsGenerator.generate(seed, d);
+        const steps = problem.steps.join(' | ');
+        if (problem.prompt.includes('×')) expect(steps).toMatch(/decimal places/);
+        if (problem.prompt.includes('÷')) expect(steps).toMatch(/whole numbers/);
+      }),
+      RUNS,
+    );
+  });
+
+  it('multi-digit whole-number × and ÷ show partial work ending in the answer', () => {
+    fc.assert(
+      fc.property(hard, ([seed, d]) => {
+        const problem = wholeNumberOperationsGenerator.generate(seed, d);
+        const match = /^Calculate: (\d+) ([×÷]) (\d+)$/.exec(problem.prompt);
+        if (match === null) return;
+        const [, a, op, b] = match;
+        const value = numberAnswer(problem.answer);
+        const multiDigit = op === '×' ? Number(a) >= 10 && Number(b) >= 10 : value >= 10;
+        if (!multiDigit) return;
+        expect(problem.steps.length).toBeGreaterThanOrEqual(3);
+        expect(problem.steps.at(-1)).toMatch(new RegExp(`\\b${value}$`));
+      }),
+      RUNS,
+    );
+  });
+
+  it('percents at d1 always have whole-number answers', () => {
+    fc.assert(
+      fc.property(fc.integer({ min: 0, max: 2 ** 31 - 1 }), (seed) => {
+        expect(Number.isInteger(numberAnswer(percentsGenerator.generate(seed, 1).answer))).toBe(
+          true,
+        );
+      }),
+      RUNS,
+    );
+  });
+
+  it('exponents d4 differs from d3, and d5 has three terms', () => {
+    fc.assert(
+      fc.property(fc.integer({ min: 0, max: 2 ** 31 - 1 }), (seed) => {
+        expect(exponentsAndRootsGenerator.generate(seed, 4).prompt).not.toBe(
+          exponentsAndRootsGenerator.generate(seed, 3).prompt,
+        );
+        expect(
+          promptMath(exponentsAndRootsGenerator.generate(seed, 5).prompt).match(/ [+-] /g),
+        ).toHaveLength(2);
+      }),
+      RUNS,
+    );
+  });
+});

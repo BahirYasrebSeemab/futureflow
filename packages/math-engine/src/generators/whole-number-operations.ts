@@ -36,16 +36,59 @@ function operands(rng: Rng, op: Op, level: number): [number, number, number] {
   return [divisor * quotient, divisor, quotient];
 }
 
+/** Partial products: 37 × 46 → 37 × 40, 37 × 6, then add. Assumes a, b ≥ 10 and b ≤ 99. */
+function multiplySteps(a: number, b: number): string[] {
+  const ones = b % 10;
+  const tens = b - ones;
+  const onesStep =
+    ones === 0
+      ? 'No ones to multiply'
+      : ones === 1
+        ? `One more ${a}: ${a}`
+        : `${a} × ${ones} = ${a * ones}`;
+  return [
+    `Split ${b} into ${tens} and ${ones}`,
+    `${a} × ${tens} = ${a * tens}`,
+    onesStep,
+    `Add the partial products: ${a * tens} + ${a * ones} = ${a * b}`,
+  ];
+}
+
+/** Chunking: take away the biggest easy multiples of the divisor, place value by place value. */
+function divideSteps(dividend: number, divisor: number, quotient: number): string[] {
+  const chunks = String(quotient)
+    .split('')
+    .map((digit, i, all) => Number(digit) * 10 ** (all.length - 1 - i))
+    .filter((chunk) => chunk > 0);
+  let remaining = dividend;
+  const chunkSteps = chunks.map((chunk) => {
+    const taken = divisor * chunk;
+    const before = remaining;
+    remaining -= taken;
+    return chunk === 1
+      ? `One more ${divisor}: ${before} - ${divisor} = ${remaining}`
+      : `${divisor} × ${chunk} = ${taken}; ${before} - ${taken} = ${remaining}`;
+  });
+  const total =
+    chunks.length > 1
+      ? `Add the chunks: ${chunks.join(' + ')} = ${quotient}`
+      : `So ${dividend} ÷ ${divisor} = ${quotient}`;
+  return [`Take away groups of ${divisor}`, ...chunkSteps, total];
+}
+
+function stepsFor(op: Op, a: number, b: number, value: number): string[] {
+  if (op === '×' && a >= 10 && b >= 10) return multiplySteps(a, b);
+  if (op === '÷' && value >= 10) return divideSteps(a, b, value);
+  if (op === '÷') return [`${a} ÷ ${b} = ${value}, because ${b} × ${value} = ${a}`];
+  return [`${a} ${op} ${b} = ${value}`];
+}
+
 export const wholeNumberOperationsGenerator: Generator = {
   topicId: 'whole-number-operations',
   generate(seed, difficulty) {
     const rng = createRng(seed);
     const op = rng.pick(['+', '-', '×', '÷'] as const);
     const [a, b, value] = operands(rng, op, difficulty - 1);
-    const step =
-      op === '÷'
-        ? `${a} ÷ ${b} = ${value}, because ${b} × ${value} = ${a}`
-        : `${a} ${op} ${b} = ${value}`;
     return {
       topicId: 'whole-number-operations',
       seed,
@@ -53,7 +96,7 @@ export const wholeNumberOperationsGenerator: Generator = {
       prompt: `Calculate: ${a} ${op} ${b}`,
       answer: { type: 'number', value: rational(value) },
       hints: [HINTS[op]],
-      steps: [step],
+      steps: stepsFor(op, a, b, value),
     };
   },
 };

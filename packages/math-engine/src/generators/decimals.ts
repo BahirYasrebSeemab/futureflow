@@ -9,27 +9,34 @@ const HINTS: Record<Op, string> = {
   '+': 'Line up the decimal points, then add as with whole numbers.',
   '-': 'Line up the decimal points, then subtract as with whole numbers.',
   '×': 'Multiply as whole numbers, then count the decimal places in both factors.',
-  '÷': 'Divide as with whole numbers and keep the decimal point above where it is in the dividend.',
+  '÷': 'Divide as whole numbers, then put the decimal point back in the same place.',
 };
 
-/** [left, right, answer] as exact rationals. */
-function operands(rng: Rng, op: Op, difficulty: number): [Rational, Rational, Rational] {
-  const scale = difficulty <= 2 ? 10 : 100;
-  if (op === '+' || op === '-') {
-    const x = rational(rng.int(1, 100 * difficulty), scale);
-    const y = rational(rng.int(1, 100 * difficulty), scale);
-    if (op === '+') return [x, y, add(x, y)];
-    const [big, small] = toNumber(x) >= toNumber(y) ? [x, y] : [y, x];
-    return [big, small, add(big, rational(-small.num, small.den))];
-  }
-  if (op === '×') {
-    const x = rational(rng.int(11, 99), 10);
-    const y = difficulty >= 4 ? rational(rng.int(11, 99), 10) : rational(rng.int(2, 9));
-    return [x, y, mul(x, y)];
-  }
-  const divisor = rational(rng.int(2, 9));
-  const quotient = rational(rng.int(11, 99), 10);
-  return [mul(quotient, divisor), divisor, quotient];
+/** A number that really has a decimal part: whole.fraction with a non-zero fraction. */
+const decimal = (rng: Rng, maxWhole: number, scale: number): Rational =>
+  rational(rng.int(0, maxWhole) * scale + rng.int(1, scale - 1), scale);
+
+const oneDecimal = (rng: Rng): Rational => rational(10 * rng.int(1, 9) + rng.int(1, 9), 10);
+
+const decimalPlaces = (r: Rational): number => (decimalText(r).split('.')[1] ?? '').length;
+
+/** The digits without the decimal point: 4.3 → 43. */
+const digitsOnly = (r: Rational): number => toNumber(mul(r, rational(10 ** decimalPlaces(r))));
+
+function multiplySteps(x: Rational, y: Rational, value: Rational): string[] {
+  const [xp, yp] = [decimalPlaces(x), decimalPlaces(y)];
+  return [
+    `Multiply without the decimal points: ${digitsOnly(x)} × ${digitsOnly(y)} = ${digitsOnly(x) * digitsOnly(y)}`,
+    `Count the decimal places: ${xp} + ${yp} = ${xp + yp}, so the answer is ${decimalText(value)}`,
+  ];
+}
+
+function divideSteps(dividend: Rational, divisor: Rational, quotient: Rational): string[] {
+  const tenths = toNumber(mul(dividend, rational(10)));
+  return [
+    `Divide as whole numbers: ${tenths} ÷ ${toNumber(divisor)} = ${toNumber(mul(quotient, rational(10)))}`,
+    `Put the decimal point back one place from the right: ${decimalText(quotient)}`,
+  ];
 }
 
 export const decimalsGenerator: Generator = {
@@ -38,16 +45,44 @@ export const decimalsGenerator: Generator = {
     const rng = createRng(seed);
     const op =
       difficulty <= 2 ? rng.pick(['+', '-'] as const) : rng.pick(['+', '-', '×', '÷'] as const);
-    const [x, y, value] = operands(rng, op, difficulty);
-    const [xs, ys, vs] = [decimalText(x), decimalText(y), decimalText(value)];
+    const base = { topicId: 'decimals', seed, difficulty, hints: [HINTS[op]] } as const;
+
+    if (op === '+' || op === '-') {
+      const scale = difficulty <= 2 ? 10 : 100;
+      const [x, y] = [decimal(rng, 10 * difficulty, scale), decimal(rng, 10 * difficulty, scale)];
+      const [big, small] = toNumber(x) >= toNumber(y) ? [x, y] : [y, x];
+      const [left, right] = op === '+' ? [x, y] : [big, small];
+      const value = op === '+' ? add(x, y) : add(big, rational(-small.num, small.den));
+      const [ls, rs, vs] = [decimalText(left), decimalText(right), decimalText(value)];
+      return {
+        ...base,
+        prompt: `Calculate: ${ls} ${op} ${rs}`,
+        answer: { type: 'number', value },
+        steps: [`Line up the decimal points: ${ls} ${op} ${rs} = ${vs}`],
+      };
+    }
+    if (op === '×') {
+      const x = oneDecimal(rng);
+      const y = difficulty >= 4 ? oneDecimal(rng) : rational(rng.int(2, 9));
+      const value = mul(x, y);
+      return {
+        ...base,
+        prompt: `Calculate: ${decimalText(x)} × ${decimalText(y)}`,
+        answer: { type: 'number', value },
+        steps: multiplySteps(x, y, value),
+      };
+    }
+    const d = rng.int(2, 9);
+    const drawn = 10 * rng.int(1, 9) + rng.int(1, 9);
+    // Keep the dividend a real decimal: if d × drawn ends in 0, the next tenth never does.
+    const tenths = (d * drawn) % 10 === 0 ? drawn + 1 : drawn;
+    const [divisor, quotient] = [rational(d), rational(tenths, 10)];
+    const dividend = mul(quotient, divisor);
     return {
-      topicId: 'decimals',
-      seed,
-      difficulty,
-      prompt: `Calculate: ${xs} ${op} ${ys}`,
-      answer: { type: 'number', value },
-      hints: [HINTS[op]],
-      steps: [`${xs} ${op} ${ys} = ${vs}`],
+      ...base,
+      prompt: `Calculate: ${decimalText(dividend)} ÷ ${decimalText(divisor)}`,
+      answer: { type: 'number', value: quotient },
+      steps: divideSteps(dividend, divisor, quotient),
     };
   },
 };

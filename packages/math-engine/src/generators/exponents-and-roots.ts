@@ -47,12 +47,27 @@ export const exponentsAndRootsGenerator: Generator = {
       const part = single(rng, difficulty);
       return make(part.text, part.value, [part.step]);
     }
+    if (difficulty === 5) {
+      // Three terms: a power (sometimes the zero power), a square, and a root.
+      const first = rng.next() < 0.5 ? power(rng.int(2, 9), 0) : power(rng.int(2, 5), 3);
+      const second = power(rng.int(2, 12), 2);
+      const third = root(rng.int(2, 15));
+      const value = first.value + second.value - third.value;
+      return make(`${first.text} + ${second.text} - ${third.text}`, value, [
+        first.step,
+        second.step,
+        third.step,
+        `${first.value} + ${second.value} - ${third.value} = ${value}`,
+      ]);
+    }
+    // d3 uses small bases and roots; d4 uses bigger ones, so the two bands never repeat each other.
+    const exponent = rng.pick([2, 3]);
     const left =
-      difficulty === 5 && rng.next() < 0.5
-        ? power(rng.int(2, 9), 0)
-        : power(rng.int(2, 5), rng.pick([2, 3]));
-    const right = left.value === 1 ? power(rng.int(2, 12), 2) : root(rng.int(2, 12));
-    const op = left.value === 1 ? '+' : rng.pick(['+', '-'] as const);
+      difficulty === 3
+        ? power(rng.int(2, 5), exponent)
+        : power(exponent === 2 ? rng.int(6, 12) : rng.int(4, 6), exponent);
+    const right = root(difficulty === 3 ? rng.int(2, 12) : rng.int(13, 20));
+    const op = rng.pick(['+', '-'] as const);
     const value = op === '+' ? left.value + right.value : left.value - right.value;
     return make(`${left.text} ${op} ${right.text}`, value, [
       left.step,
