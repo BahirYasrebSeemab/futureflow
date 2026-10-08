@@ -1,4 +1,5 @@
 import type { Generator } from '../types';
+import { ratiosAndRatesGenerator } from './ratios-and-rates';
 import { percentsGenerator } from './percents';
 import { decimalsGenerator } from './decimals';
 import { factorsAndMultiplesGenerator } from './factors-and-multiples';
@@ -23,6 +24,7 @@ export const DEFAULT_REGISTRY: GeneratorRegistry = createRegistry([
   fractionsGenerator,
   decimalsGenerator,
   percentsGenerator,
+  ratiosAndRatesGenerator,
   orderOfOperationsGenerator,
   factorsAndMultiplesGenerator,
   algebraicExpressionsGenerator,

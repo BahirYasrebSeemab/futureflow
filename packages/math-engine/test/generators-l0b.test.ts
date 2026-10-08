@@ -9,6 +9,7 @@ import { decimalsGenerator } from '../src/generators/decimals';
 import { checkAnswer } from '../src/check';
 import { decimalText } from '../src/format';
 import { percentsGenerator } from '../src/generators/percents';
+import { ratiosAndRatesGenerator } from '../src/generators/ratios-and-rates';
 
 const numberAnswer = (answer: { type: string; value?: { num: number; den: number } }): number => {
   if (answer.type !== 'number' || answer.value === undefined) throw new Error('expected a number');
@@ -104,5 +105,26 @@ describe('percents oracle', () => {
 
   it('only uses the harder forms from their difficulty', () => {
     expect(percentsGenerator.generate(3, 1).prompt).toMatch(/^What is /);
+  });
+});
+
+expectGeneratorContract(ratiosAndRatesGenerator);
+
+describe('ratios-and-rates oracle', () => {
+  it('answer satisfies the proportion, or the rate parsed from the prompt', () => {
+    fc.assert(
+      fc.property(seedAndDifficulty, ([seed, d]) => {
+        const problem = ratiosAndRatesGenerator.generate(seed, d);
+        const x = numberAnswer(problem.answer);
+        const rate = /travels (\d+) km in (\d+) hours/.exec(problem.prompt);
+        if (rate) {
+          expect(x).toBe(Number(rate[1]) / Number(rate[2]));
+          return;
+        }
+        const [lhs = '', rhs = ''] = promptMath(problem.prompt).split('=');
+        expect(evaluate(lhs, { x })).toBeCloseTo(evaluate(rhs, { x }), 9);
+      }),
+      RUNS,
+    );
   });
 });

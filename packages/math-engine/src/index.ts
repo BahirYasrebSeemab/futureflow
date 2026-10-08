@@ -20,3 +20,4 @@ export * from './generators/whole-number-operations';
 export * from './generators/factors-and-multiples';
 export * from './generators/decimals';
 export * from './generators/percents';
+export * from './generators/ratios-and-rates';
