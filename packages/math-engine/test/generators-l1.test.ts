@@ -77,3 +77,42 @@ describe('registry', () => {
     expect(DEFAULT_REGISTRY.has('linear-equations')).toBe(true);
   });
 });
+
+describe('symbolic steps', () => {
+  const afterLabel = (step: string): string => {
+    const colon = step.lastIndexOf(': ');
+    return colon < 0 ? step : step.slice(colon + 2);
+  };
+
+  it('every algebraic-expressions step equals the original expression', () => {
+    fc.assert(
+      fc.property(seedAndDifficulty, ([seed, d]) => {
+        const problem = algebraicExpressionsGenerator.generate(seed, d);
+        for (const step of problem.steps) {
+          for (const x of [1.3, -0.7, 2.9]) {
+            expect(evaluate(afterLabel(step), { x }), step).toBeCloseTo(
+              evaluate(promptMath(problem.prompt), { x }),
+              9,
+            );
+          }
+        }
+      }),
+      RUNS,
+    );
+  });
+
+  it('every linear-equations step is still true at the answer', () => {
+    fc.assert(
+      fc.property(seedAndDifficulty, ([seed, d]) => {
+        const problem = linearEquationsGenerator.generate(seed, d);
+        if (problem.answer.type !== 'number') throw new Error('expected a number');
+        const x = toNumber(problem.answer.value);
+        for (const step of problem.steps) {
+          const [lhs = '', rhs = ''] = afterLabel(step).split('=');
+          expect(evaluate(lhs, { x }), step).toBeCloseTo(evaluate(rhs, { x }), 9);
+        }
+      }),
+      RUNS,
+    );
+  });
+});
