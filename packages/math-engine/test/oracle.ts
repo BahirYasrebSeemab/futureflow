@@ -4,13 +4,16 @@ import { DIFFICULTIES } from '../src/types';
 
 const ce = new ComputeEngine();
 
-/** The math part of a prompt, rewritten for the CAS ("Calculate: 3 × 4²" → "3 * 4^2"). */
+/** The math part of a prompt, rewritten for the CAS ("Calculate: 3³ + √49" → "3^3 + \\sqrt{49}"). */
 export const promptMath = (prompt: string): string =>
   prompt
     .slice(prompt.indexOf(': ') + 2)
     .replace(/×/g, '*')
     .replace(/÷/g, '/')
-    .replace(/²/g, '^2');
+    .replace(/²/g, '^2')
+    .replace(/³/g, '^3')
+    .replace(/⁰/g, '^0')
+    .replace(/√(\d+)/g, '\\sqrt{$1}');
 
 /** Numeric value of a CAS-parseable expression, optionally substituting variables. */
 export const evaluate = (text: string, values: Record<string, number> = {}): number =>

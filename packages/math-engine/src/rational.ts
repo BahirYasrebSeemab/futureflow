@@ -17,6 +17,8 @@ export function rational(num: number, den = 1): Rational {
 export const add = (a: Rational, b: Rational): Rational =>
   rational(a.num * b.den + b.num * a.den, a.den * b.den);
 
+export const mul = (a: Rational, b: Rational): Rational => rational(a.num * b.num, a.den * b.den);
+
 export const equals = (a: Rational, b: Rational): boolean => a.num === b.num && a.den === b.den;
 
 export const toNumber = (r: Rational): number => r.num / r.den;

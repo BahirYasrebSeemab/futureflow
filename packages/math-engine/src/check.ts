@@ -52,6 +52,7 @@ const normalize = (text: string): string =>
 /** Forgives harmless number formats: `(-3)`, `+3`, `- 3`, `3.` */
 const cleanNumber = (text: string): string =>
   text
+    .replace(/\s*%$/, '')
     .replace(/^\((.*)\)$/, '$1')
     .trim()
     .replace(/^\+/, '')

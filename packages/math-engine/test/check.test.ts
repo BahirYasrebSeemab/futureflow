@@ -155,3 +155,11 @@ describe('checkAnswer: review fixes', () => {
     expect(checkAnswer(num(n, d), given)).toBe('correct');
   });
 });
+
+describe('checkAnswer: percent sign', () => {
+  it('accepts a trailing percent sign on a number answer', () => {
+    expect(checkAnswer(num(25), '25%')).toBe('correct');
+    expect(checkAnswer(num(25), '25 %')).toBe('correct');
+    expect(checkAnswer(num(25), '24%')).toBe('incorrect');
+  });
+});

@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { GATES, ONTARIO_GRAPH } from '../src/curriculum';
-import { DEFAULT_REGISTRY } from '../src/generators/registry';
+import { fractionsGenerator } from '../src/generators/fractions';
+import { integersGenerator } from '../src/generators/integers';
+import { orderOfOperationsGenerator } from '../src/generators/order-of-operations';
+import { createRegistry, DEFAULT_REGISTRY } from '../src/generators/registry';
 import { buildMockExam, gatePassed, scoreMock, type MockResult } from '../src/mock-exam';
 
 const gateA = GATES.find((g) => g.id === 'A');
@@ -8,7 +11,12 @@ if (gateA === undefined) throw new Error('gate A missing');
 
 describe('buildMockExam', () => {
   it('covers every L0 topic that has a generator, evenly, at difficulty 3', () => {
-    const exam = buildMockExam(ONTARIO_GRAPH, DEFAULT_REGISTRY, 'L0', 42, 6);
+    const registry = createRegistry([
+      integersGenerator,
+      fractionsGenerator,
+      orderOfOperationsGenerator,
+    ]);
+    const exam = buildMockExam(ONTARIO_GRAPH, registry, 'L0', 42, 6);
     expect(exam.problems.map((p) => p.topicId)).toEqual([
       'integers',
       'order-of-operations',
