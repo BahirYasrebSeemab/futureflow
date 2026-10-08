@@ -5,6 +5,9 @@ import { toNumber } from '../src/rational';
 import { expectGeneratorContract } from './contract';
 import { evaluate, promptMath, RUNS, seedAndDifficulty } from './oracle';
 import { factorsAndMultiplesGenerator } from '../src/generators/factors-and-multiples';
+import { decimalsGenerator } from '../src/generators/decimals';
+import { checkAnswer } from '../src/check';
+import { decimalText } from '../src/format';
 
 const numberAnswer = (answer: { type: string; value?: { num: number; den: number } }): number => {
   if (answer.type !== 'number' || answer.value === undefined) throw new Error('expected a number');
@@ -52,6 +55,24 @@ describe('factors-and-multiples oracle', () => {
             ? bruteGcf(Number(a), Number(b))
             : bruteLcm(Number(a), Number(b));
         expect(numberAnswer(problem.answer)).toBe(expected);
+      }),
+      RUNS,
+    );
+  });
+});
+
+expectGeneratorContract(decimalsGenerator);
+
+describe('decimals oracle', () => {
+  it('matches the CAS, stays non-negative, and accepts the decimal form', () => {
+    fc.assert(
+      fc.property(seedAndDifficulty, ([seed, d]) => {
+        const problem = decimalsGenerator.generate(seed, d);
+        const value = numberAnswer(problem.answer);
+        expect(evaluate(promptMath(problem.prompt))).toBeCloseTo(value, 9);
+        expect(value).toBeGreaterThanOrEqual(0);
+        if (problem.answer.type !== 'number') throw new Error('expected a number');
+        expect(checkAnswer(problem.answer, decimalText(problem.answer.value))).toBe('correct');
       }),
       RUNS,
     );
