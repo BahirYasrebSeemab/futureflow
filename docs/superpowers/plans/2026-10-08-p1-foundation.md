@@ -77,10 +77,12 @@ mflow/
 ### Task 1: Monorepo scaffold, tooling, CI, first ADRs
 
 **Files:**
+
 - Create: `package.json`, `tsconfig.base.json`, `eslint.config.js`, `.prettierrc.json`, `.prettierignore`, `.editorconfig`, `.nvmrc`, `.github/workflows/ci.yml`, `README.md`, `docs/adr/0001-typescript-monorepo-bun.md`, `docs/adr/0002-hexagonal-core-zod-at-edges.md`
 - Create: `packages/core/package.json`, `packages/core/tsconfig.json`, `packages/core/vitest.config.ts`, `packages/core/src/index.ts`, `packages/core/src/result.ts`, `packages/core/test/result.test.ts`
 
 **Interfaces:**
+
 - Produces: `Result<T, E extends string>`, `ok<T>(value): Result<T, never>`, `err<E>(error): Result<never, E>` from `@mflow/core`. Root scripts `lint`, `format:check`, `typecheck`, `test`, `coverage`.
 
 - [ ] **Step 1: Create the root files**
@@ -92,6 +94,7 @@ echo "24" > .nvmrc
 ```
 
 `package.json` (set `packageManager` to the version printed above):
+
 ```json
 {
   "name": "mflow",
@@ -111,6 +114,7 @@ echo "24" > .nvmrc
 ```
 
 `tsconfig.base.json`:
+
 ```json
 {
   "compilerOptions": {
@@ -132,11 +136,13 @@ echo "24" > .nvmrc
 ```
 
 `.prettierrc.json`:
+
 ```json
 { "singleQuote": true, "printWidth": 100 }
 ```
 
 `.prettierignore`:
+
 ```
 bun.lock
 coverage/
@@ -144,6 +150,7 @@ learning/
 ```
 
 `.editorconfig`:
+
 ```
 root = true
 
@@ -163,6 +170,7 @@ bun add -D typescript eslint @eslint/js typescript-eslint prettier
 ```
 
 `eslint.config.js`:
+
 ```js
 import js from '@eslint/js';
 import { defineConfig } from 'eslint/config';
@@ -182,6 +190,7 @@ mkdir -p packages/core/src packages/core/test
 ```
 
 `packages/core/package.json`:
+
 ```json
 {
   "name": "@mflow/core",
@@ -202,6 +211,7 @@ mkdir -p packages/core/src packages/core/test
 ```
 
 `packages/core/tsconfig.json`:
+
 ```json
 {
   "extends": "../../tsconfig.base.json",
@@ -210,6 +220,7 @@ mkdir -p packages/core/src packages/core/test
 ```
 
 `packages/core/vitest.config.ts`:
+
 ```ts
 import { defineConfig } from 'vitest/config';
 
@@ -229,6 +240,7 @@ export default defineConfig({
 - [ ] **Step 4: Write the failing test for `Result`**
 
 `packages/core/test/result.test.ts`:
+
 ```ts
 import { describe, expect, it } from 'vitest';
 import { err, ok, type Result } from '../src/result';
@@ -248,17 +260,17 @@ describe('Result', () => {
 
 - [ ] **Step 5: Run it and confirm it fails**
 
-Run: `bun --cwd packages/core run test`
+Run: `bun run --cwd packages/core test`
 Expected: FAIL, "Failed to resolve import ../src/result" (or "Cannot find module").
 
 - [ ] **Step 6: Implement `Result` and the index**
 
 `packages/core/src/result.ts`:
+
 ```ts
 /** Expected failures are values, not exceptions. Exceptions are reserved for programmer errors. */
 export type Result<T, E extends string = string> =
-  | { readonly ok: true; readonly value: T }
-  | { readonly ok: false; readonly error: E };
+  { readonly ok: true; readonly value: T } | { readonly ok: false; readonly error: E };
 
 export const ok = <T>(value: T): Result<T, never> => ({ ok: true, value });
 
@@ -266,18 +278,20 @@ export const err = <E extends string>(error: E): Result<never, E> => ({ ok: fals
 ```
 
 `packages/core/src/index.ts`:
+
 ```ts
 export * from './result';
 ```
 
 - [ ] **Step 7: Run all checks and confirm they pass**
 
-Run: `bun --cwd packages/core run test && bun run typecheck && bun run lint && bun run format && bun run format:check`
+Run: `bun run --cwd packages/core test && bun run typecheck && bun run lint && bun run format && bun run format:check`
 Expected: 2 tests PASS; typecheck, lint and format:check exit 0.
 
 - [ ] **Step 8: Add CI, README and ADRs 0001–0002**
 
 `.github/workflows/ci.yml`:
+
 ```yaml
 name: CI
 
@@ -305,6 +319,7 @@ jobs:
 ```
 
 `README.md`:
+
 ```markdown
 # mflow
 
@@ -317,11 +332,11 @@ ledger that a native guard enforces.
 
 ## Repo layout
 
-| Path | What |
-|---|---|
-| `packages/core` | Pure domain rules: time model, ledger, earning, plans, day types, verdicts |
-| `packages/contracts` | zod schemas for data crossing system edges |
-| `docs/adr` | Architecture Decision Records |
+| Path                 | What                                                                       |
+| -------------------- | -------------------------------------------------------------------------- |
+| `packages/core`      | Pure domain rules: time model, ledger, earning, plans, day types, verdicts |
+| `packages/contracts` | zod schemas for data crossing system edges                                 |
+| `docs/adr`           | Architecture Decision Records                                              |
 
 ## Develop
 
@@ -332,6 +347,7 @@ ledger that a native guard enforces.
 ```
 
 `docs/adr/0001-typescript-monorepo-bun.md`:
+
 ```markdown
 # ADR 0001: TypeScript monorepo with Bun workspaces
 
@@ -339,10 +355,12 @@ ledger that a native guard enforces.
 - Date: 2026-10-08
 
 ## Context
+
 The phone app (Expo), the API (Cloudflare Worker) and shared libraries (domain rules, schemas,
 math engine) must share types and logic. A single developer maintains everything.
 
 ## Decision
+
 One repository, Bun workspaces, TypeScript everywhere. Bun is the package manager and
 script runner (one-off tools run via `bun x`). Vitest stays the test runner because Cloudflare's
 Workers test pool (P3) is built on it. `apps/*` are deployables and
@@ -351,6 +369,7 @@ Workers test pool (P3) is built on it. `apps/*` are deployables and
 Vite for tests) compiles them.
 
 ## Alternatives
+
 - **Separate repos:** shared code would need publishing or copying, and types would drift.
 - **Turborepo / Nx:** task caching pays off in large repos. With fewer than 10 packages it
   adds config without a felt need (YAGNI). Revisit when CI time hurts.
@@ -359,12 +378,14 @@ Vite for tests) compiles them.
 - **`bun test` instead of Vitest:** it's faster, but there's no Workers pool and its coverage thresholds are less mature.
 
 ## Consequences
+
 - One `bun install`, one CI pipeline, atomic cross-package changes.
 - Bun hoists dependencies, so undeclared imports can slip through. ESLint and code review guard that.
 - Expo + Bun workspaces Metro setup is handled in P4.
 ```
 
 `docs/adr/0002-hexagonal-core-zod-at-edges.md`:
+
 ```markdown
 # ADR 0002: Hexagonal core; zod only at the edges
 
@@ -372,11 +393,13 @@ Vite for tests) compiles them.
 - Date: 2026-10-08
 
 ## Context
+
 Rules (earning, caps, plan locking, day types) must behave identically on the phone and the
 server, be fast to test, and survive swapping infrastructure (Gemini → Jev, D1 → Postgres,
 Workers → Node).
 
 ## Decision
+
 `@mflow/core` contains only pure functions and types. It performs no I/O, reads no clock, and generates
 no IDs (time and ID generators are injected). Infrastructure lives in adapters inside the apps.
 Runtime validation (zod) lives in `@mflow/contracts` and is applied where untrusted data enters:
@@ -384,12 +407,14 @@ HTTP bodies, AI outputs, third-party API responses, stored JSON. Inside the boun
 TypeScript types are trusted.
 
 ## Alternatives
+
 - **Validate everywhere:** redundant work and noise; types already guarantee internal shapes.
 - **Classes/ORM entities in the domain:** couples rules to persistence and makes tests slower.
 - **Valibot / ArkType instead of zod:** smaller and faster, but zod v4 has native JSON Schema export
   (`z.toJSONSchema`), which we hand to LLMs for structured output, and broader ecosystem support.
 
 ## Consequences
+
 - Core tests run in milliseconds with no mocks.
 - Expected failures are returned as `Result` values; exceptions mean bugs.
 ```
@@ -406,10 +431,12 @@ git commit -m "chore: scaffold bun monorepo with core package, CI and ADRs 0001-
 ### Task 2: Time model (`time.ts`) + ADR 0003
 
 **Files:**
+
 - Create: `packages/core/src/time.ts`, `packages/core/test/time.test.ts`, `docs/adr/0003-day-key-and-time-model.md`
 - Modify: `packages/core/src/index.ts`
 
 **Interfaces:**
+
 - Produces:
   - `type DayKey = string` (`YYYY-MM-DD`)
   - `dayKeyFor(atMs: number, utcOffsetMinutes: number, boundaryHour: number): DayKey`
@@ -422,6 +449,7 @@ git commit -m "chore: scaffold bun monorepo with core package, CI and ADRs 0001-
 - [ ] **Step 1: Write the failing tests**
 
 `packages/core/test/time.test.ts`:
+
 ```ts
 import { describe, expect, it } from 'vitest';
 import { addDays, dayKeyFor, isoWeekKey, monthKey, parseDayKey, weekdayOf } from '../src/time';
@@ -492,12 +520,13 @@ describe('calendar helpers', () => {
 
 - [ ] **Step 2: Run them and confirm they fail**
 
-Run: `bun --cwd packages/core run test time`
+Run: `bun run --cwd packages/core test time`
 Expected: FAIL, cannot resolve `../src/time`.
 
 - [ ] **Step 3: Implement `time.ts`**
 
 `packages/core/src/time.ts`:
+
 ```ts
 /** Calendar day in the owner's local time, shifted so the day starts at the boundary hour. */
 export type DayKey = string;
@@ -549,18 +578,20 @@ export const addDays = (key: DayKey, days: number): DayKey =>
 ```
 
 Append to `packages/core/src/index.ts`:
+
 ```ts
 export * from './time';
 ```
 
 - [ ] **Step 4: Run the tests and confirm they pass**
 
-Run: `bun --cwd packages/core run test time`
+Run: `bun run --cwd packages/core test time`
 Expected: PASS (all `dayKeyFor`, `parseDayKey`, calendar tests).
 
 - [ ] **Step 5: Write ADR 0003**
 
 `docs/adr/0003-day-key-and-time-model.md`:
+
 ```markdown
 # ADR 0003: Day keys with a 04:00 boundary and an explicit UTC offset
 
@@ -568,21 +599,25 @@ Expected: PASS (all `dayKeyFor`, `parseDayKey`, calendar tests).
 - Date: 2026-10-08
 
 ## Context
+
 Plans, caps and expiry are per day. The owner stays up past midnight and travels (Dushanbe ↔ Toronto).
 The domain core must stay pure: no reading the clock or the system timezone.
 
 ## Decision
+
 A day is identified by a `DayKey` (`YYYY-MM-DD`) computed as
 `dayKeyFor(instantMs, utcOffsetMinutes, boundaryHour = 4)`. The device supplies its current
 UTC offset with every event. Weekly limits use ISO weeks and monthly limits use calendar months, both derived
 from the day key. Durations are measured with a monotonic clock on the device (not in core).
 
 ## Alternatives
+
 - **IANA timezone names in core:** needs `Intl` timezone data, which is inconsistent across Hermes/Workers.
   An offset is enough to bucket an instant.
 - **Midnight boundary:** late-night work would count toward the wrong day.
 
 ## Consequences
+
 - Pure, deterministic day bucketing that's easy to test.
 - On travel days the offset changes, so a day can be shorter or longer. That's acceptable and covered by tests.
 ```
@@ -599,10 +634,12 @@ git commit -m "feat(core): add day-key time model with 04:00 boundary"
 ### Task 3: Rules + ledger (`rules.ts`, `ledger.ts`) + ADR 0004
 
 **Files:**
+
 - Create: `packages/core/src/rules.ts`, `packages/core/src/ledger.ts`, `packages/core/test/fixtures.ts`, `packages/core/test/ledger.test.ts`, `docs/adr/0004-event-sourced-time-ledger.md`
 - Modify: `packages/core/src/index.ts`
 
 **Interfaces:**
+
 - Consumes: `DayKey` (Task 2).
 - Produces:
   - `type Rules` and `DEFAULT_RULES` (fields listed in Step 3)
@@ -620,6 +657,7 @@ git commit -m "feat(core): add day-key time model with 04:00 boundary"
 - [ ] **Step 1: Write the fixtures and failing tests**
 
 `packages/core/test/fixtures.ts`:
+
 ```ts
 import type { EventContext, LedgerEvent } from '../src/ledger';
 
@@ -646,6 +684,7 @@ export function ctx(over: Partial<EventContext> = {}): EventContext {
 ```
 
 `packages/core/test/ledger.test.ts`:
+
 ```ts
 import { describe, expect, it } from 'vitest';
 import {
@@ -738,12 +777,13 @@ describe('DEFAULT_RULES', () => {
 
 - [ ] **Step 2: Run them and confirm they fail**
 
-Run: `bun --cwd packages/core run test ledger`
+Run: `bun run --cwd packages/core test ledger`
 Expected: FAIL, cannot resolve `../src/ledger`.
 
 - [ ] **Step 3: Implement `rules.ts` and `ledger.ts`**
 
 `packages/core/src/rules.ts`:
+
 ```ts
 /** Every tunable number of the system. Amounts are integer seconds. */
 export type Rules = Readonly<{
@@ -792,6 +832,7 @@ export const DEFAULT_RULES: Rules = Object.freeze({
 ```
 
 `packages/core/src/ledger.ts`:
+
 ```ts
 import type { DayKey } from './time';
 
@@ -864,6 +905,7 @@ export function mergeEvents(
 ```
 
 Append to `packages/core/src/index.ts`:
+
 ```ts
 export * from './rules';
 export * from './ledger';
@@ -871,12 +913,13 @@ export * from './ledger';
 
 - [ ] **Step 4: Run the tests and confirm they pass**
 
-Run: `bun --cwd packages/core run test ledger`
+Run: `bun run --cwd packages/core test ledger`
 Expected: PASS.
 
 - [ ] **Step 5: Write ADR 0004**
 
 `docs/adr/0004-event-sourced-time-ledger.md`:
+
 ```markdown
 # ADR 0004: Event-sourced time ledger
 
@@ -884,19 +927,23 @@ Expected: PASS.
 - Date: 2026-10-08
 
 ## Context
+
 Phone time is earned (tasks, math, bonus), spent (blocked apps), borrowed (emergency unlock) and
 expired, on an offline-capable phone and a server that must agree.
 
 ## Decision
+
 Store every change as an append-only `LedgerEvent` with a client-generated unique id and integer
 seconds (signed). Balance = sum of events. Merging = idempotent union by id. Corrections
 are new `correction` events; nothing is updated or deleted.
 
 ## Alternatives
+
 - **Mutable `balance` column:** concurrent writers lose updates, there's no audit trail, and offline merges are hard.
 - **CRDT counters:** they solve merging, but give no per-change reasons for the coach and the nightly review.
 
 ## Consequences
+
 - Every balance is explainable ("why 37 minutes?").
 - Retries are safe.
 - Reads sum events. Per-day volume is small (< 200 events), so no snapshots are needed in v1.
@@ -914,10 +961,12 @@ git commit -m "feat(core): add rules and event-sourced time ledger"
 ### Task 4: Earning (`earning.ts`)
 
 **Files:**
+
 - Create: `packages/core/src/earning.ts`, `packages/core/test/earning.test.ts`
 - Modify: `packages/core/src/index.ts`
 
 **Interfaces:**
+
 - Consumes: `Result`, `ok`, `err` (Task 1); `Rules` (Task 3); `LedgerEvent`, `EventContext`, `earnedSeconds`, `sumKind` (Task 3).
 - Produces:
   - `type EarnRequest = { kind: 'base_grant' } | { kind: 'task_reward'; taskId: string; seconds: number } | { kind: 'all_done_bonus' } | { kind: 'math_reward'; attemptId: string; answerType: 'typed' | 'choice' }`
@@ -930,6 +979,7 @@ Behavior: the reward is clipped to the remaining daily cap (and the math cap for
 - [ ] **Step 1: Write the failing tests**
 
 `packages/core/test/earning.test.ts`:
+
 ```ts
 import { describe, expect, it } from 'vitest';
 import { earn, type EarnState } from '../src/earning';
@@ -957,7 +1007,10 @@ describe('earn: base grant', () => {
   });
 
   it('never uses the base grant to repay borrowed time', () => {
-    const r = earn([], { kind: 'base_grant' }, ctx(), R, { planLocked: false, outstandingBorrow: 600 });
+    const r = earn([], { kind: 'base_grant' }, ctx(), R, {
+      planLocked: false,
+      outstandingBorrow: 600,
+    });
     expect(r.ok && r.value).toHaveLength(1);
   });
 });
@@ -1001,35 +1054,55 @@ describe('earn: task reward', () => {
 
 describe('earn: borrowed time', () => {
   it('repays outstanding borrow from the reward first', () => {
-    const r = earn(
-      [],
-      { kind: 'task_reward', taskId: 't1', seconds: 1200 },
-      ctx(),
-      R,
-      { planLocked: true, outstandingBorrow: 600 },
-    );
+    const r = earn([], { kind: 'task_reward', taskId: 't1', seconds: 1200 }, ctx(), R, {
+      planLocked: true,
+      outstandingBorrow: 600,
+    });
     expect(r.ok && r.value).toEqual([
-      { id: 'new-1', day: '2026-10-08', at: 1_000, kind: 'task_reward', seconds: 1200, refId: 't1' },
-      { id: 'new-2', day: '2026-10-08', at: 1_000, kind: 'borrow_repay', seconds: -600, refId: 'new-1' },
+      {
+        id: 'new-1',
+        day: '2026-10-08',
+        at: 1_000,
+        kind: 'task_reward',
+        seconds: 1200,
+        refId: 't1',
+      },
+      {
+        id: 'new-2',
+        day: '2026-10-08',
+        at: 1_000,
+        kind: 'borrow_repay',
+        seconds: -600,
+        refId: 'new-1',
+      },
     ]);
   });
 
   it('repays at most the reward amount', () => {
-    const r = earn(
-      [],
-      { kind: 'task_reward', taskId: 't1', seconds: 300 },
-      ctx(),
-      R,
-      { planLocked: true, outstandingBorrow: 600 },
-    );
+    const r = earn([], { kind: 'task_reward', taskId: 't1', seconds: 300 }, ctx(), R, {
+      planLocked: true,
+      outstandingBorrow: 600,
+    });
     expect(r.ok && r.value[1]?.seconds).toBe(-300);
   });
 });
 
 describe('earn: math reward', () => {
   it('pays full reward for typed answers and half for multiple choice', () => {
-    const typed = earn([], { kind: 'math_reward', attemptId: 'a1', answerType: 'typed' }, ctx(), R, locked);
-    const choice = earn([], { kind: 'math_reward', attemptId: 'a2', answerType: 'choice' }, ctx(), R, locked);
+    const typed = earn(
+      [],
+      { kind: 'math_reward', attemptId: 'a1', answerType: 'typed' },
+      ctx(),
+      R,
+      locked,
+    );
+    const choice = earn(
+      [],
+      { kind: 'math_reward', attemptId: 'a2', answerType: 'choice' },
+      ctx(),
+      R,
+      locked,
+    );
     expect(typed.ok && typed.value[0]?.seconds).toBe(180);
     expect(choice.ok && choice.value[0]?.seconds).toBe(90);
   });
@@ -1039,13 +1112,25 @@ describe('earn: math reward', () => {
       ev({ kind: 'math_reward', seconds: 2650, refId: 'old' }),
       ev({ kind: 'task_reward', seconds: 4450, refId: 'big' }),
     ];
-    const r = earn(day, { kind: 'math_reward', attemptId: 'a1', answerType: 'typed' }, ctx(), R, locked);
+    const r = earn(
+      day,
+      { kind: 'math_reward', attemptId: 'a1', answerType: 'typed' },
+      ctx(),
+      R,
+      locked,
+    );
     expect(r.ok && r.value[0]?.seconds).toBe(50);
   });
 
   it('pays an attempt only once', () => {
     const day = [ev({ kind: 'math_reward', seconds: 180, refId: 'a1' })];
-    const r = earn(day, { kind: 'math_reward', attemptId: 'a1', answerType: 'typed' }, ctx(), R, locked);
+    const r = earn(
+      day,
+      { kind: 'math_reward', attemptId: 'a1', answerType: 'typed' },
+      ctx(),
+      R,
+      locked,
+    );
     expect(r).toEqual({ ok: false, error: 'already_granted' });
   });
 });
@@ -1065,12 +1150,13 @@ describe('earn: all-done bonus', () => {
 
 - [ ] **Step 2: Run them and confirm they fail**
 
-Run: `bun --cwd packages/core run test earning`
+Run: `bun run --cwd packages/core test earning`
 Expected: FAIL, cannot resolve `../src/earning`.
 
 - [ ] **Step 3: Implement `earning.ts`**
 
 `packages/core/src/earning.ts`:
+
 ```ts
 import { earnedSeconds, sumKind, type EventContext, type LedgerEvent } from './ledger';
 import { err, ok, type Result } from './result';
@@ -1080,7 +1166,11 @@ export type EarnRequest =
   | { readonly kind: 'base_grant' }
   | { readonly kind: 'task_reward'; readonly taskId: string; readonly seconds: number }
   | { readonly kind: 'all_done_bonus' }
-  | { readonly kind: 'math_reward'; readonly attemptId: string; readonly answerType: 'typed' | 'choice' };
+  | {
+      readonly kind: 'math_reward';
+      readonly attemptId: string;
+      readonly answerType: 'typed' | 'choice';
+    };
 
 export type EarnState = Readonly<{ planLocked: boolean; outstandingBorrow: number }>;
 
@@ -1161,13 +1251,14 @@ export function earn(
 ```
 
 Append to `packages/core/src/index.ts`:
+
 ```ts
 export * from './earning';
 ```
 
 - [ ] **Step 4: Run the tests and confirm they pass**
 
-Run: `bun --cwd packages/core run test earning`
+Run: `bun run --cwd packages/core test earning`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -1182,10 +1273,12 @@ git commit -m "feat(core): add capped, idempotent earning with borrow repayment"
 ### Task 5: Spending, expiry and emergency unlock (`spending.ts`)
 
 **Files:**
+
 - Create: `packages/core/src/spending.ts`, `packages/core/test/spending.test.ts`
 - Modify: `packages/core/src/index.ts`
 
 **Interfaces:**
+
 - Consumes: `Result`, `ok`, `err`; `Rules`; `LedgerEvent`, `EventContext`, `balance`, `sumKind`.
 - Produces:
   - `spend(seconds: number, ctx: EventContext): Result<LedgerEvent, 'invalid_amount'>` (a `usage_spend` event with negative seconds)
@@ -1197,6 +1290,7 @@ git commit -m "feat(core): add capped, idempotent earning with borrow repayment"
 - [ ] **Step 1: Write the failing tests**
 
 `packages/core/test/spending.test.ts`:
+
 ```ts
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_RULES as R } from '../src/rules';
@@ -1220,7 +1314,10 @@ describe('spend', () => {
 
 describe('expireDay', () => {
   it('expires a positive leftover balance', () => {
-    const day = [ev({ kind: 'base_grant', seconds: 900 }), ev({ kind: 'usage_spend', seconds: -600 })];
+    const day = [
+      ev({ kind: 'base_grant', seconds: 900 }),
+      ev({ kind: 'usage_spend', seconds: -600 }),
+    ];
     expect(expireDay(day, ctx())).toMatchObject({ kind: 'expire', seconds: -300 });
   });
 
@@ -1248,16 +1345,22 @@ describe('unlock', () => {
     });
   });
 
-  it.each(['need it', '                    ', 'x'.repeat(19)])('rejects short reason %j', (reason) => {
-    expect(unlock([], { ...good, reason }, ctx({ at: now }), R)).toEqual({
-      ok: false,
-      error: 'reason_too_short',
-    });
-  });
+  it.each(['need it', '                    ', 'x'.repeat(19)])(
+    'rejects short reason %j',
+    (reason) => {
+      expect(unlock([], { ...good, reason }, ctx({ at: now }), R)).toEqual({
+        ok: false,
+        error: 'reason_too_short',
+      });
+    },
+  );
 
   it('rejects before the 10-minute wait is over', () => {
     const early = { ...good, waitStartedAt: now - TEN_MIN_MS + 1_000 };
-    expect(unlock([], early, ctx({ at: now }), R)).toEqual({ ok: false, error: 'wait_not_finished' });
+    expect(unlock([], early, ctx({ at: now }), R)).toEqual({
+      ok: false,
+      error: 'wait_not_finished',
+    });
   });
 
   it('allows at most two unlocks per day', () => {
@@ -1265,19 +1368,23 @@ describe('unlock', () => {
       ev({ kind: 'unlock_borrow', seconds: 600 }),
       ev({ kind: 'unlock_borrow', seconds: 600 }),
     ];
-    expect(unlock(day, good, ctx({ at: now }), R)).toEqual({ ok: false, error: 'daily_limit_reached' });
+    expect(unlock(day, good, ctx({ at: now }), R)).toEqual({
+      ok: false,
+      error: 'daily_limit_reached',
+    });
   });
 });
 ```
 
 - [ ] **Step 2: Run them and confirm they fail**
 
-Run: `bun --cwd packages/core run test spending`
+Run: `bun run --cwd packages/core test spending`
 Expected: FAIL, cannot resolve `../src/spending`.
 
 - [ ] **Step 3: Implement `spending.ts`**
 
 `packages/core/src/spending.ts`:
+
 ```ts
 import { balance, type EventContext, type LedgerEvent } from './ledger';
 import { err, ok, type Result } from './result';
@@ -1291,7 +1398,10 @@ export function spend(seconds: number, ctx: EventContext): Result<LedgerEvent, '
 }
 
 /** Unused time does not roll over. Debt (negative balance) is not expired. */
-export function expireDay(dayEvents: readonly LedgerEvent[], ctx: EventContext): LedgerEvent | null {
+export function expireDay(
+  dayEvents: readonly LedgerEvent[],
+  ctx: EventContext,
+): LedgerEvent | null {
   const left = balance(dayEvents);
   if (left <= 0) return null;
   return { id: ctx.newId(), day: ctx.day, at: ctx.at, kind: 'expire', seconds: -left };
@@ -1329,13 +1439,14 @@ export function unlock(
 ```
 
 Append to `packages/core/src/index.ts`:
+
 ```ts
 export * from './spending';
 ```
 
 - [ ] **Step 4: Run the tests and confirm they pass**
 
-Run: `bun --cwd packages/core run test spending`
+Run: `bun run --cwd packages/core test spending`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -1350,10 +1461,12 @@ git commit -m "feat(core): add spending, daily expiry and friction-based emergen
 ### Task 6: Plan lifecycle (`plan.ts`)
 
 **Files:**
+
 - Create: `packages/core/src/plan.ts`, `packages/core/test/plan.test.ts`
 - Modify: `packages/core/src/index.ts`, `packages/core/test/fixtures.ts`
 
 **Interfaces:**
+
 - Consumes: `Result`, `ok`, `err`; `Rules`; `DayKey`.
 - Produces:
   - `VERIFIER_KINDS = ['github', 'math', 'reading', 'usage'] as const`, `type VerifierKind`
@@ -1370,6 +1483,7 @@ git commit -m "feat(core): add spending, daily expiry and friction-based emergen
 - [ ] **Step 1: Add the fixture and write the failing tests**
 
 Append to `packages/core/test/fixtures.ts`:
+
 ```ts
 import type { TaskSpec } from '../src/plan';
 
@@ -1384,9 +1498,11 @@ export function task(id: string, skillId = 'swe'): TaskSpec {
   };
 }
 ```
+
 (Move the new `import type` line to the top of the file next to the existing import.)
 
 `packages/core/test/plan.test.ts`:
+
 ```ts
 import { describe, expect, it } from 'vitest';
 import { createDraft, editDraft, lockPlan } from '../src/plan';
@@ -1397,7 +1513,11 @@ const three = [task('a'), task('b'), task('c')];
 
 describe('plan lifecycle', () => {
   it('creates a draft', () => {
-    expect(createDraft('2026-10-09', three)).toEqual({ day: '2026-10-09', status: 'draft', tasks: three });
+    expect(createDraft('2026-10-09', three)).toEqual({
+      day: '2026-10-09',
+      status: 'draft',
+      tasks: three,
+    });
   });
 
   it('edits a draft into a new object without touching the original', () => {
@@ -1429,7 +1549,10 @@ describe('plan lifecycle', () => {
       error: 'too_few_tasks',
     });
     const six = ['a', 'b', 'c', 'd', 'e', 'f'].map((id) => task(id));
-    expect(lockPlan(createDraft('2026-10-09', six), 1, R)).toEqual({ ok: false, error: 'too_many_tasks' });
+    expect(lockPlan(createDraft('2026-10-09', six), 1, R)).toEqual({
+      ok: false,
+      error: 'too_many_tasks',
+    });
   });
 
   it('refuses to lock a plan with duplicate task ids', () => {
@@ -1448,12 +1571,13 @@ describe('plan lifecycle', () => {
 
 - [ ] **Step 2: Run them and confirm they fail**
 
-Run: `bun --cwd packages/core run test plan`
+Run: `bun run --cwd packages/core test plan`
 Expected: FAIL, cannot resolve `../src/plan`.
 
 - [ ] **Step 3: Implement `plan.ts`**
 
 `packages/core/src/plan.ts`:
+
 ```ts
 import { err, ok, type Result } from './result';
 import type { Rules } from './rules';
@@ -1510,13 +1634,14 @@ export function lockPlan(plan: Plan, at: number, rules: Rules): Result<Plan, Pla
 ```
 
 Append to `packages/core/src/index.ts`:
+
 ```ts
 export * from './plan';
 ```
 
 - [ ] **Step 4: Run the tests and confirm they pass**
 
-Run: `bun --cwd packages/core run test plan`
+Run: `bun run --cwd packages/core test plan`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -1531,10 +1656,12 @@ git commit -m "feat(core): add plan lifecycle with immutable lock"
 ### Task 7: Day types (`day-types.ts`)
 
 **Files:**
+
 - Create: `packages/core/src/day-types.ts`, `packages/core/test/day-types.test.ts`
 - Modify: `packages/core/src/index.ts`
 
 **Interfaces:**
+
 - Consumes: `Result`, `ok`, `err`; `Rules`; `DayKey`, `isoWeekKey`, `monthKey`, `weekdayOf`; `Plan`, `TaskVersion`.
 - Produces:
   - `type DayKind = 'normal' | 'bad' | 'away'`
@@ -1548,11 +1675,12 @@ git commit -m "feat(core): add plan lifecycle with immutable lock"
   - `type RequiredTask = Readonly<{ taskId: string; version: TaskVersion }>`
   - `requiredTasks(plan: Plan, record: DayRecord | undefined, restWeekdayBySkill: ReadonlyMap<string, number>): RequiredTask[]`
 
-Notes: an away *window* spanning several days is expanded into one `DayRecord` per day by the API layer (P3). A non-away record passed to `applyAwayVerification` is returned unchanged. `'no'` cancels away mode (the day becomes normal). `'unknown'` keeps away mode only while fewer than `unverifiedAwayPerMonth` other days in the same month are `'unknown'`.
+Notes: an away _window_ spanning several days is expanded into one `DayRecord` per day by the API layer (P3). A non-away record passed to `applyAwayVerification` is returned unchanged. `'no'` cancels away mode (the day becomes normal). `'unknown'` keeps away mode only while fewer than `unverifiedAwayPerMonth` other days in the same month are `'unknown'`.
 
 - [ ] **Step 1: Write the failing tests**
 
 `packages/core/test/day-types.test.ts`:
+
 ```ts
 import { describe, expect, it } from 'vitest';
 import {
@@ -1578,7 +1706,10 @@ describe('declareBadDay', () => {
     const first = declareBadDay([], '2026-10-08', R);
     expect(first).toEqual({ ok: true, value: { day: '2026-10-08', kind: 'bad' } });
     const history = first.ok ? [first.value] : [];
-    expect(declareBadDay(history, '2026-10-10', R)).toEqual({ ok: false, error: 'bad_day_limit_reached' });
+    expect(declareBadDay(history, '2026-10-10', R)).toEqual({
+      ok: false,
+      error: 'bad_day_limit_reached',
+    });
   });
 
   it('treats Sunday and the following Monday as different weeks', () => {
@@ -1588,7 +1719,10 @@ describe('declareBadDay', () => {
 
   it('refuses to redeclare a day that already has a type', () => {
     const history: DayRecord[] = [awayUnknown('2026-10-08')];
-    expect(declareBadDay(history, '2026-10-08', R)).toEqual({ ok: false, error: 'already_declared' });
+    expect(declareBadDay(history, '2026-10-08', R)).toEqual({
+      ok: false,
+      error: 'already_declared',
+    });
   });
 });
 
@@ -1606,7 +1740,10 @@ describe('declareAway', () => {
 
   it('refuses a day that already has a type', () => {
     const history: DayRecord[] = [{ day: '2026-10-10', kind: 'bad' }];
-    expect(declareAway(history, '2026-10-10', 'Dushanbe', [])).toEqual({ ok: false, error: 'already_declared' });
+    expect(declareAway(history, '2026-10-10', 'Dushanbe', [])).toEqual({
+      ok: false,
+      error: 'already_declared',
+    });
   });
 });
 
@@ -1620,7 +1757,10 @@ describe('applyAwayVerification', () => {
   });
 
   it('cancels away mode when the owner is found at home', () => {
-    expect(applyAwayVerification([], record, 'no', R)).toEqual({ day: '2026-10-10', kind: 'normal' });
+    expect(applyAwayVerification([], record, 'no', R)).toEqual({
+      day: '2026-10-10',
+      kind: 'normal',
+    });
   });
 
   it('allows up to two unverified away days per month', () => {
@@ -1630,7 +1770,10 @@ describe('applyAwayVerification', () => {
 
   it('falls back to a normal day once the unverified allowance is used', () => {
     const history = [awayUnknown('2026-10-02'), awayUnknown('2026-10-05')];
-    expect(applyAwayVerification(history, record, 'unknown', R)).toEqual({ day: '2026-10-10', kind: 'normal' });
+    expect(applyAwayVerification(history, record, 'unknown', R)).toEqual({
+      day: '2026-10-10',
+      kind: 'normal',
+    });
   });
 
   it('leaves a record that is not an away day unchanged', () => {
@@ -1653,7 +1796,11 @@ describe('isRestDay', () => {
 });
 
 describe('requiredTasks', () => {
-  const plan = createDraft('2026-10-09', [task('a', 'swe'), task('b', 'math'), task('c', 'reading')]);
+  const plan = createDraft('2026-10-09', [
+    task('a', 'swe'),
+    task('b', 'math'),
+    task('c', 'reading'),
+  ]);
   const rest = new Map([['swe', 5]]); // Friday rest for software engineering
 
   it('skips rest-day skills and uses full versions on a normal day', () => {
@@ -1667,25 +1814,29 @@ describe('requiredTasks', () => {
     expect(result.map((r) => r.version.title)).toEqual(['Tiny a', 'Tiny b', 'Tiny c']);
   });
 
-  it.each(['pending', 'yes', 'unknown'] as const)('keeps only chosen tasks when away (%s)', (verified) => {
-    const record: DayRecord = {
-      day: '2026-10-09',
-      kind: 'away',
-      away: { place: 'Dushanbe', keptTaskIds: ['c'], verified },
-    };
-    expect(requiredTasks(plan, record, new Map()).map((r) => r.taskId)).toEqual(['c']);
-  });
+  it.each(['pending', 'yes', 'unknown'] as const)(
+    'keeps only chosen tasks when away (%s)',
+    (verified) => {
+      const record: DayRecord = {
+        day: '2026-10-09',
+        kind: 'away',
+        away: { place: 'Dushanbe', keptTaskIds: ['c'], verified },
+      };
+      expect(requiredTasks(plan, record, new Map()).map((r) => r.taskId)).toEqual(['c']);
+    },
+  );
 });
 ```
 
 - [ ] **Step 2: Run them and confirm they fail**
 
-Run: `bun --cwd packages/core run test day-types`
+Run: `bun run --cwd packages/core test day-types`
 Expected: FAIL, cannot resolve `../src/day-types`.
 
 - [ ] **Step 3: Implement `day-types.ts`**
 
 `packages/core/src/day-types.ts`:
+
 ```ts
 import type { Plan, TaskVersion } from './plan';
 import { err, ok, type Result } from './result';
@@ -1770,13 +1921,14 @@ export function requiredTasks(
 ```
 
 Append to `packages/core/src/index.ts`:
+
 ```ts
 export * from './day-types';
 ```
 
 - [ ] **Step 4: Run the tests and confirm they pass**
 
-Run: `bun --cwd packages/core run test day-types`
+Run: `bun run --cwd packages/core test day-types`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -1791,10 +1943,12 @@ git commit -m "feat(core): add rest, bad and away day types with limits"
 ### Task 8: Verdicts and the Verifier port (`verdict.ts`)
 
 **Files:**
+
 - Create: `packages/core/src/verdict.ts`, `packages/core/test/verdict.test.ts`
 - Modify: `packages/core/src/index.ts`
 
 **Interfaces:**
+
 - Consumes: `Rules`; `TaskSpec`, `VerifierKind`; `RequiredTask`.
 - Produces:
   - `type VerdictOutcome = 'pass' | 'fail' | 'pending'`
@@ -1810,6 +1964,7 @@ Rules: confidence below the threshold, NaN, or outside [0, 1] gives `pending` (n
 - [ ] **Step 1: Write the failing tests**
 
 `packages/core/test/verdict.test.ts`:
+
 ```ts
 import { describe, expect, it } from 'vitest';
 import type { TaskSpec } from '../src/plan';
@@ -1827,17 +1982,29 @@ const verdict = (taskId: string, outcome: Verdict['outcome']): Verdict => ({
 
 describe('resolveDecision', () => {
   it('passes or fails when confident', () => {
-    expect(resolveDecision('t1', ['ev1'], { pass: true, confidence: 0.9 }, 'judge', R).outcome).toBe('pass');
-    expect(resolveDecision('t1', ['ev1'], { pass: false, confidence: 0.9 }, 'judge', R).outcome).toBe('fail');
+    expect(
+      resolveDecision('t1', ['ev1'], { pass: true, confidence: 0.9 }, 'judge', R).outcome,
+    ).toBe('pass');
+    expect(
+      resolveDecision('t1', ['ev1'], { pass: false, confidence: 0.9 }, 'judge', R).outcome,
+    ).toBe('fail');
   });
 
   it.each([0.74, Number.NaN, -0.1, 1.2])('marks confidence %s as pending', (confidence) => {
-    expect(resolveDecision('t1', ['ev1'], { pass: true, confidence }, 'judge', R).outcome).toBe('pending');
+    expect(resolveDecision('t1', ['ev1'], { pass: true, confidence }, 'judge', R).outcome).toBe(
+      'pending',
+    );
   });
 
   it('keeps the evidence trail', () => {
     const v = resolveDecision('t1', ['ev1', 'ev2'], { pass: true, confidence: 1 }, 'code', R);
-    expect(v).toEqual({ taskId: 't1', evidenceIds: ['ev1', 'ev2'], outcome: 'pass', confidence: 1, by: 'code' });
+    expect(v).toEqual({
+      taskId: 't1',
+      evidenceIds: ['ev1', 'ev2'],
+      outcome: 'pass',
+      confidence: 1,
+      by: 'code',
+    });
   });
 });
 
@@ -1877,12 +2044,13 @@ describe('Verifier port', () => {
 
 - [ ] **Step 2: Run them and confirm they fail**
 
-Run: `bun --cwd packages/core run test verdict`
+Run: `bun run --cwd packages/core test verdict`
 Expected: FAIL, cannot resolve `../src/verdict`.
 
 - [ ] **Step 3: Implement `verdict.ts`**
 
 `packages/core/src/verdict.ts`:
+
 ```ts
 import type { RequiredTask } from './day-types';
 import type { TaskSpec, VerifierKind } from './plan';
@@ -1924,7 +2092,10 @@ export function resolveDecision(
   return { taskId, evidenceIds, outcome, confidence: decision.confidence, by };
 }
 
-export function allPassed(required: readonly RequiredTask[], verdicts: readonly Verdict[]): boolean {
+export function allPassed(
+  required: readonly RequiredTask[],
+  verdicts: readonly Verdict[],
+): boolean {
   if (required.length === 0) return false;
   const passed = new Set(verdicts.filter((v) => v.outcome === 'pass').map((v) => v.taskId));
   return required.every((r) => passed.has(r.taskId));
@@ -1932,13 +2103,14 @@ export function allPassed(required: readonly RequiredTask[], verdicts: readonly 
 ```
 
 Append to `packages/core/src/index.ts`:
+
 ```ts
 export * from './verdict';
 ```
 
 - [ ] **Step 4: Run the whole core suite with coverage**
 
-Run: `bun --cwd packages/core run coverage`
+Run: `bun run --cwd packages/core coverage`
 Expected: all tests PASS; coverage ≥ 90% on every metric (the run fails if not).
 
 - [ ] **Step 5: Commit**
@@ -1953,9 +2125,11 @@ git commit -m "feat(core): add verdict resolution with confidence threshold and 
 ### Task 9: Edge contracts (`@mflow/contracts`)
 
 **Files:**
+
 - Create: `packages/contracts/package.json`, `packages/contracts/tsconfig.json`, `packages/contracts/vitest.config.ts`, `packages/contracts/src/schemas.ts`, `packages/contracts/src/index.ts`, `packages/contracts/test/schemas.test.ts`
 
 **Interfaces:**
+
 - Consumes: from `@mflow/core`: `LEDGER_EVENT_KINDS`, `VERIFIER_KINDS`, `parseDayKey`, types `LedgerEvent`, `Plan`, `TaskSpec`.
 - Produces:
   - `DayKeySchema`, `LedgerEventSchema`, `LedgerEventBatchSchema` (1–500 events), `TaskVersionSchema`, `TaskSpecSchema`, `PlanSchema`, `ApiErrorSchema`
@@ -1965,6 +2139,7 @@ git commit -m "feat(core): add verdict resolution with confidence threshold and 
 - [ ] **Step 1: Create the package**
 
 `packages/contracts/package.json`:
+
 ```json
 {
   "name": "@mflow/contracts",
@@ -1991,6 +2166,7 @@ bun install
 ```
 
 `packages/contracts/tsconfig.json`:
+
 ```json
 {
   "extends": "../../tsconfig.base.json",
@@ -1999,6 +2175,7 @@ bun install
 ```
 
 `packages/contracts/vitest.config.ts`:
+
 ```ts
 import { defineConfig } from 'vitest/config';
 
@@ -2018,6 +2195,7 @@ export default defineConfig({
 - [ ] **Step 2: Write the failing tests**
 
 `packages/contracts/test/schemas.test.ts`:
+
 ```ts
 import type { LedgerEvent, Plan } from '@mflow/core';
 import { describe, expect, it } from 'vitest';
@@ -2045,7 +2223,11 @@ const taskSpec = {
   skillId: 'swe',
   when: '20:00 at my desk',
   verifier: 'github',
-  full: { title: 'Finish parser errors', criteria: 'commits in parser/ add error handling', seconds: 1200 },
+  full: {
+    title: 'Finish parser errors',
+    criteria: 'commits in parser/ add error handling',
+    seconds: 1200,
+  },
   twoMinute: { title: 'One parser commit', criteria: 'any commit in parser/', seconds: 300 },
 };
 
@@ -2093,7 +2275,9 @@ describe('PlanSchema', () => {
 
   it('rejects a task worth more than the daily cap', () => {
     const greedy = { ...taskSpec, full: { ...taskSpec.full, seconds: 7201 } };
-    expect(PlanSchema.safeParse({ day: '2026-10-09', status: 'draft', tasks: [greedy] }).success).toBe(false);
+    expect(
+      PlanSchema.safeParse({ day: '2026-10-09', status: 'draft', tasks: [greedy] }).success,
+    ).toBe(false);
   });
 });
 
@@ -2103,14 +2287,18 @@ describe('envelope', () => {
   it('accepts success and error shapes', () => {
     expect(Response.safeParse({ ok: true, data: { balance: 5 }, error: null }).success).toBe(true);
     expect(
-      Response.safeParse({ ok: false, data: null, error: { code: 'not_found', message: 'No plan' } })
-        .success,
+      Response.safeParse({
+        ok: false,
+        data: null,
+        error: { code: 'not_found', message: 'No plan' },
+      }).success,
     ).toBe(true);
   });
 
   it('rejects an error response that also carries data', () => {
     expect(
-      Response.safeParse({ ok: false, data: { balance: 5 }, error: { code: 'x', message: 'y' } }).success,
+      Response.safeParse({ ok: false, data: { balance: 5 }, error: { code: 'x', message: 'y' } })
+        .success,
     ).toBe(false);
   });
 });
@@ -2118,12 +2306,13 @@ describe('envelope', () => {
 
 - [ ] **Step 3: Run them and confirm they fail**
 
-Run: `bun --cwd packages/contracts run test`
+Run: `bun run --cwd packages/contracts test`
 Expected: FAIL, cannot resolve `../src/schemas`.
 
 - [ ] **Step 4: Implement the schemas**
 
 `packages/contracts/src/schemas.ts`:
+
 ```ts
 import { LEDGER_EVENT_KINDS, parseDayKey, VERIFIER_KINDS } from '@mflow/core';
 import { z } from 'zod';
@@ -2194,13 +2383,14 @@ export function envelope<T extends z.ZodType>(data: T) {
 ```
 
 `packages/contracts/src/index.ts`:
+
 ```ts
 export * from './schemas';
 ```
 
 - [ ] **Step 5: Run the tests, coverage and typecheck**
 
-Run: `bun --cwd packages/contracts run coverage && bun run typecheck`
+Run: `bun run --cwd packages/contracts coverage && bun run typecheck`
 Expected: all PASS; coverage ≥ 80%. The typecheck proves the parsed values are assignable to the `LedgerEvent` and `Plan` domain types.
 
 - [ ] **Step 6: Commit**
@@ -2215,6 +2405,7 @@ git commit -m "feat(contracts): add zod edge schemas mapped to core domain types
 ### Task 10: Full verification
 
 **Files:**
+
 - Modify: `README.md` (status line only, if needed)
 
 - [ ] **Step 1: Run the full CI sequence locally**
@@ -2223,6 +2414,7 @@ git commit -m "feat(contracts): add zod edge schemas mapped to core domain types
 bun install --frozen-lockfile
 bun run format:check && bun run lint && bun run typecheck && bun run coverage
 ```
+
 Expected: every command exits 0; core ≥ 90% and contracts ≥ 80% coverage.
 
 - [ ] **Step 2: Confirm the boundaries hold**
@@ -2233,6 +2425,7 @@ grep -rn "Date.now\|Math.random\|crypto" packages/core/src && echo "VIOLATION" |
 git log --format='%an <%ae>%n%b' | grep -i "co-authored\|claude" && echo "VIOLATION" || echo "authorship clean"
 git status --short learning/ ; git check-ignore learning/ && echo "learning/ ignored"
 ```
+
 Expected: `core is pure`, `no hidden I/O`, `authorship clean`, `learning/ ignored`.
 
 - [ ] **Step 3: Commit any formatting fixes**
