@@ -49,6 +49,7 @@ const normalize = (text: string): string =>
       .replace(/−/g, '-')
       .replace(/×/g, '*')
       .replace(/÷/g, '/')
+      .replace(/π|(?<![a-z])pi(?![a-z])/gi, '\\pi')
       .replace(FUNCTION_NAMES, (name) => `\\${name.toLowerCase()}`)
       // The CAS reads `^` like LaTeX, where x^12 means x¹·2: brace every numeric exponent.
       .replace(/\^(-?\d+(?:\.\d+)?)/g, '^{$1}'),
@@ -57,6 +58,7 @@ const normalize = (text: string): string =>
 /** Forgives harmless number formats: `(-3)`, `+3`, `- 3`, `3.` */
 const cleanNumber = (text: string): string =>
   text
+    .replace(/\s*(?:mm|cm|km|m)(?:²|³|\^\{?[23]\}?|[23])?$/i, '')
     .replace(/\s*%$/, '')
     .replace(/^\((.*)\)$/, '$1')
     .trim()

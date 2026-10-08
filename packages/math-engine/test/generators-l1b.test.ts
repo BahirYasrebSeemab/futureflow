@@ -6,6 +6,7 @@ import { expectGeneratorContract } from './contract';
 import { evaluate, numberAnswer, promptMath, RUNS, seedAndDifficulty } from './oracle';
 import { linearRelationsGenerator } from '../src/generators/linear-relations';
 import { exponentLawsGenerator } from '../src/generators/exponent-laws';
+import { measurementAndGeometryGenerator } from '../src/generators/measurement-and-geometry';
 
 const holds = (left: number, op: string, right: number): boolean =>
   op === '<'
@@ -101,6 +102,40 @@ describe('exponent-laws oracle', () => {
           );
         }
         expect(problem.answer.text).toMatch(/^-?\d*x\^\d+$/);
+      }),
+      RUNS,
+    );
+  });
+});
+
+expectGeneratorContract(measurementAndGeometryGenerator);
+
+describe('measurement-and-geometry oracle', () => {
+  it('agrees with the formulas applied to the numbers in the prompt', () => {
+    fc.assert(
+      fc.property(seedAndDifficulty, ([seed, d]) => {
+        const problem = measurementAndGeometryGenerator.generate(seed, d);
+        const n = [...problem.prompt.matchAll(/(\d+) cm/g)].map((m) => Number(m[1]));
+        const [p = 0, q = 0, r = 0] = n;
+        const text = problem.prompt;
+        const expected = /rectangle/.test(text)
+          ? p * q
+          : /triangle has a base/.test(text)
+            ? (p * q) / 2
+            : /legs of/.test(text)
+              ? Math.hypot(p, q)
+              : /hypotenuse of/.test(text)
+                ? Math.sqrt(p * p - q * q)
+                : /prism/.test(text)
+                  ? p * q * r
+                  : /area of a circle/.test(text)
+                    ? Math.PI * p * p
+                    : 2 * Math.PI * p;
+        const value =
+          problem.answer.type === 'expression'
+            ? evaluate(problem.answer.text.replace('π', '\\pi'))
+            : numberAnswer(problem.answer);
+        expect(value).toBeCloseTo(expected, 6);
       }),
       RUNS,
     );

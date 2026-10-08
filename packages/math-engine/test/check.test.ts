@@ -232,3 +232,17 @@ describe('checkAnswer: multi-digit exponents', () => {
     expect(checkAnswer({ type: 'expression', text: '4x^10' }, '0')).toBe('incorrect');
   });
 });
+
+describe('checkAnswer: π and units', () => {
+  it('reads π answers and rejects decimal approximations of them', () => {
+    const circle: Answer = { type: 'expression', text: '25π' };
+    expect(checkAnswer(circle, '25π')).toBe('correct');
+    expect(checkAnswer(circle, '25pi')).toBe('correct');
+    expect(checkAnswer(circle, '25*pi')).toBe('correct');
+    expect(checkAnswer(circle, '78.5')).toBe('incorrect');
+  });
+
+  it.each(['28 cm²', '28cm^2', '28 cm2', '28 m'])('strips the unit in %j', (given) => {
+    expect(checkAnswer(num(28), given)).toBe('correct');
+  });
+});

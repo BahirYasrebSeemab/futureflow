@@ -1,4 +1,5 @@
 import type { Generator } from '../types';
+import { measurementAndGeometryGenerator } from './measurement-and-geometry';
 import { exponentLawsGenerator } from './exponent-laws';
 import { linearRelationsGenerator } from './linear-relations';
 import { linearInequalitiesGenerator } from './linear-inequalities';
@@ -37,4 +38,5 @@ export const DEFAULT_REGISTRY: GeneratorRegistry = createRegistry([
   linearInequalitiesGenerator,
   linearRelationsGenerator,
   exponentLawsGenerator,
+  measurementAndGeometryGenerator,
 ]);
