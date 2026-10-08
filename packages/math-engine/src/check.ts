@@ -2,7 +2,7 @@ import { ComputeEngine } from '@cortex-js/compute-engine';
 import { equals, parseRational, toNumber, toText, type Rational } from './rational';
 
 export type Answer =
-  | Readonly<{ type: 'number'; value: Rational }>
+  | Readonly<{ type: 'number'; value: Rational; unit?: 'percent' }>
   | Readonly<{ type: 'expression'; text: string; maxTerms?: number }>
   | Readonly<{ type: 'set'; items: readonly Rational[] }>
   | Readonly<{ type: 'point'; coords: readonly Rational[] }>
@@ -78,10 +78,13 @@ const splitList = (text: string): string[] =>
     .map((part) => part.trim())
     .filter((part) => part !== '');
 
-function checkNumber(expected: Rational, given: string): CheckOutcome {
-  const text = cleanNumber(stripAssignment(normalize(given)));
+function checkNumber(expected: Rational, given: string, unit?: 'percent'): CheckOutcome {
+  const typed = stripAssignment(normalize(given));
+  const text = cleanNumber(typed);
   const value = parseRational(text);
   if (value === null) return 'unreadable';
+  // "10%" for an amount of 10 is the classic percent/amount mix-up: a real mistake, not a typo.
+  if (/%\s*$/.test(typed) && unit !== 'percent') return 'incorrect';
   if (text.includes('.')) {
     return closeEnough(toNumber(value), toNumber(expected)) ? 'correct' : 'incorrect';
   }
@@ -162,7 +165,7 @@ function checkChoice(optionCount: number, correctIndex: number, given: string): 
 export function checkAnswer(expected: Answer, given: string): CheckOutcome {
   switch (expected.type) {
     case 'number':
-      return checkNumber(expected.value, given);
+      return checkNumber(expected.value, given, expected.unit);
     case 'expression':
       return checkExpression(expected.text, given, expected.maxTerms);
     case 'set':

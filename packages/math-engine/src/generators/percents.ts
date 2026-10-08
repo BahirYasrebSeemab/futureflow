@@ -1,5 +1,5 @@
 import { decimalText } from '../format';
-import { add, rational } from '../rational';
+import { add, gcd, rational, type Rational } from '../rational';
 import { createRng, type Rng } from '../rng';
 import type { Difficulty, Generator, Problem } from '../types';
 
@@ -27,19 +27,22 @@ export const percentsGenerator: Generator = {
     const base = { topicId: 'percents', seed, difficulty } as const;
     const make = (
       prompt: string,
-      value: ReturnType<typeof rational>,
+      value: Rational,
       hint: string,
       steps: string[],
+      unit?: 'percent',
     ): Problem => ({
       ...base,
       prompt,
-      answer: { type: 'number', value },
+      answer: unit === undefined ? { type: 'number', value } : { type: 'number', value, unit },
       hints: [hint],
       steps,
     });
 
     if (kind === 'of') {
-      const n = rng.int(2, 20 * difficulty);
+      // At d1 the amount is a multiple of 100/gcd(p, 100), so the answer is a whole number.
+      const n =
+        difficulty === 1 ? (100 / gcd(p, 100)) * rng.int(1, 10) : rng.int(2, 20 * difficulty);
       const value = rational(p * n, 100);
       return make(`What is ${p}% of ${n}?`, value, 'A percent is a number out of 100.', [
         `${p}% = ${p}/100`,
@@ -55,6 +58,7 @@ export const percentsGenerator: Generator = {
         rational(p),
         'Divide the part by the whole, then multiply by 100.',
         [`${part} ÷ ${whole} = ${ratio}`, `${ratio} × 100 = ${p}%`],
+        'percent',
       );
     }
     const n = rng.int(2, 40) * 5;
