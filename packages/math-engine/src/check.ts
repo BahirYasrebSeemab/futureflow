@@ -3,7 +3,7 @@ import { equals, parseRational, toNumber, toText, type Rational } from './ration
 
 export type Answer =
   | Readonly<{ type: 'number'; value: Rational; unit?: 'percent' }>
-  | Readonly<{ type: 'expression'; text: string; maxTerms?: number }>
+  | Readonly<{ type: 'expression'; text: string; maxTerms?: number; form?: 'monomial' }>
   | Readonly<{ type: 'set'; items: readonly Rational[] }>
   | Readonly<{ type: 'point'; coords: readonly Rational[] }>
   | Readonly<{ type: 'choice'; options: readonly string[]; correctIndex: number }>
@@ -49,7 +49,9 @@ const normalize = (text: string): string =>
       .replace(/−/g, '-')
       .replace(/×/g, '*')
       .replace(/÷/g, '/')
-      .replace(FUNCTION_NAMES, (name) => `\\${name.toLowerCase()}`),
+      .replace(FUNCTION_NAMES, (name) => `\\${name.toLowerCase()}`)
+      // The CAS reads `^` like LaTeX, where x^12 means x¹·2: brace every numeric exponent.
+      .replace(/\^(-?\d+(?:\.\d+)?)/g, '^{$1}'),
   );
 
 /** Forgives harmless number formats: `(-3)`, `+3`, `- 3`, `3.` */
@@ -114,7 +116,14 @@ function sampleEqual(a: Expr, b: Expr): boolean {
   return comparable >= MIN_COMPARABLE_SAMPLES;
 }
 
-function checkExpression(expected: string, given: string, maxTerms?: number): CheckOutcome {
+const MONOMIAL = /^-?(\d+\*?)?[a-z](\^\{?\d+\}?)?$/i;
+
+function checkExpression(
+  expected: string,
+  given: string,
+  maxTerms?: number,
+  form?: 'monomial',
+): CheckOutcome {
   const target = ce().parse(normalize(expected));
   const allowed = new Set(target.unknowns);
   // "y = 2x + 1" for an expected "2x + 1": drop the label when y isn't part of the answer.
@@ -128,6 +137,7 @@ function checkExpression(expected: string, given: string, maxTerms?: number): Ch
   if (maxTerms !== undefined && (text.includes('(') || countTerms(text) > maxTerms)) {
     return 'incorrect';
   }
+  if (form === 'monomial' && !MONOMIAL.test(text.replace(/\s+/g, ''))) return 'incorrect';
   // Only `true` is a proof: the CAS answers `false` for some true identities (2^x·2 vs 2^(x+1)).
   if (target.isIdenticallyEqual(parsed) === true) return 'correct';
   return sampleEqual(target, parsed) ? 'correct' : 'incorrect';
@@ -223,7 +233,7 @@ export function checkAnswer(expected: Answer, given: string): CheckOutcome {
     case 'number':
       return checkNumber(expected.value, given, expected.unit);
     case 'expression':
-      return checkExpression(expected.text, given, expected.maxTerms);
+      return checkExpression(expected.text, given, expected.maxTerms, expected.form);
     case 'set':
       return checkSet(expected.items, given);
     case 'point':

@@ -19,10 +19,17 @@ export const promptMath = (prompt: string): string =>
 
 /** Numeric value of a CAS-parseable expression, optionally substituting variables. */
 export const evaluate = (text: string, values: Record<string, number> = {}): number =>
-  Number(ce.parse(text).subs(values).N().re);
+  Number(
+    ce
+      .parse(text.replace(/\^(-?\d+(?:\.\d+)?)/g, '^{$1}'))
+      .subs(values)
+      .N().re,
+  );
+
+const braced = (text: string): string => text.replace(/\^(-?\d+(?:\.\d+)?)/g, '^{$1}');
 
 export const identicallyEqual = (a: string, b: string): boolean | undefined =>
-  ce.parse(a).isIdenticallyEqual(ce.parse(b));
+  ce.parse(braced(a)).isIdenticallyEqual(ce.parse(braced(b)));
 
 export const seedAndDifficulty = fc.tuple(
   fc.integer({ min: 0, max: 2 ** 31 - 1 }),

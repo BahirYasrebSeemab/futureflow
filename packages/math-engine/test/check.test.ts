@@ -206,3 +206,29 @@ describe('checkAnswer: y = prefix on expressions', () => {
     expect(checkAnswer({ type: 'expression', text: '2x+1' }, 'y = 2x + 3')).toBe('incorrect');
   });
 });
+
+describe('checkAnswer: monomial form', () => {
+  const answer: Answer = { type: 'expression', text: '6x^7', form: 'monomial' };
+
+  it.each([
+    ['6x^7', 'correct'],
+    ['6*x^7', 'correct'],
+    ['6 x^7', 'correct'],
+    ['6x^(7)', 'correct'],
+    ['2x^3*3x^4', 'incorrect'],
+    ['6x^3*x^4', 'incorrect'],
+    ['6x^6', 'incorrect'],
+  ])('6x^7 vs %j is %s', (given, outcome) => {
+    expect(checkAnswer(answer, given)).toBe(outcome);
+  });
+});
+
+describe('checkAnswer: multi-digit exponents', () => {
+  const answer: Answer = { type: 'expression', text: '8x^12', form: 'monomial' };
+
+  it('reads x^12 as x to the twelfth, not x^1 times 2', () => {
+    expect(checkAnswer(answer, '8x^12')).toBe('correct');
+    expect(checkAnswer(answer, '16x')).toBe('incorrect');
+    expect(checkAnswer({ type: 'expression', text: '4x^10' }, '0')).toBe('incorrect');
+  });
+});
