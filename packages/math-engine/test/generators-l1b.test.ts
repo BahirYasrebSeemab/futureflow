@@ -3,8 +3,9 @@ import { describe, expect, it } from 'vitest';
 import { linearInequalitiesGenerator } from '../src/generators/linear-inequalities';
 import { toNumber } from '../src/rational';
 import { expectGeneratorContract } from './contract';
-import { evaluate, numberAnswer, RUNS, seedAndDifficulty } from './oracle';
+import { evaluate, numberAnswer, promptMath, RUNS, seedAndDifficulty } from './oracle';
 import { linearRelationsGenerator } from '../src/generators/linear-relations';
+import { exponentLawsGenerator } from '../src/generators/exponent-laws';
 
 const holds = (left: number, op: string, right: number): boolean =>
   op === '<'
@@ -79,6 +80,27 @@ describe('linear-relations oracle', () => {
               evaluate(problem.answer.text, { x: 1 }) - evaluate(problem.answer.text, { x: 0 }),
             ).toBeCloseTo(Number(slope[1]), 9);
         }
+      }),
+      RUNS,
+    );
+  });
+});
+
+expectGeneratorContract(exponentLawsGenerator);
+
+describe('exponent-laws oracle', () => {
+  it('answer equals the prompt numerically and is a single simplified term', () => {
+    fc.assert(
+      fc.property(seedAndDifficulty, ([seed, d]) => {
+        const problem = exponentLawsGenerator.generate(seed, d);
+        if (problem.answer.type !== 'expression') throw new Error('expected an expression');
+        for (const x of [1.3, 2.1, -0.7]) {
+          expect(evaluate(problem.answer.text, { x })).toBeCloseTo(
+            evaluate(promptMath(problem.prompt), { x }),
+            6,
+          );
+        }
+        expect(problem.answer.text).toMatch(/^-?\d*x\^\d+$/);
       }),
       RUNS,
     );
