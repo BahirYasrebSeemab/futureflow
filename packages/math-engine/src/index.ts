@@ -5,3 +5,5 @@ export * from './format';
 export * from './check';
 export * from './graph';
 export * from './curriculum';
+export * from './elo';
+export * from './mastery';
