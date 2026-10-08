@@ -116,7 +116,7 @@ mflow does not promise a date. It **forecasts** an ETA for each gate from the ow
 └─────────────────────────────────────────────────┘
 ```
 
-### 4.2 Monorepo layout (pnpm workspaces, TypeScript everywhere)
+### 4.2 Monorepo layout (Bun workspaces, TypeScript everywhere)
 
 ```
 mflow/
@@ -422,7 +422,7 @@ Location never leaves the phone. Free-tier AI calls are minimized. Personal data
 ---
 
 ## 16. Decisions to record as ADRs
-1. TypeScript monorepo with pnpm workspaces (no Turborepo yet: YAGNI)
+1. TypeScript monorepo with Bun workspaces; `bun x` for tools (no Turborepo yet: YAGNI)
 2. Hexagonal core; zod only at the edges
 3. Cloudflare Workers + Hono + D1 over a Node server (cron reliability on free tier; Node rewrite later)
 4. Event-sourced time ledger

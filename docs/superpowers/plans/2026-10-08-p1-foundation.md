@@ -4,15 +4,15 @@
 
 **Goal:** Create the mflow TypeScript monorepo with CI, plus the pure domain package `@mflow/core` (time model, time ledger, earning/spending rules, plan lifecycle, day types, verdicts) and the edge-validation package `@mflow/contracts`, all built test-first.
 
-**Architecture:** pnpm workspaces monorepo. `packages/core` holds pure functions and types with no I/O or framework imports (hexagonal center). `packages/contracts` holds zod schemas that validate data at system edges and map onto core types. Internal packages are consumed as TypeScript source (`exports: ./src/index.ts`), with no build step.
+**Architecture:** Bun workspaces monorepo. `packages/core` holds pure functions and types with no I/O or framework imports (hexagonal center). `packages/contracts` holds zod schemas that validate data at system edges and map onto core types. Internal packages are consumed as TypeScript source (`exports: ./src/index.ts`), with no build step.
 
-**Tech Stack:** Node 24, pnpm (latest via corepack), TypeScript (strict), Vitest + @vitest/coverage-v8, zod v4, ESLint (flat config) + typescript-eslint, Prettier, GitHub Actions.
+**Tech Stack:** Bun 1.4 (package manager, workspaces, script runner; binaries via `bun x`), Node 24 (runtime for Vitest), TypeScript (strict), Vitest + @vitest/coverage-v8, zod v4, ESLint (flat config) + typescript-eslint, Prettier, GitHub Actions.
 
 **Spec:** `docs/superpowers/specs/2026-10-08-mflow-v1-design.md` (sections 4, 5, 6, 13.1, 14, 16 apply to this phase)
 
 ## Global Constraints
 
-- Node 24 (`.nvmrc` = `24`); pnpm workspaces; all packages are ESM (`"type": "module"`).
+- Bun for installs and scripts; one-off binaries run with `bun x <tool>` (never `bunx`, `npx` or pnpm). Node 24 (`.nvmrc` = `24`). All packages are ESM (`"type": "module"`). Lockfile `bun.lock` is committed.
 - TypeScript `strict: true` and `noUncheckedIndexedAccess: true`.
 - `packages/core` imports **nothing** except its own files: no zod, no Node APIs, no `Date.now()`, no `crypto`. Time and IDs are injected.
 - zod is used **only** in `packages/contracts` (edges).
@@ -37,15 +37,15 @@
 
 ```
 mflow/
-├─ package.json                 root scripts + dev tooling
-├─ pnpm-workspace.yaml
+├─ package.json                 root scripts, workspaces, dev tooling
+├─ bun.lock
 ├─ tsconfig.base.json           shared strict compiler options
 ├─ eslint.config.js             flat config
 ├─ .prettierrc.json  .prettierignore  .editorconfig  .nvmrc
 ├─ .github/workflows/ci.yml
 ├─ README.md
 ├─ docs/adr/
-│  ├─ 0001-typescript-monorepo-pnpm.md
+│  ├─ 0001-typescript-monorepo-bun.md
 │  ├─ 0002-hexagonal-core-zod-at-edges.md
 │  ├─ 0003-day-key-and-time-model.md
 │  └─ 0004-event-sourced-time-ledger.md
@@ -77,47 +77,37 @@ mflow/
 ### Task 1: Monorepo scaffold, tooling, CI, first ADRs
 
 **Files:**
-- Create: `package.json`, `pnpm-workspace.yaml`, `tsconfig.base.json`, `eslint.config.js`, `.prettierrc.json`, `.prettierignore`, `.editorconfig`, `.nvmrc`, `.github/workflows/ci.yml`, `README.md`, `docs/adr/0001-typescript-monorepo-pnpm.md`, `docs/adr/0002-hexagonal-core-zod-at-edges.md`
+- Create: `package.json`, `tsconfig.base.json`, `eslint.config.js`, `.prettierrc.json`, `.prettierignore`, `.editorconfig`, `.nvmrc`, `.github/workflows/ci.yml`, `README.md`, `docs/adr/0001-typescript-monorepo-bun.md`, `docs/adr/0002-hexagonal-core-zod-at-edges.md`
 - Create: `packages/core/package.json`, `packages/core/tsconfig.json`, `packages/core/vitest.config.ts`, `packages/core/src/index.ts`, `packages/core/src/result.ts`, `packages/core/test/result.test.ts`
 
 **Interfaces:**
 - Produces: `Result<T, E extends string>`, `ok<T>(value): Result<T, never>`, `err<E>(error): Result<never, E>` from `@mflow/core`. Root scripts `lint`, `format:check`, `typecheck`, `test`, `coverage`.
 
-- [ ] **Step 1: Install pnpm and create the root files**
+- [ ] **Step 1: Create the root files**
 
 ```bash
 cd /home/yasreb/projects/mflow
-corepack enable || npm install -g pnpm
+bun --version   # expect 1.4.x
 echo "24" > .nvmrc
 ```
 
-`package.json`:
+`package.json` (set `packageManager` to the version printed above):
 ```json
 {
   "name": "mflow",
   "private": true,
   "type": "module",
+  "packageManager": "bun@1.4.0",
+  "workspaces": ["apps/*", "packages/*"],
   "scripts": {
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "typecheck": "pnpm -r typecheck",
-    "test": "pnpm -r test",
-    "coverage": "pnpm -r coverage"
+    "typecheck": "bun run --filter '*' typecheck",
+    "test": "bun run --filter '*' test",
+    "coverage": "bun run --filter '*' coverage"
   }
 }
-```
-
-Then pin pnpm (this writes the `packageManager` field):
-```bash
-corepack use pnpm@latest || pnpm pkg set packageManager="pnpm@$(pnpm --version)"
-```
-
-`pnpm-workspace.yaml`:
-```yaml
-packages:
-  - 'apps/*'
-  - 'packages/*'
 ```
 
 `tsconfig.base.json`:
@@ -148,7 +138,7 @@ packages:
 
 `.prettierignore`:
 ```
-pnpm-lock.yaml
+bun.lock
 coverage/
 learning/
 ```
@@ -169,7 +159,7 @@ trim_trailing_whitespace = true
 - [ ] **Step 2: Install root dev tooling and add the ESLint config**
 
 ```bash
-pnpm add -D -w typescript eslint @eslint/js typescript-eslint prettier
+bun add -D typescript eslint @eslint/js typescript-eslint prettier
 ```
 
 `eslint.config.js`:
@@ -208,7 +198,7 @@ mkdir -p packages/core/src packages/core/test
 ```
 
 ```bash
-pnpm --filter @mflow/core add -D typescript vitest @vitest/coverage-v8
+(cd packages/core && bun add -D typescript vitest @vitest/coverage-v8)
 ```
 
 `packages/core/tsconfig.json`:
@@ -258,7 +248,7 @@ describe('Result', () => {
 
 - [ ] **Step 5: Run it and confirm it fails**
 
-Run: `pnpm --filter @mflow/core test`
+Run: `bun --cwd packages/core run test`
 Expected: FAIL, "Failed to resolve import ../src/result" (or "Cannot find module").
 
 - [ ] **Step 6: Implement `Result` and the index**
@@ -282,7 +272,7 @@ export * from './result';
 
 - [ ] **Step 7: Run all checks and confirm they pass**
 
-Run: `pnpm --filter @mflow/core test && pnpm typecheck && pnpm lint && pnpm format && pnpm format:check`
+Run: `bun --cwd packages/core run test && bun run typecheck && bun run lint && bun run format && bun run format:check`
 Expected: 2 tests PASS; typecheck, lint and format:check exit 0.
 
 - [ ] **Step 8: Add CI, README and ADRs 0001–0002**
@@ -301,16 +291,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm format:check
-      - run: pnpm lint
-      - run: pnpm typecheck
-      - run: pnpm coverage
+      - run: bun install --frozen-lockfile
+      - run: bun run format:check
+      - run: bun run lint
+      - run: bun run typecheck
+      - run: bun run coverage
 ```
 
 `README.md`:
@@ -334,15 +325,15 @@ ledger that a native guard enforces.
 
 ## Develop
 
-    pnpm install
-    pnpm test        # all packages
-    pnpm coverage    # with coverage gates
-    pnpm lint && pnpm typecheck
+    bun install
+    bun run test        # all packages
+    bun run coverage    # with coverage gates
+    bun run lint && bun run typecheck
 ```
 
-`docs/adr/0001-typescript-monorepo-pnpm.md`:
+`docs/adr/0001-typescript-monorepo-bun.md`:
 ```markdown
-# ADR 0001: TypeScript monorepo with pnpm workspaces
+# ADR 0001: TypeScript monorepo with Bun workspaces
 
 - Status: Accepted
 - Date: 2026-10-08
@@ -352,7 +343,9 @@ The phone app (Expo), the API (Cloudflare Worker) and shared libraries (domain r
 math engine) must share types and logic. A single developer maintains everything.
 
 ## Decision
-One repository, pnpm workspaces, TypeScript everywhere. `apps/*` are deployables and
+One repository, Bun workspaces, TypeScript everywhere. Bun is the package manager and
+script runner (one-off tools run via `bun x`). Vitest stays the test runner because Cloudflare's
+Workers test pool (P3) is built on it. `apps/*` are deployables and
 `packages/*` are libraries. Internal packages export TypeScript source directly
 (`"exports": "./src/index.ts"`), so there is no build step. Each app's bundler (Metro, wrangler/esbuild,
 Vite for tests) compiles them.
@@ -361,12 +354,14 @@ Vite for tests) compiles them.
 - **Separate repos:** shared code would need publishing or copying, and types would drift.
 - **Turborepo / Nx:** task caching pays off in large repos. With fewer than 10 packages it
   adds config without a felt need (YAGNI). Revisit when CI time hurts.
-- **npm/yarn workspaces:** they work, but pnpm's strict dependency isolation catches undeclared
-  dependencies early.
+- **pnpm:** strict dependency isolation, but it's slower to install and is another tool. Bun installs fast,
+  runs TypeScript scripts directly, and Expo supports it as a package manager.
+- **`bun test` instead of Vitest:** it's faster, but there's no Workers pool and its coverage thresholds are less mature.
 
 ## Consequences
-- One `pnpm install`, one CI pipeline, atomic cross-package changes.
-- Expo with pnpm needs care (Metro resolution). That's handled in P4.
+- One `bun install`, one CI pipeline, atomic cross-package changes.
+- Bun hoists dependencies, so undeclared imports can slip through. ESLint and code review guard that.
+- Expo + Bun workspaces Metro setup is handled in P4.
 ```
 
 `docs/adr/0002-hexagonal-core-zod-at-edges.md`:
@@ -403,7 +398,7 @@ TypeScript types are trusted.
 
 ```bash
 git add -A
-git commit -m "chore: scaffold pnpm monorepo with core package, CI and ADRs 0001-0002"
+git commit -m "chore: scaffold bun monorepo with core package, CI and ADRs 0001-0002"
 ```
 
 ---
@@ -497,7 +492,7 @@ describe('calendar helpers', () => {
 
 - [ ] **Step 2: Run them and confirm they fail**
 
-Run: `pnpm --filter @mflow/core test -- time`
+Run: `bun --cwd packages/core run test time`
 Expected: FAIL, cannot resolve `../src/time`.
 
 - [ ] **Step 3: Implement `time.ts`**
@@ -560,7 +555,7 @@ export * from './time';
 
 - [ ] **Step 4: Run the tests and confirm they pass**
 
-Run: `pnpm --filter @mflow/core test -- time`
+Run: `bun --cwd packages/core run test time`
 Expected: PASS (all `dayKeyFor`, `parseDayKey`, calendar tests).
 
 - [ ] **Step 5: Write ADR 0003**
@@ -743,7 +738,7 @@ describe('DEFAULT_RULES', () => {
 
 - [ ] **Step 2: Run them and confirm they fail**
 
-Run: `pnpm --filter @mflow/core test -- ledger`
+Run: `bun --cwd packages/core run test ledger`
 Expected: FAIL, cannot resolve `../src/ledger`.
 
 - [ ] **Step 3: Implement `rules.ts` and `ledger.ts`**
@@ -876,7 +871,7 @@ export * from './ledger';
 
 - [ ] **Step 4: Run the tests and confirm they pass**
 
-Run: `pnpm --filter @mflow/core test -- ledger`
+Run: `bun --cwd packages/core run test ledger`
 Expected: PASS.
 
 - [ ] **Step 5: Write ADR 0004**
@@ -1070,7 +1065,7 @@ describe('earn: all-done bonus', () => {
 
 - [ ] **Step 2: Run them and confirm they fail**
 
-Run: `pnpm --filter @mflow/core test -- earning`
+Run: `bun --cwd packages/core run test earning`
 Expected: FAIL, cannot resolve `../src/earning`.
 
 - [ ] **Step 3: Implement `earning.ts`**
@@ -1172,7 +1167,7 @@ export * from './earning';
 
 - [ ] **Step 4: Run the tests and confirm they pass**
 
-Run: `pnpm --filter @mflow/core test -- earning`
+Run: `bun --cwd packages/core run test earning`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -1277,7 +1272,7 @@ describe('unlock', () => {
 
 - [ ] **Step 2: Run them and confirm they fail**
 
-Run: `pnpm --filter @mflow/core test -- spending`
+Run: `bun --cwd packages/core run test spending`
 Expected: FAIL, cannot resolve `../src/spending`.
 
 - [ ] **Step 3: Implement `spending.ts`**
@@ -1340,7 +1335,7 @@ export * from './spending';
 
 - [ ] **Step 4: Run the tests and confirm they pass**
 
-Run: `pnpm --filter @mflow/core test -- spending`
+Run: `bun --cwd packages/core run test spending`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -1453,7 +1448,7 @@ describe('plan lifecycle', () => {
 
 - [ ] **Step 2: Run them and confirm they fail**
 
-Run: `pnpm --filter @mflow/core test -- plan`
+Run: `bun --cwd packages/core run test plan`
 Expected: FAIL, cannot resolve `../src/plan`.
 
 - [ ] **Step 3: Implement `plan.ts`**
@@ -1521,7 +1516,7 @@ export * from './plan';
 
 - [ ] **Step 4: Run the tests and confirm they pass**
 
-Run: `pnpm --filter @mflow/core test -- plan`
+Run: `bun --cwd packages/core run test plan`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -1685,7 +1680,7 @@ describe('requiredTasks', () => {
 
 - [ ] **Step 2: Run them and confirm they fail**
 
-Run: `pnpm --filter @mflow/core test -- day-types`
+Run: `bun --cwd packages/core run test day-types`
 Expected: FAIL, cannot resolve `../src/day-types`.
 
 - [ ] **Step 3: Implement `day-types.ts`**
@@ -1781,7 +1776,7 @@ export * from './day-types';
 
 - [ ] **Step 4: Run the tests and confirm they pass**
 
-Run: `pnpm --filter @mflow/core test -- day-types`
+Run: `bun --cwd packages/core run test day-types`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -1882,7 +1877,7 @@ describe('Verifier port', () => {
 
 - [ ] **Step 2: Run them and confirm they fail**
 
-Run: `pnpm --filter @mflow/core test -- verdict`
+Run: `bun --cwd packages/core run test verdict`
 Expected: FAIL, cannot resolve `../src/verdict`.
 
 - [ ] **Step 3: Implement `verdict.ts`**
@@ -1943,7 +1938,7 @@ export * from './verdict';
 
 - [ ] **Step 4: Run the whole core suite with coverage**
 
-Run: `pnpm --filter @mflow/core coverage`
+Run: `bun --cwd packages/core run coverage`
 Expected: all tests PASS; coverage ≥ 90% on every metric (the run fails if not).
 
 - [ ] **Step 5: Commit**
@@ -1987,8 +1982,12 @@ git commit -m "feat(core): add verdict resolution with confidence threshold and 
 
 ```bash
 mkdir -p packages/contracts/src packages/contracts/test
-pnpm --filter @mflow/contracts add zod @mflow/core@workspace:*
-pnpm --filter @mflow/contracts add -D typescript vitest @vitest/coverage-v8
+cd packages/contracts
+bun add zod
+bun add -D typescript vitest @vitest/coverage-v8
+cd ../..
+# then add "@mflow/core": "workspace:*" to "dependencies" in packages/contracts/package.json
+bun install
 ```
 
 `packages/contracts/tsconfig.json`:
@@ -2119,7 +2118,7 @@ describe('envelope', () => {
 
 - [ ] **Step 3: Run them and confirm they fail**
 
-Run: `pnpm --filter @mflow/contracts test`
+Run: `bun --cwd packages/contracts run test`
 Expected: FAIL, cannot resolve `../src/schemas`.
 
 - [ ] **Step 4: Implement the schemas**
@@ -2201,13 +2200,13 @@ export * from './schemas';
 
 - [ ] **Step 5: Run the tests, coverage and typecheck**
 
-Run: `pnpm --filter @mflow/contracts coverage && pnpm typecheck`
+Run: `bun --cwd packages/contracts run coverage && bun run typecheck`
 Expected: all PASS; coverage ≥ 80%. The typecheck proves the parsed values are assignable to the `LedgerEvent` and `Plan` domain types.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add packages/contracts pnpm-lock.yaml
+git add packages/contracts bun.lock
 git commit -m "feat(contracts): add zod edge schemas mapped to core domain types"
 ```
 
@@ -2221,8 +2220,8 @@ git commit -m "feat(contracts): add zod edge schemas mapped to core domain types
 - [ ] **Step 1: Run the full CI sequence locally**
 
 ```bash
-pnpm install --frozen-lockfile
-pnpm format:check && pnpm lint && pnpm typecheck && pnpm coverage
+bun install --frozen-lockfile
+bun run format:check && bun run lint && bun run typecheck && bun run coverage
 ```
 Expected: every command exits 0; core ≥ 90% and contracts ≥ 80% coverage.
 
