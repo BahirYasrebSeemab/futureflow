@@ -26,3 +26,4 @@ export * from './generators/linear-inequalities';
 export * from './generators/linear-relations';
 export * from './generators/exponent-laws';
 export * from './generators/measurement-and-geometry';
+export * from './generators/data-and-statistics';

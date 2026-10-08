@@ -7,6 +7,7 @@ import { evaluate, numberAnswer, promptMath, RUNS, seedAndDifficulty } from './o
 import { linearRelationsGenerator } from '../src/generators/linear-relations';
 import { exponentLawsGenerator } from '../src/generators/exponent-laws';
 import { measurementAndGeometryGenerator } from '../src/generators/measurement-and-geometry';
+import { dataAndStatisticsGenerator } from '../src/generators/data-and-statistics';
 
 const holds = (left: number, op: string, right: number): boolean =>
   op === '<'
@@ -136,6 +137,39 @@ describe('measurement-and-geometry oracle', () => {
             ? evaluate(problem.answer.text.replace('π', '\\pi'))
             : numberAnswer(problem.answer);
         expect(value).toBeCloseTo(expected, 6);
+      }),
+      RUNS,
+    );
+  });
+});
+
+expectGeneratorContract(dataAndStatisticsGenerator);
+
+describe('data-and-statistics oracle', () => {
+  it('agrees with an independent computation on the listed data', () => {
+    fc.assert(
+      fc.property(seedAndDifficulty, ([seed, d]) => {
+        const problem = dataAndStatisticsGenerator.generate(seed, d);
+        const match = /^Find the (\w+) of: (.+)$/.exec(problem.prompt);
+        if (match === null) throw new Error(`unexpected prompt: ${problem.prompt}`);
+        const [, stat = '', list = ''] = match;
+        const values = list.split(', ').map(Number);
+        const sorted = [...values].sort((x, y) => x - y);
+        const mid = sorted.length / 2;
+        const counts = new Map<number, number>();
+        for (const v of values) counts.set(v, (counts.get(v) ?? 0) + 1);
+        const top = Math.max(...counts.values());
+        const modes = [...counts].filter(([, c]) => c === top).map(([v]) => v);
+        const expected: Record<string, number> = {
+          mean: values.reduce((s, v) => s + v, 0) / values.length,
+          median:
+            sorted.length % 2 === 1
+              ? (sorted[Math.floor(mid)] ?? 0)
+              : ((sorted[mid - 1] ?? 0) + (sorted[mid] ?? 0)) / 2,
+          mode: modes.length === 1 ? (modes[0] ?? 0) : Number.NaN,
+          range: (sorted.at(-1) ?? 0) - (sorted[0] ?? 0),
+        };
+        expect(numberAnswer(problem.answer)).toBeCloseTo(expected[stat] ?? Number.NaN, 9);
       }),
       RUNS,
     );
