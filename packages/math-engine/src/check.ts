@@ -20,8 +20,43 @@ let engine: ComputeEngine | undefined;
 const ce = (): ComputeEngine => (engine ??= new ComputeEngine());
 type Expr = NonNullable<ReturnType<ComputeEngine['parse']>>;
 
+const FUNCTION_NAMES = /(?<![a-z\\])(sin|cos|tan|sqrt|ln|log)(?=\s*\()/gi;
+
+/** `2^(x+1)` → `2^{x+1}`: the CAS reads LaTeX, where `^(` would only raise to `(`. */
+function bracePowers(text: string): string {
+  const start = text.indexOf('^(');
+  if (start < 0) return text;
+  let depth = 0;
+  for (let i = start + 1; i < text.length; i += 1) {
+    if (text[i] === '(') depth += 1;
+    if (text[i] === ')') depth -= 1;
+    if (depth === 0) {
+      const inner = bracePowers(text.slice(start + 2, i));
+      return `${text.slice(0, start)}^{${inner}}${bracePowers(text.slice(i + 1))}`;
+    }
+  }
+  return text; // unbalanced: leave it for the parser to reject
+}
+
+/** Keypad text → CAS input. Function names become LaTeX commands, or the CAS reads `sin` as s·i·n. */
 const normalize = (text: string): string =>
-  text.trim().replace(/−/g, '-').replace(/×/g, '*').replace(/÷/g, '/');
+  bracePowers(
+    text
+      .trim()
+      .replace(/−/g, '-')
+      .replace(/×/g, '*')
+      .replace(/÷/g, '/')
+      .replace(FUNCTION_NAMES, (name) => `\\${name.toLowerCase()}`),
+  );
+
+/** Forgives harmless number formats: `(-3)`, `+3`, `- 3`, `3.` */
+const cleanNumber = (text: string): string =>
+  text
+    .replace(/^\((.*)\)$/, '$1')
+    .trim()
+    .replace(/^\+/, '')
+    .replace(/^-\s+/, '-')
+    .replace(/(\d)\.$/, '$1');
 
 const stripAssignment = (text: string): string => text.replace(/^[a-z]\s*=\s*/i, '');
 
@@ -43,7 +78,7 @@ const splitList = (text: string): string[] =>
     .filter((part) => part !== '');
 
 function checkNumber(expected: Rational, given: string): CheckOutcome {
-  const text = stripAssignment(normalize(given));
+  const text = cleanNumber(stripAssignment(normalize(given)));
   const value = parseRational(text);
   if (value === null) return 'unreadable';
   if (text.includes('.')) {
@@ -54,7 +89,9 @@ function checkNumber(expected: Rational, given: string): CheckOutcome {
 
 function evaluateAt(expr: Expr, variables: readonly string[], point: number): number {
   const values = Object.fromEntries(variables.map((v, i) => [v, point + i * VARIABLE_OFFSET]));
-  return Number(expr.subs(values).N().re);
+  const value = expr.subs(values).N();
+  // A complex result (e.g. ln of a negative) is not comparable; its real part alone would mislead.
+  return value.im === 0 ? Number(value.re) : Number.NaN;
 }
 
 function sampleEqual(a: Expr, b: Expr): boolean {
@@ -74,13 +111,16 @@ function checkExpression(expected: string, given: string, maxTerms?: number): Ch
   const text = normalize(given);
   if (text === '') return 'unreadable';
   const parsed = ce().parse(text);
-  if (!parsed.isValid) return 'unreadable';
+  if (!parsed.isValid || parsed.operator === 'Equal') return 'unreadable';
+  const target = ce().parse(normalize(expected));
+  // Letters the answer can't contain mean a typo (or a word), not a wrong answer.
+  const allowed = new Set(target.unknowns);
+  if (parsed.unknowns.some((symbol) => !allowed.has(symbol))) return 'unreadable';
   if (maxTerms !== undefined && (text.includes('(') || countTerms(text) > maxTerms)) {
     return 'incorrect';
   }
-  const target = ce().parse(expected);
-  const identical = target.isIdenticallyEqual(parsed);
-  if (identical !== undefined) return identical ? 'correct' : 'incorrect';
+  // Only `true` is a proof: the CAS answers `false` for some true identities (2^x·2 vs 2^(x+1)).
+  if (target.isIdenticallyEqual(parsed) === true) return 'correct';
   return sampleEqual(target, parsed) ? 'correct' : 'incorrect';
 }
 

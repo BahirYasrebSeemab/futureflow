@@ -114,3 +114,44 @@ describe('countTerms', () => {
     expect(countTerms(text)).toBe(count);
   });
 });
+
+describe('checkAnswer: review fixes', () => {
+  const linear: Answer = { type: 'expression', text: '2x+2' };
+
+  it.each(['banana', '3c+2', 'x = 3'])(
+    'treats %j as unreadable on an expression problem (foreign symbols or an equation)',
+    (given) => {
+      expect(checkAnswer(linear, given)).toBe('unreadable');
+    },
+  );
+
+  it('does not accept a wrong answer that hides behind function names', () => {
+    expect(checkAnswer({ type: 'expression', text: 'x' }, 'sin(x)')).toBe('incorrect');
+    expect(checkAnswer(linear, 'sin(x)')).toBe('incorrect');
+    expect(checkAnswer({ type: 'expression', text: '2x+2' }, 'sqrt(x^2)*2+2')).toBe('incorrect');
+  });
+
+  it('accepts true identities the CAS cannot prove, via sampling', () => {
+    expect(checkAnswer({ type: 'expression', text: '2^(x+1)' }, '2^x*2')).toBe('correct');
+    expect(checkAnswer({ type: 'expression', text: 'x/3' }, '0.333333333x')).toBe('correct');
+    expect(checkAnswer({ type: 'expression', text: '2x*2^x' }, '2^(x+1)*x')).toBe('correct');
+    expect(checkAnswer({ type: 'expression', text: '2^(x+1)' }, '2^((x+1))')).toBe('correct');
+  });
+
+  it('rejects when too few sample points are comparable', () => {
+    expect(checkAnswer({ type: 'expression', text: 'ln(x-3)' }, 'ln(x-3)+0.0000001')).toBe(
+      'incorrect',
+    );
+  });
+
+  it.each([
+    ['(-3)', -3, 1],
+    ['+3', 3, 1],
+    ['- 3', -3, 1],
+    ['3.', 3, 1],
+    ['1 1/6', 7, 6],
+    ['-1 1/2', -3, 2],
+  ])('reads the number format %j', (given, n, d) => {
+    expect(checkAnswer(num(n, d), given)).toBe('correct');
+  });
+});

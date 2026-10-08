@@ -26,9 +26,16 @@ export const toText = (r: Rational): string => (r.den === 1 ? `${r.num}` : `${r.
 const INTEGER = /^-?\d+$/;
 const FRACTION = /^(-?\d+)\s*\/\s*(-?\d+)$/;
 const DECIMAL = /^(-?)(\d*)\.(\d+)$/;
+const MIXED = /^(-?)(\d+)\s+(\d+)\s*\/\s*(\d+)$/;
 
 function parseUnsafe(text: string): Rational | null {
   if (INTEGER.test(text)) return rational(Number(text));
+  const mixed = MIXED.exec(text);
+  if (mixed) {
+    const [, sign, whole, num, den] = mixed;
+    const value = add(rational(Number(whole)), rational(Number(num), Number(den)));
+    return sign === '-' ? rational(-value.num, value.den) : value;
+  }
   const fraction = FRACTION.exec(text);
   if (fraction) {
     const den = Number(fraction[2]);
