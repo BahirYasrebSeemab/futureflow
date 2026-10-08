@@ -15,3 +15,4 @@ export * from './generators/fractions';
 export * from './generators/order-of-operations';
 export * from './generators/algebraic-expressions';
 export * from './generators/linear-equations';
+export * from './mock-exam';
