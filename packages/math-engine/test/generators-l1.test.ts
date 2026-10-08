@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { answerText, checkAnswer, countTerms } from '../src/check';
 import { algebraicExpressionsGenerator } from '../src/generators/algebraic-expressions';
 import { linearEquationsGenerator } from '../src/generators/linear-equations';
+import { ONTARIO_GRAPH } from '../src/curriculum';
 import { DEFAULT_REGISTRY } from '../src/generators/registry';
 import { toNumber } from '../src/rational';
 import { evaluate, identicallyEqual, promptMath, RUNS, seedAndDifficulty } from './oracle';
@@ -114,5 +115,12 @@ describe('symbolic steps', () => {
       }),
       RUNS,
     );
+  });
+});
+
+describe('L1 completeness', () => {
+  it('has a generator for every L1 topic', () => {
+    const l1 = ONTARIO_GRAPH.topics.filter((t) => t.level === 'L1').map((t) => t.id);
+    expect(l1.filter((id) => !DEFAULT_REGISTRY.has(id))).toEqual([]);
   });
 });
