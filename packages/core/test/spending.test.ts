@@ -27,6 +27,37 @@ describe('expireDay', () => {
     expect(expireDay(day, ctx())).toMatchObject({ kind: 'expire', seconds: -300 });
   });
 
+  it('lets unused time pay off earlier overspend instead of expiring it', () => {
+    const history = [
+      ev({ kind: 'base_grant', seconds: 900, day: '2026-10-08' }),
+      ev({ kind: 'usage_spend', seconds: -1200, day: '2026-10-08' }),
+      ev({ kind: 'base_grant', seconds: 900, day: '2026-10-09' }),
+      ev({ kind: 'usage_spend', seconds: -300, day: '2026-10-09' }),
+    ];
+    // day 9 has +600 left, but 300 of it pays yesterday's -300 debt; only 300 expires
+    expect(expireDay(history, ctx({ day: '2026-10-09' }))).toMatchObject({
+      kind: 'expire',
+      seconds: -300,
+    });
+  });
+
+  it('expires only the given day leftover, never an older day still awaiting its own expiry', () => {
+    const history = [
+      ev({ kind: 'base_grant', seconds: 900, day: '2026-10-08' }),
+      ev({ kind: 'base_grant', seconds: 900, day: '2026-10-09' }),
+      ev({ kind: 'usage_spend', seconds: -300, day: '2026-10-09' }),
+    ];
+    expect(expireDay(history, ctx({ day: '2026-10-09' }))).toMatchObject({ seconds: -600 });
+  });
+
+  it('returns null while an older debt still exceeds the day leftover', () => {
+    const history = [
+      ev({ kind: 'usage_spend', seconds: -1000, day: '2026-10-08' }),
+      ev({ kind: 'base_grant', seconds: 900, day: '2026-10-09' }),
+    ];
+    expect(expireDay(history, ctx({ day: '2026-10-09' }))).toBeNull();
+  });
+
   it('returns null when nothing is left or the balance is negative', () => {
     expect(expireDay([], ctx())).toBeNull();
     expect(expireDay([ev({ kind: 'usage_spend', seconds: -60 })], ctx())).toBeNull();

@@ -1,4 +1,4 @@
-import { balance, type EventContext, type LedgerEvent } from './ledger';
+import { balance, eventsForDay, type EventContext, type LedgerEvent } from './ledger';
 import { err, ok, type Result } from './result';
 import type { Rules } from './rules';
 
@@ -9,12 +9,12 @@ export function spend(seconds: number, ctx: EventContext): Result<LedgerEvent, '
   return ok({ id: ctx.newId(), day: ctx.day, at: ctx.at, kind: 'usage_spend', seconds: -seconds });
 }
 
-/** Unused time does not roll over. Debt (negative balance) is not expired. */
-export function expireDay(
-  dayEvents: readonly LedgerEvent[],
-  ctx: EventContext,
-): LedgerEvent | null {
-  const left = balance(dayEvents);
+/**
+ * Unused time does not roll over, but it pays off older debt first.
+ * `history` is the full ledger through `ctx.day`; only `ctx.day`'s leftover can expire.
+ */
+export function expireDay(history: readonly LedgerEvent[], ctx: EventContext): LedgerEvent | null {
+  const left = Math.min(balance(eventsForDay(history, ctx.day)), balance(history));
   if (left <= 0) return null;
   return { id: ctx.newId(), day: ctx.day, at: ctx.at, kind: 'expire', seconds: -left };
 }
