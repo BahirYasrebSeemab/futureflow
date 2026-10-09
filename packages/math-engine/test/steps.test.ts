@@ -21,6 +21,14 @@ describe('stepEquations', () => {
     ['Count the decimal places: 1 + 1 = 2, so the answer is 19.14', [true]],
     ['34 × 200 = 6800; 7582 - 6800 = 782', [true, true]],
     ['x = 56 ÷ 2 = 28', [true]],
+    ['2³ = 8', [true]],
+    ['√16 = 4, because 4² = 16', [true, true]],
+    ['A = 2000 × 1.05^3 = 2315.25', [true]],
+    ['(-3) - (5) = (-3) + (-5)', [true]],
+    ['3/4 + 1/2 = 6/8 + 4/8', [true]],
+    ['7² + 24² = 49 + 576 = 625', [true]],
+    ['Rewrite: 3/4 = 15/20 and 1/5 = 4/20', [true, true]],
+    ['So 3 + 4 = 7.', [true]],
   ])('validates %j', (step, expected) => {
     expect(validity(step)).toEqual(expected);
   });
@@ -29,20 +37,21 @@ describe('stepEquations', () => {
     ['34 × 20 = 690', [false]],
     ['2 + 3 × 4 = 20', [false]],
     ['7582 - 6800 = 728', [false]],
+    ['3² = 8', [false]],
+    ['√50 = 7', [false]],
+    ['1.05^2 = 1.1', [false]],
+    ['3/4 + 1/2 = 6/8 + 3/8', [false]],
+    ['7² + 24² = 49 + 576 = 624', [false]],
+    ['So 3 + 4 = 8.', [false]],
   ])('catches the wrong arithmetic in %j', (step, expected) => {
     expect(validity(step)).toEqual(expected);
   });
 
   it.each([
-    '2³ = 8',
     'Subtract 4 from both sides: 3x = 11',
-    '(-3) - (5) = (-3) + (-5)',
-    '3/4 + 1/2 = 6/8 + 4/8',
     '50% = 50/100',
     'Factors of 12: 1, 2, 3, 4, 6, 12',
-    '√16 = 4, because 4² = 16',
     'Cross-multiply: 2 × x = 7 × 8',
-    'A = 2000 × 1.05^3 = 2315.25',
   ])('ignores %j (not a plain numeric equation)', (step) => {
     expect(stepEquations(step)).toEqual([]);
   });
@@ -87,5 +96,11 @@ describe('fractions steps', () => {
       }),
       RUNS,
     );
+  });
+});
+
+describe('stepEquations: not every "a = b" is a claim', () => {
+  it('ignores "35% of 65 = 22.75"', () => {
+    expect(stepEquations('35% of 65 = 22.75')).toEqual([]);
   });
 });
