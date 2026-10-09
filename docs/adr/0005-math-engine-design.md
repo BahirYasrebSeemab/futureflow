@@ -66,3 +66,14 @@ Every worked step is machine-checked. A test-side extractor finds numeric chains
 generator's steps and recomputes them with exact rationals, across the whole registry. Symbolic steps are checked
 per generator: each simplification step must equal the original expression, and each equation step must still hold
 at the answer. Steps containing powers are covered by each generator's answer oracle.
+
+## P2d-1: Grade 10 algebra and gate coverage
+
+- A gate counts a mock exam only if it covered **every** topic of the level (`MockResult.topicIds`);
+  this closes the "one-topic mock passes gate A" deferral.
+- Expression `form: 'factored'`: one term outside brackets, with at least one bracket. Expansion answers
+  use `maxTerms` + no brackets, so neither form can be answered by retyping the question.
+- Irrational quadratic roots are rounded with `roundFloat` (the true value can't sit exactly on a half,
+  so float rounding is safe there, unlike money, which stays on exact BigInt half-up).
+- Algebra steps are checked symbolically: expansions stay equal to the product, and system steps
+  hold at the solution.

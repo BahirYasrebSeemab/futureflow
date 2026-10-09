@@ -9,6 +9,7 @@ import { quadraticEquationsGenerator } from '../src/generators/quadratic-equatio
 import { toNumber } from '../src/rational';
 import { quadraticRelationsGenerator } from '../src/generators/quadratic-relations';
 import { linearSystemsGenerator } from '../src/generators/linear-systems';
+import { DEFAULT_REGISTRY } from '../src/generators/registry';
 
 const SAMPLE_X = [1.3, -0.7, 2.9];
 
@@ -158,5 +159,19 @@ describe('linear-systems oracle', () => {
     if (problem.answer.type !== 'point') throw new Error('expected a point');
     const [x = 0, y = 0] = problem.answer.coords.map(toNumber);
     if (x !== y) expect(checkAnswer(problem.answer, `(${y}, ${x})`)).toBe('incorrect');
+  });
+});
+
+describe('Grade 10 algebra coverage', () => {
+  it('registers all five algebra topics', () => {
+    for (const id of [
+      'polynomial-operations',
+      'factoring',
+      'quadratic-equations',
+      'quadratic-relations',
+      'linear-systems',
+    ]) {
+      expect(DEFAULT_REGISTRY.has(id), id).toBe(true);
+    }
   });
 });
