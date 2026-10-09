@@ -7,6 +7,8 @@ import { evaluate, numberAnswer, RUNS, seedAndDifficulty } from './oracle';
 import { similarTrianglesGenerator } from '../src/generators/similar-triangles';
 import { rightTriangleTrigonometryGenerator } from '../src/generators/right-triangle-trigonometry';
 import { sineAndCosineLawsGenerator } from '../src/generators/sine-and-cosine-laws';
+import { ONTARIO_GRAPH } from '../src/curriculum';
+import { DEFAULT_REGISTRY } from '../src/generators/registry';
 
 const points = (text: string): [number, number][] =>
   [...text.matchAll(/\((-?\d+), (-?\d+)\)/g)].map((m) => [Number(m[1]), Number(m[2])]);
@@ -152,6 +154,14 @@ describe('sine-and-cosine-laws oracle', () => {
         );
       }),
       RUNS,
+    );
+  });
+});
+
+describe('curriculum completeness', () => {
+  it('every topic from arithmetic to Grade 10 has a generator', () => {
+    expect(ONTARIO_GRAPH.topics.map((t) => t.id).filter((id) => !DEFAULT_REGISTRY.has(id))).toEqual(
+      [],
     );
   });
 });
