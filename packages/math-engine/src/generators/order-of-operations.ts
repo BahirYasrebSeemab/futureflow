@@ -19,14 +19,14 @@ export const orderOfOperationsGenerator: Generator = {
     });
 
     if (difficulty === 1) {
-      const [a, b, c] = [rng.int(1, max), rng.int(1, max), rng.int(1, max)];
+      const [a, b, c] = [rng.int(1, max), rng.int(2, max), rng.int(2, max)];
       return make(`${a} + ${b} × ${c}`, a + b * c, [
         `Multiply first: ${b} × ${c} = ${b * c}`,
         `Then add: ${a} + ${b * c} = ${a + b * c}`,
       ]);
     }
     if (difficulty === 2) {
-      const [a, b, c, d] = [rng.int(1, max), rng.int(1, max), rng.int(1, max), rng.int(1, max)];
+      const [a, b, c, d] = [rng.int(1, max), rng.int(1, max), rng.int(2, max), rng.int(1, max)];
       const value = (a + b) * c - d;
       return make(`(${a} + ${b}) × ${c} - ${d}`, value, [
         `Brackets first: ${a} + ${b} = ${a + b}`,
@@ -34,7 +34,7 @@ export const orderOfOperationsGenerator: Generator = {
         `Subtract: ${(a + b) * c} - ${d} = ${value}`,
       ]);
     }
-    const c = rng.pick([1, 2, 4]);
+    const c = rng.pick([2, 3, 4]);
     const b = c * rng.int(1, difficulty + 1);
     const a = rng.int(1, 2 * max);
     const quotient = (b * b) / c;

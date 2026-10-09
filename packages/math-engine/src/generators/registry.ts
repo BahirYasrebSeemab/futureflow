@@ -1,4 +1,10 @@
 import type { Generator } from '../types';
+import { exponentsAndRootsGenerator } from './exponents-and-roots';
+import { ratiosAndRatesGenerator } from './ratios-and-rates';
+import { percentsGenerator } from './percents';
+import { decimalsGenerator } from './decimals';
+import { factorsAndMultiplesGenerator } from './factors-and-multiples';
+import { wholeNumberOperationsGenerator } from './whole-number-operations';
 import { algebraicExpressionsGenerator } from './algebraic-expressions';
 import { fractionsGenerator } from './fractions';
 import { integersGenerator } from './integers';
@@ -14,9 +20,15 @@ export function createRegistry(generators: readonly Generator[]): GeneratorRegis
 }
 
 export const DEFAULT_REGISTRY: GeneratorRegistry = createRegistry([
+  wholeNumberOperationsGenerator,
   integersGenerator,
   fractionsGenerator,
+  decimalsGenerator,
+  percentsGenerator,
+  ratiosAndRatesGenerator,
+  exponentsAndRootsGenerator,
   orderOfOperationsGenerator,
+  factorsAndMultiplesGenerator,
   algebraicExpressionsGenerator,
   linearEquationsGenerator,
 ]);

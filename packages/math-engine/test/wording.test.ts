@@ -11,6 +11,8 @@ const AWKWARD = [
   /Subtract 0\b/, // a pointless step
   /(?<![\d.])1x/, // "1x" instead of "x"
   /by 1:/, // dividing by 1
+  /÷ 1(?![\d.])/, // dividing by one
+  /× 1(?![\d.])/, // multiplying by one
 ];
 
 describe.each([...DEFAULT_REGISTRY.values()])('$topicId wording', (generator) => {
@@ -31,5 +33,21 @@ describe('fractions prompt', () => {
   it('does not promise a simplification the checker does not require', () => {
     const problem = DEFAULT_REGISTRY.get('fractions')?.generate(1, 1);
     expect(problem?.prompt).not.toMatch(/simplify/i);
+  });
+});
+
+describe('integers hint', () => {
+  it('matches the operation in the prompt', () => {
+    fc.assert(
+      fc.property(seedAndDifficulty, ([seed, d]) => {
+        const problem = DEFAULT_REGISTRY.get('integers')?.generate(seed, d);
+        if (problem === undefined) throw new Error('integers generator missing');
+        const isAddition = / \+ /.test(problem.prompt);
+        expect(problem.hints.join(' ')).not.toMatch(
+          isAddition ? /Subtracting/ : /Adding a negative/,
+        );
+      }),
+      RUNS,
+    );
   });
 });

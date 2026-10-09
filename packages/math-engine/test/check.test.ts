@@ -155,3 +155,18 @@ describe('checkAnswer: review fixes', () => {
     expect(checkAnswer(num(n, d), given)).toBe('correct');
   });
 });
+
+describe('checkAnswer: percent sign', () => {
+  const percent: Answer = { type: 'number', value: rational(25), unit: 'percent' };
+
+  it('accepts a trailing percent sign when the answer is a percent', () => {
+    expect(checkAnswer(percent, '25%')).toBe('correct');
+    expect(checkAnswer(percent, '25 %')).toBe('correct');
+    expect(checkAnswer(percent, '25')).toBe('correct');
+    expect(checkAnswer(percent, '24%')).toBe('incorrect');
+  });
+
+  it('marks a percent sign on an amount as incorrect (percent confused with amount)', () => {
+    expect(checkAnswer(num(10), '10%')).toBe('incorrect');
+  });
+});

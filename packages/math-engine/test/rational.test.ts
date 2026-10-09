@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { add, equals, gcd, lcm, parseRational, rational, toNumber, toText } from '../src/rational';
+import {
+  add,
+  equals,
+  gcd,
+  lcm,
+  mul,
+  parseRational,
+  rational,
+  toNumber,
+  toText,
+} from '../src/rational';
 
 describe('rational', () => {
   it('reduces and normalizes the sign onto the numerator', () => {
@@ -50,5 +60,11 @@ describe('parseRational', () => {
 
   it.each(['1/0', 'abc', '1.2.3', '', '99999999999999999999'])('returns null for %j', (text) => {
     expect(parseRational(text)).toBeNull();
+  });
+});
+
+describe('mul', () => {
+  it('multiplies and reduces', () => {
+    expect(mul(rational(2, 3), rational(9, 4))).toEqual({ num: 3, den: 2 });
   });
 });
