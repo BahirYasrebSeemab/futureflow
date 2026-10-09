@@ -1,4 +1,4 @@
-import { decimalText, formatLinear, show } from '../format';
+import { decimalFixed, decimalText, formatLinear, show } from '../format';
 import { rational, roundSafely, type Rational } from '../rational';
 import { createRng, type Rng } from '../rng';
 import type { Generator } from '../types';
@@ -30,7 +30,8 @@ export const analyticGeometryGenerator: Generator = {
     const [x1, y1] = [rng.int(-8, 8), rng.int(-8, 8)];
 
     if (difficulty === 1) {
-      const [x2, y2] = [rng.int(-8, 8), rng.int(-8, 8)];
+      const [drawnX, y2] = [rng.int(-8, 8), rng.int(-8, 8)];
+      const x2 = drawnX === x1 && y2 === y1 ? x1 + 1 : drawnX; // two different points
       const [mx, my] = [rational(x1 + x2, 2), rational(y1 + y2, 2)];
       return {
         ...base,
@@ -73,7 +74,7 @@ export const analyticGeometryGenerator: Generator = {
         steps: [
           ...lengthSteps(x1, y1, x2, y2),
           rounded
-            ? `Length = √${squared} ≈ ${decimalText(value)}`
+            ? `Length = √${squared} ≈ ${decimalFixed(value, 1)}`
             : `Length = √${squared} = ${decimalText(value)}`,
         ],
       };
@@ -94,7 +95,9 @@ export const analyticGeometryGenerator: Generator = {
         ],
       };
     }
-    const [px, py] = [rng.pick([-5, -4, -3, -2, 2, 3, 4, 5]), rng.int(-9, 9)];
+    const px = rng.pick([-5, -4, -3, -2, 2, 3, 4, 5]);
+    const drawnY = rng.int(-9, 9);
+    const py = drawnY === m * px + b ? drawnY + 1 : drawnY; // a line is not parallel to itself
     const intercept = py - m * px;
     return {
       ...base,

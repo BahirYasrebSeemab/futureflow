@@ -23,7 +23,11 @@ export const measurementAndGeometryGenerator: Generator = {
     ): Problem => ({
       ...base,
       prompt,
-      answer: { type: 'number', value: typeof value === 'number' ? rational(value) : value },
+      answer: {
+        type: 'number',
+        value: typeof value === 'number' ? rational(value) : value,
+        quantity: /cm²/.test(prompt) ? 'area' : /cm³/.test(prompt) ? 'volume' : 'length',
+      },
       hints: [hint],
       steps,
     });

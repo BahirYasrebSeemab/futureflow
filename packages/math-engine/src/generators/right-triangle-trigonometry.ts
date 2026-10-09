@@ -1,4 +1,4 @@
-import { decimalText, deg } from '../format';
+import { decimalFixed, decimalText, deg } from '../format';
 import { rational, roundSafely, type Rational } from '../rational';
 import { createRng, type Rng } from '../rng';
 import type { Generator } from '../types';
@@ -33,7 +33,7 @@ function draft(rng: Rng, difficulty: number): Draft | null {
       value,
       steps: [
         `${fn}(A) = ${difficulty === 1 ? 'opposite' : 'adjacent'} ÷ hypotenuse`,
-        `${difficulty === 1 ? 'opposite' : 'adjacent'} = ${s1} × ${fn}(${deg(a)}) ≈ ${decimalText(value)}`,
+        `${difficulty === 1 ? 'opposite' : 'adjacent'} = ${s1} × ${fn}(${deg(a)}) ≈ ${decimalFixed(value, 1)}`,
       ],
     };
   }
@@ -45,7 +45,7 @@ function draft(rng: Rng, difficulty: number): Draft | null {
       value,
       steps: [
         'tan(A) = opposite ÷ adjacent',
-        `opposite = ${s1} × tan(${deg(a)}) ≈ ${decimalText(value)}`,
+        `opposite = ${s1} × tan(${deg(a)}) ≈ ${decimalFixed(value, 1)}`,
       ],
     };
   }
@@ -79,7 +79,7 @@ function draft(rng: Rng, difficulty: number): Draft | null {
     value,
     steps: [
       'sin(A) = opposite ÷ hypotenuse, so hypotenuse = opposite ÷ sin(A)',
-      `hypotenuse = ${s1} ÷ sin(${deg(a)}) ≈ ${decimalText(value)}`,
+      `hypotenuse = ${s1} ÷ sin(${deg(a)}) ≈ ${decimalFixed(value, 1)}`,
     ],
   };
 }
@@ -101,9 +101,14 @@ export const rightTriangleTrigonometryGenerator: Generator = {
       seed,
       difficulty,
       prompt: final.prompt,
-      answer: { type: 'number', value: final.value },
+      answer: {
+        type: 'number',
+        value: final.value,
+        quantity: /nearest degree/.test(final.prompt) ? 'angle' : 'length',
+      },
       hints: [
         'SOH CAH TOA: sin = opposite ÷ hypotenuse, cos = adjacent ÷ hypotenuse, tan = opposite ÷ adjacent.',
+        'Keep the full calculator value until the last step, then round.',
       ],
       steps: final.steps,
     };

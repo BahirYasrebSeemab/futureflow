@@ -58,3 +58,11 @@ export function formatPolynomial(coefficients: readonly number[], symbol = 'x'):
 }
 
 export const deg = (n: number): string => `${n}°`;
+
+/** decimalText padded to a fixed number of places: "to one decimal place" shows 9.0, not 9. */
+export function decimalFixed(r: Rational, places: number): string {
+  const text = decimalText(r);
+  if (places === 0) return text;
+  const [whole, fraction = ''] = text.split('.');
+  return `${whole}.${fraction.padEnd(places, '0')}`;
+}

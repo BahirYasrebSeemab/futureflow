@@ -9,8 +9,8 @@ const MAX_SEED = 2 ** 31 - 1;
 
 export type MockExam = Readonly<{ level: LevelId; problems: readonly Problem[] }>;
 
-/** A mock must test the hard skills too: each round through the topics is one level harder. */
-export const MOCK_DIFFICULTIES: readonly Difficulty[] = [3, 4, 5];
+/** Each round through the topics is one level harder, so every skill variant (d1–d5) is tested. */
+export const MOCK_DIFFICULTIES: readonly Difficulty[] = [1, 2, 3, 4, 5];
 
 const levelGenerators = (
   graph: KnowledgeGraph,
@@ -57,6 +57,7 @@ export type MockResult = Readonly<{
   level: LevelId;
   score: number;
   topicIds: readonly string[];
+  problemCount: number;
 }>;
 
 export const mockTopicIds = (exam: MockExam): string[] => [
@@ -76,6 +77,7 @@ export function gatePassed(
   const counts = (r: MockResult): boolean =>
     r.level === gate.level &&
     r.score >= gate.minScore &&
-    required.every((id) => r.topicIds.includes(id));
+    required.every((id) => r.topicIds.includes(id)) &&
+    r.problemCount >= required.length * MOCK_DIFFICULTIES.length;
   return new Set(results.filter(counts).map((r) => r.day)).size >= gate.requiredPasses;
 }

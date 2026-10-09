@@ -1,4 +1,4 @@
-import { decimalText, deg } from '../format';
+import { decimalFixed, decimalText, deg } from '../format';
 import { rational, roundSafely, type Rational } from '../rational';
 import { createRng, type Rng } from '../rng';
 import type { Generator } from '../types';
@@ -26,7 +26,7 @@ function draft(rng: Rng, difficulty: number): Draft | null {
       value,
       steps: [
         `Sine law: b ÷ sin(B) = a ÷ sin(A)`,
-        `b = ${a} × sin(${deg(B)}) ÷ sin(${deg(A)}) ≈ ${decimalText(value)}`,
+        `b = ${a} × sin(${deg(B)}) ÷ sin(${deg(A)}) ≈ ${decimalFixed(value, 1)}`,
       ],
     };
   }
@@ -56,7 +56,7 @@ function draft(rng: Rng, difficulty: number): Draft | null {
       steps: [
         `Cosine law: a² = b² + c² - 2bc × cos(A)`,
         `a² = ${b}² + ${c}² - 2 × ${b} × ${c} × cos(${deg(A)})`,
-        `a = √(${b * b + c * c} - ${2 * b * c} × cos(${deg(A)})) ≈ ${decimalText(value)}`,
+        `a = √(${b * b + c * c} - ${2 * b * c} × cos(${deg(A)})) ≈ ${decimalFixed(value, 1)}`,
       ],
     };
   }
@@ -68,8 +68,8 @@ function draft(rng: Rng, difficulty: number): Draft | null {
     prompt: `In triangle ABC, a = ${a} cm, b = ${b} cm and c = ${c} cm. Find ∠A, to the nearest degree.`,
     value,
     steps: [
-      `Cosine law: cos(A) = (b² + c² - a²) ÷ 2bc`,
-      `cos(A) = (${b * b} + ${c * c} - ${a * a}) ÷ ${2 * b * c}`,
+      `Cosine law: cos(A) = (b² + c² - a²) ÷ (2bc)`,
+      `cos(A) = (${b * b} + ${c * c} - ${a * a}) ÷ (${2 * b * c})`,
       `∠A = cos⁻¹(${b * b + c * c - a * a} ÷ ${2 * b * c}) ≈ ${decimalText(value)}°`,
     ],
   };
@@ -92,8 +92,15 @@ export const sineAndCosineLawsGenerator: Generator = {
       seed,
       difficulty,
       prompt: final.prompt,
-      answer: { type: 'number', value: final.value },
-      hints: ['Sine law: a ÷ sin(A) = b ÷ sin(B). Cosine law: a² = b² + c² − 2bc·cos(A).'],
+      answer: {
+        type: 'number',
+        value: final.value,
+        quantity: /nearest degree/.test(final.prompt) ? 'angle' : 'length',
+      },
+      hints: [
+        'Sine law: a ÷ sin(A) = b ÷ sin(B). Cosine law: a² = b² + c² − 2bc·cos(A).',
+        'Keep the full calculator value until the last step, then round.',
+      ],
       steps: final.steps,
     };
   },

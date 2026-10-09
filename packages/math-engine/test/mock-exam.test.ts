@@ -17,7 +17,7 @@ const gateA = GATES.find((g) => g.id === 'A');
 if (gateA === undefined) throw new Error('gate A missing');
 
 describe('buildMockExam', () => {
-  it('covers every topic evenly, rising through difficulties 3, 4 and 5', () => {
+  it('covers every topic evenly, rising through difficulties from 1', () => {
     const registry = createRegistry([
       integersGenerator,
       fractionsGenerator,
@@ -35,7 +35,7 @@ describe('buildMockExam', () => {
       'order-of-operations',
       'fractions',
     ]);
-    expect(exam.problems.map((p) => p.difficulty)).toEqual([3, 3, 3, 4, 4, 4, 5, 5, 5]);
+    expect(exam.problems.map((p) => p.difficulty)).toEqual([1, 1, 1, 2, 2, 2, 3, 3, 3]);
   });
 
   it('recommends a size that tests every topic at every mock difficulty', () => {
@@ -45,7 +45,7 @@ describe('buildMockExam', () => {
       const difficulties = exam.problems
         .filter((p) => p.topicId === topicId)
         .map((p) => p.difficulty);
-      expect(difficulties.sort()).toEqual([3, 4, 5]);
+      expect(difficulties.sort()).toEqual([1, 2, 3, 4, 5]);
     }
   });
 
@@ -74,6 +74,7 @@ describe('gatePassed', () => {
     level: 'L2',
     score,
     topicIds,
+    problemCount: l2.length * 5,
   });
 
   it('needs the required passes on distinct days', () => {
@@ -85,7 +86,13 @@ describe('gatePassed', () => {
     expect(gatePassed(gateA, [pass('2026-10-08', 0.74), pass('2026-10-09')], ONTARIO_GRAPH)).toBe(
       false,
     );
-    const otherLevel: MockResult = { day: '2026-10-08', level: 'L1', score: 1, topicIds: l2 };
+    const otherLevel: MockResult = {
+      day: '2026-10-08',
+      level: 'L1',
+      score: 1,
+      topicIds: l2,
+      problemCount: l2.length * 5,
+    };
     expect(gatePassed(gateA, [otherLevel, pass('2026-10-09')], ONTARIO_GRAPH)).toBe(false);
   });
 

@@ -8,6 +8,7 @@ export type Answer =
       unit?: 'percent';
       variable?: string;
       lengthUnit?: 'cm' | 'm';
+      quantity?: Quantity;
     }>
   | Readonly<{
       type: 'expression';
@@ -19,6 +20,9 @@ export type Answer =
   | Readonly<{ type: 'point'; coords: readonly Rational[] }>
   | Readonly<{ type: 'choice'; options: readonly string[]; correctIndex: number }>
   | Readonly<{ type: 'inequality'; variable: string; op: InequalityOp; bound: Rational }>;
+
+/** What a measured number is: decides which unit (if any) may follow it. */
+export type Quantity = 'length' | 'area' | 'volume' | 'angle';
 
 export type InequalityOp = '<' | '≤' | '>' | '≥';
 
@@ -75,11 +79,17 @@ const normalize = (text: string): string =>
   );
 
 /** Forgives harmless number formats: `(-3)`, `+3`, `- 3`, `3.` */
-const cleanNumber = (text: string, lengthUnit: 'cm' | 'm' = 'cm'): string =>
+const unitSuffix = (quantity: Quantity | undefined, unit: 'cm' | 'm'): RegExp => {
+  if (quantity === 'angle') return /\s*(?:°|º|degrees?|deg)$/i;
+  if (quantity === 'length') return new RegExp(`\\s*${unit}$`, 'i');
+  if (quantity === 'area') return new RegExp(`\\s*${unit}(?:\\^\\{?2\\}?|2)$`, 'i');
+  if (quantity === 'volume') return new RegExp(`\\s*${unit}(?:\\^\\{?3\\}?|3)$`, 'i');
+  return /$^/; // a plain number takes no unit
+};
+
+const cleanNumber = (text: string, lengthUnit: 'cm' | 'm' = 'cm', quantity?: Quantity): string =>
   text
-    // Every measurement prompt is in cm: other units are a real mistake, so they stay unreadable.
-    .replace(new RegExp(`\\s*${lengthUnit}(?:\\^\\{?[23]\\}?|[23])?$`, 'i'), '')
-    .replace(/\s*(?:°|degrees?)$/i, '')
+    .replace(unitSuffix(quantity, lengthUnit), '')
     .replace(/^\$\s*/, '')
     .replace(/\s*%$/, '')
     .replace(/^\((.*)\)$/, '$1')
@@ -117,13 +127,16 @@ function checkNumber(
   unit?: 'percent',
   variable?: string,
   lengthUnit?: 'cm' | 'm',
+  quantity?: Quantity,
 ): CheckOutcome {
   const label = labelOf(normalize(given));
   if (label !== undefined && variable !== undefined && label !== variable) return 'incorrect';
   const typed = stripAssignment(normalize(given));
-  const text = cleanNumber(typed, lengthUnit);
+  const text = cleanNumber(typed, lengthUnit, quantity);
   const value = parseRational(text);
-  if (value === null) return 'unreadable';
+  // A unit that doesn't belong to the quantity (36 cm for an angle, cm² for a length) is a real mistake.
+  if (value === null)
+    return quantity !== undefined && /[a-z°º^]/i.test(text) ? 'incorrect' : 'unreadable';
   // "10%" for an amount of 10 is the classic percent/amount mix-up: a real mistake, not a typo.
   if (/%\s*$/.test(typed) && unit !== 'percent') return 'incorrect';
   if (text.includes('.')) {
@@ -202,7 +215,13 @@ function checkExpression(
   if (!parsed.isValid || parsed.operator === 'Equal') return 'unreadable';
   // Letters the answer can't contain mean a typo (or a word), not a wrong answer.
   if (parsed.unknowns.some((symbol) => !allowed.has(symbol))) return 'unreadable';
-  if (maxTerms !== undefined && (text.includes('(') || countTerms(text) > maxTerms)) {
+  // "3x + (-5)" is just 3x - 5: a bracketed signed constant is not unexpanded work.
+  const flat = text.replace(
+    /([+-])\s*\(\s*(-?)(\d+(?:\.\d+)?)\s*\)/g,
+    (_m: string, sign: string, negative: string, n: string) =>
+      `${(sign === '-') !== (negative === '-') ? '-' : '+'}${n}`,
+  );
+  if (maxTerms !== undefined && (flat.includes('(') || countTerms(flat) > maxTerms)) {
     return 'incorrect';
   }
   if (form === 'monomial' && !MONOMIAL.test(text.replace(/\s+/g, ''))) return 'incorrect';
@@ -327,6 +346,7 @@ export function checkAnswer(expected: Answer, given: string): CheckOutcome {
         expected.unit,
         expected.variable,
         expected.lengthUnit,
+        expected.quantity,
       );
     case 'expression':
       return checkExpression(expected.text, given, expected.maxTerms, expected.form);

@@ -242,8 +242,16 @@ describe('checkAnswer: π and units', () => {
     expect(checkAnswer(circle, '78.5')).toBe('incorrect');
   });
 
-  it.each(['28 cm²', '28cm^2', '28 cm2', '28 cm'])('strips the cm unit in %j', (given) => {
-    expect(checkAnswer(num(28), given)).toBe('correct');
+  it.each(['28 cm²', '28cm^2', '28 cm2'])('strips the area unit in %j', (given) => {
+    expect(checkAnswer({ type: 'number', value: rational(28), quantity: 'area' }, given)).toBe(
+      'correct',
+    );
+  });
+
+  it('strips the length unit on a length answer', () => {
+    expect(checkAnswer({ type: 'number', value: rational(28), quantity: 'length' }, '28 cm')).toBe(
+      'correct',
+    );
   });
 });
 
@@ -377,15 +385,23 @@ describe('checkAnswer: labels must match (review I1, I2)', () => {
 
 describe('checkAnswer: degrees and length units', () => {
   it.each(['36', '36°', '36 °', '36 degrees', '36 degree'])('reads the angle %j', (given) => {
-    expect(checkAnswer(num(36), given)).toBe('correct');
+    expect(checkAnswer({ type: 'number', value: rational(36), quantity: 'angle' }, given)).toBe(
+      'correct',
+    );
   });
 
   it('strips only the asked-for length unit', () => {
-    const metres: Answer = { type: 'number', value: rational(8), lengthUnit: 'm' };
+    const metres: Answer = {
+      type: 'number',
+      value: rational(8),
+      lengthUnit: 'm',
+      quantity: 'length',
+    };
     expect(checkAnswer(metres, '8 m')).toBe('correct');
     expect(checkAnswer(metres, '8')).toBe('correct');
     expect(checkAnswer(metres, '8 cm')).not.toBe('correct');
-    expect(checkAnswer(num(146, 10), '14.6 cm')).toBe('correct');
-    expect(checkAnswer(num(146, 10), '14.6 m')).not.toBe('correct');
+    const cm: Answer = { type: 'number', value: rational(146, 10), quantity: 'length' };
+    expect(checkAnswer(cm, '14.6 cm')).toBe('correct');
+    expect(checkAnswer(cm, '14.6 m')).not.toBe('correct');
   });
 });

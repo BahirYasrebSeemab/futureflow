@@ -3,6 +3,9 @@ import { mul, rational, type Rational } from '../rational';
 import { createRng, type Rng } from '../rng';
 import type { Generator, Problem } from '../types';
 
+/** "an 8", "an 11", "an 18": the article follows the spoken number. */
+const article = (n: number): string => (/^(8|11|18)/.test(String(n)) ? 'an' : 'a');
+
 const SCALES: Readonly<Record<number, readonly Rational[]>> = {
   1: [rational(2), rational(3)],
   2: [rational(3, 2), rational(5, 2), rational(7, 2)],
@@ -27,7 +30,9 @@ export const similarTrianglesGenerator: Generator = {
       seed,
       difficulty,
       prompt,
-      answer: metres ? { type: 'number', value, lengthUnit: 'm' } : { type: 'number', value },
+      answer: metres
+        ? { type: 'number', value, lengthUnit: 'm', quantity: 'length' }
+        : { type: 'number', value, quantity: 'length' },
       hints: ['Similar triangles: every side is multiplied by the same scale factor.'],
       steps,
     });
@@ -37,7 +42,7 @@ export const similarTrianglesGenerator: Generator = {
       const treeShadow = poleShadow * t;
       const tree = rational(pole * treeShadow, poleShadow);
       return make(
-        `A ${pole} m pole casts a ${poleShadow} m shadow. At the same time, a tree casts a ${treeShadow} m shadow. How tall is the tree, in m?`,
+        `A ${pole} m pole casts a ${poleShadow} m shadow. At the same time, a tree casts ${article(treeShadow)} ${treeShadow} m shadow. How tall is the tree, in m?`,
         tree,
         [
           `The sun makes similar triangles: height ÷ shadow is the same`,
