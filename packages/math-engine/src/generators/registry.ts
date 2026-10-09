@@ -1,4 +1,5 @@
 import type { Generator } from '../types';
+import { polynomialOperationsGenerator } from './polynomial-operations';
 import { financialLiteracyGenerator } from './financial-literacy';
 import { dataAndStatisticsGenerator } from './data-and-statistics';
 import { measurementAndGeometryGenerator } from './measurement-and-geometry';
@@ -43,4 +44,5 @@ export const DEFAULT_REGISTRY: GeneratorRegistry = createRegistry([
   measurementAndGeometryGenerator,
   dataAndStatisticsGenerator,
   financialLiteracyGenerator,
+  polynomialOperationsGenerator,
 ]);

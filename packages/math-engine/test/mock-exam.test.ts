@@ -40,7 +40,7 @@ describe('buildMockExam', () => {
   });
 
   it('is empty for a level without generators or a non-positive size', () => {
-    expect(buildMockExam(ONTARIO_GRAPH, DEFAULT_REGISTRY, 'L2', 1, 5).problems).toEqual([]);
+    expect(buildMockExam(ONTARIO_GRAPH, createRegistry([]), 'L2', 1, 5).problems).toEqual([]);
     expect(buildMockExam(ONTARIO_GRAPH, DEFAULT_REGISTRY, 'L0', 1, 0).problems).toEqual([]);
   });
 });
