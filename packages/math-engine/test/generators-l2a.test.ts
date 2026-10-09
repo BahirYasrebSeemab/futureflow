@@ -3,11 +3,12 @@ import { describe, expect, it } from 'vitest';
 import { checkAnswer, countTerms } from '../src/check';
 import { polynomialOperationsGenerator } from '../src/generators/polynomial-operations';
 import { expectGeneratorContract } from './contract';
-import { afterLabel, evaluate, promptMath, RUNS, seedAndDifficulty } from './oracle';
+import { afterLabel, evaluate, holdsAt, promptMath, RUNS, seedAndDifficulty } from './oracle';
 import { factoringGenerator } from '../src/generators/factoring';
 import { quadraticEquationsGenerator } from '../src/generators/quadratic-equations';
 import { toNumber } from '../src/rational';
 import { quadraticRelationsGenerator } from '../src/generators/quadratic-relations';
+import { linearSystemsGenerator } from '../src/generators/linear-systems';
 
 const SAMPLE_X = [1.3, -0.7, 2.9];
 
@@ -130,5 +131,32 @@ describe('quadratic-relations oracle', () => {
       }),
       RUNS,
     );
+  });
+});
+
+expectGeneratorContract(linearSystemsGenerator);
+
+describe('linear-systems oracle', () => {
+  it('the solution satisfies both equations, and every step holds at the solution', () => {
+    fc.assert(
+      fc.property(seedAndDifficulty, ([seed, d]) => {
+        const problem = linearSystemsGenerator.generate(seed, d);
+        if (problem.answer.type !== 'point') throw new Error('expected a point');
+        const [x = 0, y = 0] = problem.answer.coords.map(toNumber);
+        const equations = (problem.prompt.split(': ')[1] ?? '').split(' and ');
+        expect(equations).toHaveLength(2);
+        for (const equation of equations) expect(holdsAt(equation, { x, y }), equation).toBe(true);
+        for (const step of problem.steps)
+          expect(holdsAt(afterLabel(step), { x, y }), step).toBe(true);
+      }),
+      RUNS,
+    );
+  });
+
+  it('marks a swapped point as incorrect', () => {
+    const problem = linearSystemsGenerator.generate(5, 3);
+    if (problem.answer.type !== 'point') throw new Error('expected a point');
+    const [x = 0, y = 0] = problem.answer.coords.map(toNumber);
+    if (x !== y) expect(checkAnswer(problem.answer, `(${y}, ${x})`)).toBe('incorrect');
   });
 });
