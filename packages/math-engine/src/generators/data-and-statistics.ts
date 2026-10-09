@@ -20,15 +20,22 @@ const HINTS: Record<Stat, string> = {
   range: 'Range = largest value − smallest value.',
 };
 
-/** `count` different values from 1..max, in random order. */
-function distinct(rng: Rng, count: number, max: number): number[] {
-  const pool = Array.from({ length: max }, (_, i) => i + 1);
-  for (let i = pool.length - 1; i > 0; i -= 1) {
+/** A shuffled copy (Fisher–Yates); the input is not changed. */
+function shuffled(rng: Rng, items: readonly number[]): number[] {
+  const out = [...items];
+  for (let i = out.length - 1; i > 0; i -= 1) {
     const j = rng.int(0, i);
-    [pool[i], pool[j]] = [pool[j] as number, pool[i] as number];
+    [out[i], out[j]] = [out[j] as number, out[i] as number];
   }
-  return pool.slice(0, count);
+  return out;
 }
+
+/** `count` different values from 1..max, in random order. */
+const distinct = (rng: Rng, count: number, max: number): number[] =>
+  shuffled(
+    rng,
+    Array.from({ length: max }, (_, i) => i + 1),
+  ).slice(0, count);
 
 export const dataAndStatisticsGenerator: Generator = {
   topicId: 'data-and-statistics',
@@ -39,13 +46,10 @@ export const dataAndStatisticsGenerator: Generator = {
     const count = evenCount ? 6 : difficulty >= 5 ? 9 : 5 + 2 * rng.int(0, 1);
     const max = 10 * (difficulty + 1);
 
-    const values =
-      stat === 'mode'
-        ? (() => {
-            const pool = distinct(rng, count - 1, max);
-            return [...pool, pool[rng.int(0, pool.length - 1)] as number];
-          })()
-        : distinct(rng, count, max);
+    const pool = distinct(rng, stat === 'mode' ? count - 1 : count, max);
+    const repeated = pool[rng.int(0, pool.length - 1)] as number;
+    // Shuffle after adding the repeat, so the mode's position gives nothing away.
+    const values = stat === 'mode' ? shuffled(rng, [...pool, repeated]) : pool;
     if (stat === 'mean') {
       const total = values.reduce((s, v) => s + v, 0);
       values[values.length - 1] = (values.at(-1) as number) + ((count - (total % count)) % count);
@@ -73,10 +77,9 @@ export const dataAndStatisticsGenerator: Generator = {
         `Sorted: ${sorted.join(', ')}`,
         count % 2 === 1
           ? `The middle value is ${decimalText(answer)}`
-          : `The middle two are ${low} and ${high}: (${low} + ${high}) ÷ 2 = ${decimalText(answer)}`,
+          : `The middle two are ${low} and ${high}: ${low} + ${high} = ${low + high}, and ${low + high} ÷ 2 = ${decimalText(answer)}`,
       ];
     } else if (stat === 'mode') {
-      const repeated = values.at(-1) as number;
       answer = rational(repeated);
       steps = [
         `Sorted: ${sorted.join(', ')}`,

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { linearInequalitiesGenerator } from '../src/generators/linear-inequalities';
 import { toNumber } from '../src/rational';
 import { expectGeneratorContract } from './contract';
+import { stepEquations } from './steps';
 import { evaluate, numberAnswer, promptMath, RUNS, seedAndDifficulty } from './oracle';
 import { linearRelationsGenerator } from '../src/generators/linear-relations';
 import { exponentLawsGenerator } from '../src/generators/exponent-laws';
@@ -228,5 +229,24 @@ describe('financial-literacy oracle', () => {
     );
     expect(problem?.answer).toMatchObject({ value: { num: 486203, den: 100 } });
     expect(problem?.steps.join(' ')).toContain('about $4862.03');
+  });
+});
+
+describe('data-and-statistics review fixes', () => {
+  it('does not always put the mode last', () => {
+    const modes = Array.from({ length: 300 }, (_, seed) =>
+      dataAndStatisticsGenerator.generate(seed, 1),
+    ).filter((p) => p.prompt.startsWith('Find the mode'));
+    const last = modes.filter((p) => p.prompt.endsWith(`, ${numberAnswer(p.answer)}`));
+    expect(modes.length).toBeGreaterThan(50);
+    expect(last.length / modes.length).toBeLessThan(0.4);
+  });
+
+  it('writes the even-count median average as checkable arithmetic', () => {
+    const evens = Array.from({ length: 200 }, (_, seed) =>
+      dataAndStatisticsGenerator.generate(seed, 4),
+    ).filter((p) => p.steps.some((s) => s.startsWith('The middle two')));
+    expect(evens.length).toBeGreaterThan(0);
+    for (const p of evens) expect(p.steps.flatMap(stepEquations).length).toBeGreaterThanOrEqual(2);
   });
 });
