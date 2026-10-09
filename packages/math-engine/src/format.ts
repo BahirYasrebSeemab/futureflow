@@ -56,3 +56,5 @@ export function formatPolynomial(coefficients: readonly number[], symbol = 'x'):
     )
     .join(' ');
 }
+
+export const deg = (n: number): string => `${n}°`;

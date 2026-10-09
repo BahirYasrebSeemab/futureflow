@@ -374,3 +374,18 @@ describe('checkAnswer: labels must match (review I1, I2)', () => {
     expect(checkAnswer(zeros, 'y = 2, y = 3')).toBe('incorrect');
   });
 });
+
+describe('checkAnswer: degrees and length units', () => {
+  it.each(['36', '36°', '36 °', '36 degrees', '36 degree'])('reads the angle %j', (given) => {
+    expect(checkAnswer(num(36), given)).toBe('correct');
+  });
+
+  it('strips only the asked-for length unit', () => {
+    const metres: Answer = { type: 'number', value: rational(8), lengthUnit: 'm' };
+    expect(checkAnswer(metres, '8 m')).toBe('correct');
+    expect(checkAnswer(metres, '8')).toBe('correct');
+    expect(checkAnswer(metres, '8 cm')).not.toBe('correct');
+    expect(checkAnswer(num(146, 10), '14.6 cm')).toBe('correct');
+    expect(checkAnswer(num(146, 10), '14.6 m')).not.toBe('correct');
+  });
+});

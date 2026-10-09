@@ -2,7 +2,13 @@ import { ComputeEngine } from '@cortex-js/compute-engine';
 import { equals, gcd, parseRational, toNumber, toText, type Rational } from './rational';
 
 export type Answer =
-  | Readonly<{ type: 'number'; value: Rational; unit?: 'percent'; variable?: string }>
+  | Readonly<{
+      type: 'number';
+      value: Rational;
+      unit?: 'percent';
+      variable?: string;
+      lengthUnit?: 'cm' | 'm';
+    }>
   | Readonly<{
       type: 'expression';
       text: string;
@@ -69,10 +75,11 @@ const normalize = (text: string): string =>
   );
 
 /** Forgives harmless number formats: `(-3)`, `+3`, `- 3`, `3.` */
-const cleanNumber = (text: string): string =>
+const cleanNumber = (text: string, lengthUnit: 'cm' | 'm' = 'cm'): string =>
   text
     // Every measurement prompt is in cm: other units are a real mistake, so they stay unreadable.
-    .replace(/\s*cm(?:\^\{?[23]\}?|[23])?$/i, '')
+    .replace(new RegExp(`\\s*${lengthUnit}(?:\\^\\{?[23]\\}?|[23])?$`, 'i'), '')
+    .replace(/\s*(?:°|degrees?)$/i, '')
     .replace(/^\$\s*/, '')
     .replace(/\s*%$/, '')
     .replace(/^\((.*)\)$/, '$1')
@@ -109,11 +116,12 @@ function checkNumber(
   given: string,
   unit?: 'percent',
   variable?: string,
+  lengthUnit?: 'cm' | 'm',
 ): CheckOutcome {
   const label = labelOf(normalize(given));
   if (label !== undefined && variable !== undefined && label !== variable) return 'incorrect';
   const typed = stripAssignment(normalize(given));
-  const text = cleanNumber(typed);
+  const text = cleanNumber(typed, lengthUnit);
   const value = parseRational(text);
   if (value === null) return 'unreadable';
   // "10%" for an amount of 10 is the classic percent/amount mix-up: a real mistake, not a typo.
@@ -313,7 +321,13 @@ function checkChoice(optionCount: number, correctIndex: number, given: string): 
 export function checkAnswer(expected: Answer, given: string): CheckOutcome {
   switch (expected.type) {
     case 'number':
-      return checkNumber(expected.value, given, expected.unit, expected.variable);
+      return checkNumber(
+        expected.value,
+        given,
+        expected.unit,
+        expected.variable,
+        expected.lengthUnit,
+      );
     case 'expression':
       return checkExpression(expected.text, given, expected.maxTerms, expected.form);
     case 'set':
