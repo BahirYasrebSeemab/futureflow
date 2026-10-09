@@ -9,11 +9,12 @@ ledger that a native guard enforces.
 
 ## Repo layout
 
-| Path                 | What                                                                       |
-| -------------------- | -------------------------------------------------------------------------- |
-| `packages/core`      | Pure domain rules: time model, ledger, earning, plans, day types, verdicts |
-| `packages/contracts` | zod schemas for data crossing system edges                                 |
-| `docs/adr`           | Architecture Decision Records                                              |
+| Path                   | What                                                                                           |
+| ---------------------- | ---------------------------------------------------------------------------------------------- |
+| `packages/core`        | Pure domain rules: time model, ledger, earning, plans, day types, verdicts                     |
+| `packages/contracts`   | zod schemas for data crossing system edges                                                     |
+| `packages/math-engine` | Ontario math knowledge graph, problem generators, CAS answer checking, Elo, mastery, placement |
+| `docs/adr`             | Architecture Decision Records                                                                  |
 
 ## Develop
 
