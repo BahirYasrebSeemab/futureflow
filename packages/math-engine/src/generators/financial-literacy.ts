@@ -1,16 +1,10 @@
-import { decimalText } from '../format';
-import { rational, type Rational } from '../rational';
+import { decimalText, moneyText } from '../format';
+import { rational, roundToCents, type Rational } from '../rational';
 import { createRng } from '../rng';
 import type { Generator, Problem } from '../types';
 
-const CENT_TOLERANCE = 0.005;
 const HST_PERCENT = 13; // Ontario harmonized sales tax
 const ROUND = ' Round to the nearest cent.';
-
-const money = (r: Rational): string => {
-  const exact = Math.round((r.num / r.den) * 100) / 100;
-  return exact.toFixed(2);
-};
 
 export const financialLiteracyGenerator: Generator = {
   topicId: 'financial-literacy',
@@ -27,9 +21,8 @@ export const financialLiteracyGenerator: Generator = {
       seed,
       difficulty,
       prompt: rounded ? `${prompt}${ROUND}` : prompt,
-      answer: rounded
-        ? { type: 'number', value, tolerance: CENT_TOLERANCE }
-        : { type: 'number', value },
+      // Rounded questions expect the exact half-up cents, so the learner's rounding is checked too.
+      answer: { type: 'number', value: rounded ? roundToCents(value) : value },
       hints: [hint],
       steps,
     });
@@ -52,13 +45,13 @@ export const financialLiteracyGenerator: Generator = {
       const tax = rational(price.num * HST_PERCENT, price.den * 100);
       const total = rational(price.num * (100 + HST_PERCENT), price.den * 100);
       return make(
-        `A jacket costs $${decimalText(price)} before tax. What is the total with ${HST_PERCENT}% HST?`,
+        `A jacket costs $${moneyText(price)} before tax. What is the total with ${HST_PERCENT}% HST?`,
         total,
         true,
         'Tax = price × 0.13; total = price + tax.',
         [
           `Tax: ${decimalText(price)} × 0.13 = ${decimalText(tax)}`,
-          `Total: ${decimalText(price)} + ${decimalText(tax)} = ${decimalText(total)}, about $${money(total)}`,
+          `Total: ${decimalText(price)} + ${decimalText(tax)} = ${decimalText(total)}, about $${moneyText(total)}`,
         ],
       );
     }
@@ -83,7 +76,7 @@ export const financialLiteracyGenerator: Generator = {
       const price = rational((centsPer100 * grams) / 100, 100);
       const unit = rational(centsPer100, 100);
       return make(
-        `A ${grams} g package costs $${decimalText(price)}. What is the price per 100 g?`,
+        `A ${grams} g package costs $${moneyText(price)}. What is the price per 100 g?`,
         unit,
         true,
         'Divide the price by the number of 100 g portions.',
@@ -101,7 +94,7 @@ export const financialLiteracyGenerator: Generator = {
       true,
       'Compound interest: A = P(1 + r)^t.',
       [
-        `A = ${principal} × ${decimalText(rational(100 + rate, 100))}^${years} = ${decimalText(amount)}, about $${money(amount)}`,
+        `A = ${principal} × ${decimalText(rational(100 + rate, 100))}^${years} = ${decimalText(amount)}, about $${moneyText(amount)}`,
       ],
     );
   },

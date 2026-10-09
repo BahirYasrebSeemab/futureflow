@@ -1,4 +1,4 @@
-import type { Rational } from './rational';
+import { roundToCents, type Rational } from './rational';
 
 export const signed = (n: number): string => (n < 0 ? `- ${-n}` : `+ ${n}`);
 
@@ -30,3 +30,11 @@ export function decimalText(r: Rational): string {
 
 /** Negatives in brackets so steps never read "4 - -3". */
 export const show = (n: number): string => (n < 0 ? `(${n})` : String(n));
+
+/** Money with exactly two decimals, rounded half up on the exact value: 4862.025 → "4862.03". */
+export function moneyText(r: Rational): string {
+  const rounded = roundToCents(r);
+  const cents = Math.abs(rounded.num) * (100 / rounded.den);
+  const sign = rounded.num < 0 ? '-' : '';
+  return `${sign}${Math.floor(cents / 100)}.${String(cents % 100).padStart(2, '0')}`;
+}

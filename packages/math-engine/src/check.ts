@@ -2,7 +2,7 @@ import { ComputeEngine } from '@cortex-js/compute-engine';
 import { equals, parseRational, toNumber, toText, type Rational } from './rational';
 
 export type Answer =
-  | Readonly<{ type: 'number'; value: Rational; unit?: 'percent'; tolerance?: number }>
+  | Readonly<{ type: 'number'; value: Rational; unit?: 'percent' }>
   | Readonly<{ type: 'expression'; text: string; maxTerms?: number; form?: 'monomial' }>
   | Readonly<{ type: 'set'; items: readonly Rational[] }>
   | Readonly<{ type: 'point'; coords: readonly Rational[] }>
@@ -22,6 +22,8 @@ const MIN_COMPARABLE_SAMPLES = 3;
 let engine: ComputeEngine | undefined;
 const ce = (): ComputeEngine => (engine ??= new ComputeEngine());
 type Expr = NonNullable<ReturnType<ComputeEngine['parse']>>;
+
+const SUPERSCRIPT_DIGITS = '⁰¹²³⁴⁵⁶⁷⁸⁹';
 
 const FUNCTION_NAMES = /(?<![a-z\\])(sin|cos|tan|sqrt|ln|log)(?=\s*\()/gi;
 
@@ -49,16 +51,22 @@ const normalize = (text: string): string =>
       .replace(/−/g, '-')
       .replace(/×/g, '*')
       .replace(/÷/g, '/')
+      .replace(/·/g, '*')
+      .replace(
+        /[⁰¹²³⁴⁵⁶⁷⁸⁹]+/g,
+        (digits) => `^${[...digits].map((d) => SUPERSCRIPT_DIGITS.indexOf(d)).join('')}`,
+      )
       .replace(/π|(?<![a-z])pi(?![a-z])/gi, '\\pi')
       .replace(FUNCTION_NAMES, (name) => `\\${name.toLowerCase()}`)
       // The CAS reads `^` like LaTeX, where x^12 means x¹·2: brace every numeric exponent.
-      .replace(/\^(-?\d+(?:\.\d+)?)/g, '^{$1}'),
+      .replace(/\^\s*(-?\d+(?:\.\d+)?)/g, '^{$1}'),
   );
 
 /** Forgives harmless number formats: `(-3)`, `+3`, `- 3`, `3.` */
 const cleanNumber = (text: string): string =>
   text
-    .replace(/\s*(?:mm|cm|km|m)(?:²|³|\^\{?[23]\}?|[23])?$/i, '')
+    // Every measurement prompt is in cm: other units are a real mistake, so they stay unreadable.
+    .replace(/\s*cm(?:\^\{?[23]\}?|[23])?$/i, '')
     .replace(/^\$\s*/, '')
     .replace(/\s*%$/, '')
     .replace(/^\((.*)\)$/, '$1')
@@ -86,23 +94,13 @@ const splitList = (text: string): string[] =>
     .map((part) => part.trim())
     .filter((part) => part !== '');
 
-function checkNumber(
-  expected: Rational,
-  given: string,
-  unit?: 'percent',
-  tolerance?: number,
-): CheckOutcome {
+function checkNumber(expected: Rational, given: string, unit?: 'percent'): CheckOutcome {
   const typed = stripAssignment(normalize(given));
   const text = cleanNumber(typed);
   const value = parseRational(text);
   if (value === null) return 'unreadable';
   // "10%" for an amount of 10 is the classic percent/amount mix-up: a real mistake, not a typo.
   if (/%\s*$/.test(typed) && unit !== 'percent') return 'incorrect';
-  if (tolerance !== undefined) {
-    return Math.abs(toNumber(value) - toNumber(expected)) <= tolerance + 1e-9
-      ? 'correct'
-      : 'incorrect';
-  }
   if (text.includes('.')) {
     return closeEnough(toNumber(value), toNumber(expected)) ? 'correct' : 'incorrect';
   }
@@ -129,7 +127,7 @@ function sampleEqual(a: Expr, b: Expr): boolean {
   return comparable >= MIN_COMPARABLE_SAMPLES;
 }
 
-const MONOMIAL = /^-?(\d+\*?)?[a-z](\^\{?\d+\}?)?$/i;
+const MONOMIAL = /^-?(\d+\*?)?[a-z](\^\{?\d+\}?)?(\*\d+)?$/i;
 
 function checkExpression(
   expected: string,
@@ -202,6 +200,7 @@ function checkInequality(
 ): CheckOutcome {
   const read = readInequality(normalize(given));
   if (read === null || read.variable !== expected.variable) return 'unreadable';
+  if (/[a-z%]/i.test(read.boundText)) return 'unreadable';
   const bound = parseRational(cleanNumber(read.boundText));
   if (bound === null) return 'unreadable';
   return read.op === expected.op && equals(bound, expected.bound) ? 'correct' : 'incorrect';
@@ -244,7 +243,7 @@ function checkChoice(optionCount: number, correctIndex: number, given: string): 
 export function checkAnswer(expected: Answer, given: string): CheckOutcome {
   switch (expected.type) {
     case 'number':
-      return checkNumber(expected.value, given, expected.unit, expected.tolerance);
+      return checkNumber(expected.value, given, expected.unit);
     case 'expression':
       return checkExpression(expected.text, given, expected.maxTerms, expected.form);
     case 'set':

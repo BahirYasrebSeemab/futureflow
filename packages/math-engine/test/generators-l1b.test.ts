@@ -8,6 +8,7 @@ import { linearRelationsGenerator } from '../src/generators/linear-relations';
 import { exponentLawsGenerator } from '../src/generators/exponent-laws';
 import { measurementAndGeometryGenerator } from '../src/generators/measurement-and-geometry';
 import { dataAndStatisticsGenerator } from '../src/generators/data-and-statistics';
+import { moneyText } from '../src/format';
 import { financialLiteracyGenerator } from '../src/generators/financial-literacy';
 
 const holds = (left: number, op: string, right: number): boolean =>
@@ -195,21 +196,37 @@ describe('financial-literacy oracle', () => {
               : /per 100 g/.test(text)
                 ? ((n[1] ?? 0) / (n[0] ?? 1)) * 100
                 : (n[0] ?? 0) * (1 + (n[1] ?? 0) / 100) ** (n[2] ?? 0);
-        expect(Math.abs(numberAnswer(problem.answer) - expected)).toBeLessThan(1e-6);
+        const allowed = /nearest cent/.test(text) ? 0.005 + 1e-9 : 1e-6;
+        expect(Math.abs(numberAnswer(problem.answer) - expected)).toBeLessThanOrEqual(allowed);
       }),
       RUNS,
     );
   });
 
-  it('asks for rounding exactly when the answer needs it', () => {
+  it('rounded answers are exact half-up cents of the exact value, and the steps say the same', () => {
     fc.assert(
       fc.property(seedAndDifficulty, ([seed, d]) => {
         const problem = financialLiteracyGenerator.generate(seed, d);
         if (problem.answer.type !== 'number') throw new Error('expected a number');
-        const asksToRound = /nearest cent/.test(problem.prompt);
-        expect(problem.answer.tolerance === 0.005).toBe(asksToRound);
+        const value = problem.answer.value;
+        if (/nearest cent/.test(problem.prompt)) {
+          expect(100 % value.den).toBe(0);
+          const about = /about \$(\d+\.\d{2})/.exec(problem.steps.join(' '));
+          if (about !== null) expect(about[1]).toBe(moneyText(value));
+        }
+        expect(problem.prompt).not.toMatch(/\$\d+\.\d(?!\d)/);
       }),
       RUNS,
     );
+  });
+
+  it('rounds half a cent up (regression: 4000 at 5% for 4 years)', () => {
+    const problem = Array.from({ length: 20000 }, (_, seed) =>
+      financialLiteracyGenerator.generate(seed, 5),
+    ).find((p) =>
+      p.prompt.startsWith('$4000 is invested at 5% per year, compounded annually, for 4 years'),
+    );
+    expect(problem?.answer).toMatchObject({ value: { num: 486203, den: 100 } });
+    expect(problem?.steps.join(' ')).toContain('about $4862.03');
   });
 });

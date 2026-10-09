@@ -60,3 +60,11 @@ export function parseRational(text: string): Rational | null {
     return null;
   }
 }
+
+/** Nearest cent with halves rounded up (away from zero), computed exactly with BigInt. */
+export function roundToCents(r: Rational): Rational {
+  const [num, den] = [BigInt(r.num), BigInt(r.den)];
+  const magnitude = num < 0n ? -num : num;
+  const cents = (200n * magnitude + den) / (2n * den);
+  return rational(Number(num < 0n ? -cents : cents), 100);
+}

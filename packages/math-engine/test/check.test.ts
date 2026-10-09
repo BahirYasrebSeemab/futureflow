@@ -242,21 +242,51 @@ describe('checkAnswer: π and units', () => {
     expect(checkAnswer(circle, '78.5')).toBe('incorrect');
   });
 
-  it.each(['28 cm²', '28cm^2', '28 cm2', '28 m'])('strips the unit in %j', (given) => {
+  it.each(['28 cm²', '28cm^2', '28 cm2', '28 cm'])('strips the cm unit in %j', (given) => {
     expect(checkAnswer(num(28), given)).toBe('correct');
   });
 });
 
 describe('checkAnswer: money', () => {
-  const total: Answer = { type: 'number', value: rational(564887, 10000), tolerance: 0.005 };
+  const total: Answer = { type: 'number', value: rational(5649, 100) };
 
   it.each([
     ['56.49', 'correct'],
     ['$56.49', 'correct'],
-    ['56.4887', 'correct'],
+    ['$ 56.49', 'correct'],
     ['56.48', 'incorrect'],
-    ['56.5', 'incorrect'],
-  ])('56.4887 (to the cent) vs %j is %s', (given, outcome) => {
+    ['56.4887', 'incorrect'],
+  ])('$56.49 vs %j is %s', (given, outcome) => {
     expect(checkAnswer(total, given)).toBe(outcome);
+  });
+});
+
+describe('checkAnswer: review fixes (P2c)', () => {
+  const twelfth: Answer = { type: 'expression', text: '8x^12', form: 'monomial' };
+
+  it.each(['8x^ 12', '8 x ^ 12', '8·x^12', 'x^12*8', '8x¹²'])(
+    'accepts the correct exponent answer %j',
+    (given) => {
+      expect(checkAnswer(twelfth, given)).toBe('correct');
+    },
+  );
+
+  it('accepts superscript exponents', () => {
+    expect(checkAnswer({ type: 'expression', text: 'x^7', form: 'monomial' }, 'x⁷')).toBe(
+      'correct',
+    );
+  });
+
+  it.each(['28 m²', '28 km', '28 mm'])(
+    'does not accept the wrong unit %j for a cm answer',
+    (given) => {
+      expect(checkAnswer(num(28), given)).not.toBe('correct');
+    },
+  );
+
+  it.each(['x > 3%', 'x > 3m'])('does not accept a bound with a unit or percent (%j)', (given) => {
+    expect(
+      checkAnswer({ type: 'inequality', variable: 'x', op: '>', bound: rational(3) }, given),
+    ).toBe('unreadable');
   });
 });

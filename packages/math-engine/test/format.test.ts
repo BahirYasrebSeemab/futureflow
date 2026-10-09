@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { decimalText, formatLinear, show, signed } from '../src/format';
+import { decimalText, formatLinear, moneyText, show, signed } from '../src/format';
 import { rational } from '../src/rational';
 
 describe('signed', () => {
@@ -44,5 +44,13 @@ describe('show', () => {
     expect(show(-3)).toBe('(-3)');
     expect(show(4)).toBe('4');
     expect(show(0)).toBe('0');
+  });
+});
+
+describe('moneyText', () => {
+  it('always shows two decimals and rounds half up exactly', () => {
+    expect(moneyText(rational(588, 10))).toBe('58.80');
+    expect(moneyText(rational(4862025, 1000))).toBe('4862.03');
+    expect(moneyText(rational(5))).toBe('5.00');
   });
 });
