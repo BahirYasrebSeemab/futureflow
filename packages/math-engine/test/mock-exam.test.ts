@@ -7,22 +7,23 @@ import { createRegistry, DEFAULT_REGISTRY } from '../src/generators/registry';
 import {
   buildMockExam,
   gatePassed,
-  mockTopicIds,
-  scoreMock,
   type MockResult,
+  mockTopicIds,
+  recommendedMockSize,
+  scoreMock,
 } from '../src/mock-exam';
 
 const gateA = GATES.find((g) => g.id === 'A');
 if (gateA === undefined) throw new Error('gate A missing');
 
 describe('buildMockExam', () => {
-  it('covers every L0 topic that has a generator, evenly, at difficulty 3', () => {
+  it('covers every topic evenly, rising through difficulties 3, 4 and 5', () => {
     const registry = createRegistry([
       integersGenerator,
       fractionsGenerator,
       orderOfOperationsGenerator,
     ]);
-    const exam = buildMockExam(ONTARIO_GRAPH, registry, 'L0', 42, 6);
+    const exam = buildMockExam(ONTARIO_GRAPH, registry, 'L0', 42, 9);
     expect(exam.problems.map((p) => p.topicId)).toEqual([
       'integers',
       'order-of-operations',
@@ -30,8 +31,22 @@ describe('buildMockExam', () => {
       'integers',
       'order-of-operations',
       'fractions',
+      'integers',
+      'order-of-operations',
+      'fractions',
     ]);
-    expect(exam.problems.every((p) => p.difficulty === 3)).toBe(true);
+    expect(exam.problems.map((p) => p.difficulty)).toEqual([3, 3, 3, 4, 4, 4, 5, 5, 5]);
+  });
+
+  it('recommends a size that tests every topic at every mock difficulty', () => {
+    const size = recommendedMockSize(ONTARIO_GRAPH, DEFAULT_REGISTRY, 'L1');
+    const exam = buildMockExam(ONTARIO_GRAPH, DEFAULT_REGISTRY, 'L1', 5, size);
+    for (const topicId of mockTopicIds(exam)) {
+      const difficulties = exam.problems
+        .filter((p) => p.topicId === topicId)
+        .map((p) => p.difficulty);
+      expect(difficulties.sort()).toEqual([3, 4, 5]);
+    }
   });
 
   it('is reproducible from its seed', () => {
