@@ -31,3 +31,4 @@ export * from './generators/financial-literacy';
 export * from './generators/polynomial-operations';
 export * from './generators/factoring';
 export * from './generators/quadratic-equations';
+export * from './generators/quadratic-relations';

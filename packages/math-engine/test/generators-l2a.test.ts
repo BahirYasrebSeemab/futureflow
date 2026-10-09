@@ -7,6 +7,7 @@ import { afterLabel, evaluate, promptMath, RUNS, seedAndDifficulty } from './ora
 import { factoringGenerator } from '../src/generators/factoring';
 import { quadraticEquationsGenerator } from '../src/generators/quadratic-equations';
 import { toNumber } from '../src/rational';
+import { quadraticRelationsGenerator } from '../src/generators/quadratic-relations';
 
 const SAMPLE_X = [1.3, -0.7, 2.9];
 
@@ -93,5 +94,41 @@ describe('quadratic-equations oracle', () => {
     const [first, second] = problem.answer.items.map(toNumber);
     expect(checkAnswer(problem.answer, `x = ${second}, x = ${first}`)).toBe('correct');
     expect(checkAnswer(problem.answer, `${first}`)).toBe('incorrect');
+  });
+});
+
+expectGeneratorContract(quadraticRelationsGenerator);
+
+describe('quadratic-relations oracle', () => {
+  it('agrees with the parabola evaluated by the CAS', () => {
+    fc.assert(
+      fc.property(seedAndDifficulty, ([seed, d]) => {
+        const problem = quadraticRelationsGenerator.generate(seed, d);
+        const match = /^For y = (.+), (.+)\?$/.exec(problem.prompt);
+        if (match === null) throw new Error(`unexpected prompt: ${problem.prompt}`);
+        const f = (x: number): number => evaluate(match[1] ?? '', { x });
+        const { answer } = problem;
+        if (answer.type === 'point') {
+          const [h = 0, k = 0] = answer.coords.map(toNumber);
+          expect(f(h)).toBeCloseTo(k, 9);
+          expect(f(h - 1)).toBeCloseTo(f(h + 1), 9);
+          expect(f(h + 1)).not.toBeCloseTo(k, 9);
+        } else if (answer.type === 'set') {
+          for (const x of answer.items.map(toNumber)) expect(f(x)).toBeCloseTo(0, 9);
+        } else if (answer.type === 'number') {
+          const value = toNumber(answer.value);
+          if (/y-intercept/.test(problem.prompt)) expect(value).toBeCloseTo(f(0), 9);
+          else if (/axis of symmetry/.test(problem.prompt))
+            expect(f(value - 1)).toBeCloseTo(f(value + 1), 9);
+          else {
+            const sign = /\(x ([+-]) (\d+)\)/.exec(match[1] ?? '');
+            const h = sign === null ? 0 : (sign[1] === '-' ? 1 : -1) * Number(sign[2]);
+            expect(f(h)).toBeCloseTo(value, 9);
+            expect(f(h + 1) > value).toBe(/minimum/.test(problem.prompt));
+          }
+        } else throw new Error('unexpected answer type');
+      }),
+      RUNS,
+    );
   });
 });
