@@ -1,15 +1,15 @@
 import { ComputeEngine } from '@cortex-js/compute-engine';
-import { equals, parseRational, toNumber, toText, type Rational } from './rational';
+import { equals, gcd, parseRational, toNumber, toText, type Rational } from './rational';
 
 export type Answer =
-  | Readonly<{ type: 'number'; value: Rational; unit?: 'percent' }>
+  | Readonly<{ type: 'number'; value: Rational; unit?: 'percent'; variable?: string }>
   | Readonly<{
       type: 'expression';
       text: string;
       maxTerms?: number;
       form?: 'monomial' | 'factored';
     }>
-  | Readonly<{ type: 'set'; items: readonly Rational[] }>
+  | Readonly<{ type: 'set'; items: readonly Rational[]; variable?: string }>
   | Readonly<{ type: 'point'; coords: readonly Rational[] }>
   | Readonly<{ type: 'choice'; options: readonly string[]; correctIndex: number }>
   | Readonly<{ type: 'inequality'; variable: string; op: InequalityOp; bound: Rational }>;
@@ -53,6 +53,7 @@ const normalize = (text: string): string =>
   bracePowers(
     text
       .trim()
+      .replace(/\\left|\\right/g, '')
       .replace(/−/g, '-')
       .replace(/×/g, '*')
       .replace(/÷/g, '/')
@@ -99,7 +100,18 @@ const splitList = (text: string): string[] =>
     .map((part) => part.trim())
     .filter((part) => part !== '');
 
-function checkNumber(expected: Rational, given: string, unit?: 'percent'): CheckOutcome {
+/** "y = -3" for an x-answer is a different claim (a horizontal line), not a typo. */
+const labelOf = (text: string): string | undefined =>
+  /^([a-z])\s*=/i.exec(text)?.[1]?.toLowerCase();
+
+function checkNumber(
+  expected: Rational,
+  given: string,
+  unit?: 'percent',
+  variable?: string,
+): CheckOutcome {
+  const label = labelOf(normalize(given));
+  if (label !== undefined && variable !== undefined && label !== variable) return 'incorrect';
   const typed = stripAssignment(normalize(given));
   const text = cleanNumber(typed);
   const value = parseRational(text);
@@ -132,22 +144,36 @@ function sampleEqual(a: Expr, b: Expr): boolean {
   return comparable >= MIN_COMPARABLE_SAMPLES;
 }
 
-/** Terms outside every bracket: "(x+2)(x+3)" has 1, "x(x+5) + 6" has 2. A leading sign doesn't count. */
-function topLevelTerms(text: string): number {
-  let depth = 0;
-  let terms = 1;
-  [...text.replace(/\s+/g, '')].forEach((ch, i, all) => {
-    if (ch === '(' || ch === '{') depth += 1;
-    else if (ch === ')' || ch === '}') depth -= 1;
-    else if (
-      (ch === '+' || ch === '-') &&
-      depth === 0 &&
-      i > 0 &&
-      !'(^*{'.includes(all[i - 1] ?? '')
-    )
-      terms += 1;
-  });
-  return terms;
+/** "-2(x+3)^2(2x-1)" → constant 2 and the bracket contents; null unless it is a product of brackets. */
+function factoredParts(text: string): { constant: number; factors: string[] } | null {
+  const compact = text.replace(/\s+/g, '').replace(/\*/g, '');
+  const m = /^[+-]?(\d*)((?:\([^()]+\)(?:\^\{?\d+\}?)?)+)$/.exec(compact);
+  if (m === null) return null;
+  const factors = [...(m[2] ?? '').matchAll(/\(([^()]+)\)/g)].map((f) => f[1] ?? '');
+  return { constant: m[1] ? Number(m[1]) : 1, factors };
+}
+
+const LINEAR = /^([+-]?\d*)([a-z])([+-]\d+)?$|^([+-]?\d+)([+-]\d*)([a-z])$/i;
+
+/** px + q with gcd(p, q) = 1: nothing more can be taken out of the bracket. */
+function isPrimitiveLinear(inner: string): boolean {
+  const m = LINEAR.exec(inner);
+  if (m === null) return false;
+  const coefficient = (raw: string | undefined): number =>
+    raw === undefined || raw === '' || raw === '+' ? 1 : raw === '-' ? -1 : Number(raw);
+  const [p, q] =
+    m[2] !== undefined
+      ? [coefficient(m[1]), Number(m[3] ?? '0')]
+      : [coefficient(m[5]), Number(m[4])];
+  return gcd(Math.abs(p), Math.abs(q)) === 1;
+}
+
+/** Fully factored: primitive linear brackets, and the number in front is the greatest common factor. */
+function isFullyFactored(given: string, expected: string): boolean {
+  const [g, e] = [factoredParts(given), factoredParts(expected)];
+  return (
+    g !== null && e !== null && g.factors.every(isPrimitiveLinear) && g.constant === e.constant
+  );
 }
 
 const MONOMIAL = /^-?(\d+\*?)?[a-z](\^\{?\d+\}?)?(\*\d+)?$/i;
@@ -172,7 +198,7 @@ function checkExpression(
     return 'incorrect';
   }
   if (form === 'monomial' && !MONOMIAL.test(text.replace(/\s+/g, ''))) return 'incorrect';
-  if (form === 'factored' && !(text.includes('(') && topLevelTerms(text) === 1)) return 'incorrect';
+  if (form === 'factored' && !isFullyFactored(text, normalize(expected))) return 'incorrect';
   // Only `true` is a proof: the CAS answers `false` for some true identities (2^x·2 vs 2^(x+1)).
   if (target.isIdenticallyEqual(parsed) === true) return 'correct';
   return sampleEqual(target, parsed) ? 'correct' : 'incorrect';
@@ -235,7 +261,13 @@ function parseAll(parts: readonly string[]): Rational[] | null {
   return values.length === 0 || values.some((v) => v === null) ? null : (values as Rational[]);
 }
 
-function checkSet(expected: readonly Rational[], given: string): CheckOutcome {
+function checkSet(expected: readonly Rational[], given: string, variable?: string): CheckOutcome {
+  if (
+    variable !== undefined &&
+    splitList(given).some((part) => (labelOf(part) ?? variable) !== variable)
+  ) {
+    return 'incorrect';
+  }
   const values = parseAll(splitList(given));
   if (values === null) return 'unreadable';
   if (values.length !== expected.length) return 'incorrect';
@@ -248,8 +280,22 @@ function checkSet(expected: readonly Rational[], given: string): CheckOutcome {
   return 'correct';
 }
 
+const AXES = ['x', 'y'];
+
 function checkPoint(expected: readonly Rational[], given: string): CheckOutcome {
-  const values = parseAll(splitList(given));
+  const parts = splitList(given);
+  const labels = parts.map(labelOf);
+  if (labels.some((l) => l !== undefined)) {
+    // "y = 3, x = 2": order by label. Missing, repeated or unknown labels are a wrong answer.
+    const ordered = AXES.slice(0, expected.length).map((axis) => parts[labels.indexOf(axis)]);
+    const valid =
+      labels.every((l) => l !== undefined) &&
+      new Set(labels).size === parts.length &&
+      ordered.every((p) => p !== undefined);
+    if (!valid || parts.length !== expected.length) return 'incorrect';
+    return checkPoint(expected, ordered.map((part) => stripAssignment(part ?? '')).join(', '));
+  }
+  const values = parseAll(parts);
   if (values === null) return 'unreadable';
   if (values.length !== expected.length) return 'incorrect';
   return values.every((v, i) => equals(v, expected[i] as Rational)) ? 'correct' : 'incorrect';
@@ -267,11 +313,11 @@ function checkChoice(optionCount: number, correctIndex: number, given: string): 
 export function checkAnswer(expected: Answer, given: string): CheckOutcome {
   switch (expected.type) {
     case 'number':
-      return checkNumber(expected.value, given, expected.unit);
+      return checkNumber(expected.value, given, expected.unit, expected.variable);
     case 'expression':
       return checkExpression(expected.text, given, expected.maxTerms, expected.form);
     case 'set':
-      return checkSet(expected.items, given);
+      return checkSet(expected.items, given, expected.variable);
     case 'point':
       return checkPoint(expected.coords, given);
     case 'inequality':

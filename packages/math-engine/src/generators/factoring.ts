@@ -67,7 +67,9 @@ export const factoringGenerator: Generator = {
     }
 
     if (difficulty === 4) {
-      const [m, n] = [rng.int(1, 3), rng.int(2, 9)];
+      // n coprime to m, so (mx + n)(mx - n) is fully factored (no common factor left in a bracket).
+      const m = rng.int(1, 3);
+      const n = Math.abs(coprimeTo(rng, m, 2, 9));
       const square = m === 1 ? 'x^2' : `(${m}x)^2`;
       const answer = `${factor(m, n)}${factor(m, -n)}`;
       return make(
