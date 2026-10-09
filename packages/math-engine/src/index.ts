@@ -29,3 +29,4 @@ export * from './generators/measurement-and-geometry';
 export * from './generators/data-and-statistics';
 export * from './generators/financial-literacy';
 export * from './generators/polynomial-operations';
+export * from './generators/factoring';
