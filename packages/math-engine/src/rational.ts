@@ -68,3 +68,7 @@ export function roundToCents(r: Rational): Rational {
   const cents = (200n * magnitude + den) / (2n * den);
   return rational(Number(num < 0n ? -cents : cents), 100);
 }
+
+/** Rounds an irrational value (e.g. a root from the quadratic formula) to `places` decimals. */
+export const roundFloat = (value: number, places: number): Rational =>
+  rational(Math.round(value * 10 ** places), 10 ** places);

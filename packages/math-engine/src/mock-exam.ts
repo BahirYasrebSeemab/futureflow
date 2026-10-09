@@ -35,12 +35,30 @@ export function buildMockExam(
 export const scoreMock = (outcomes: readonly CheckOutcome[]): number =>
   outcomes.length === 0 ? 0 : outcomes.filter((o) => o === 'correct').length / outcomes.length;
 
-export type MockResult = Readonly<{ day: DayKey; level: LevelId; score: number }>;
+export type MockResult = Readonly<{
+  day: DayKey;
+  level: LevelId;
+  score: number;
+  topicIds: readonly string[];
+}>;
 
-/** Passing twice on the same day doesn't prove retention, so only distinct days count. */
-export function gatePassed(gate: Gate, results: readonly MockResult[]): boolean {
-  const passingDays = new Set(
-    results.filter((r) => r.level === gate.level && r.score >= gate.minScore).map((r) => r.day),
-  );
-  return passingDays.size >= gate.requiredPasses;
+export const mockTopicIds = (exam: MockExam): string[] => [
+  ...new Set(exam.problems.map((p) => p.topicId)),
+];
+
+/**
+ * A gate passes after `requiredPasses` good mocks on distinct days, and only mocks that
+ * covered every topic of the level count: a one-topic "mock" proves nothing about the exam.
+ */
+export function gatePassed(
+  gate: Gate,
+  results: readonly MockResult[],
+  graph: KnowledgeGraph,
+): boolean {
+  const required = graph.topics.filter((t) => t.level === gate.level).map((t) => t.id);
+  const counts = (r: MockResult): boolean =>
+    r.level === gate.level &&
+    r.score >= gate.minScore &&
+    required.every((id) => r.topicIds.includes(id));
+  return new Set(results.filter(counts).map((r) => r.day)).size >= gate.requiredPasses;
 }

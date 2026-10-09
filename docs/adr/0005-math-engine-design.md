@@ -66,3 +66,22 @@ Every worked step is machine-checked. A test-side extractor finds numeric chains
 generator's steps and recomputes them with exact rationals, across the whole registry. Symbolic steps are checked
 per generator: each simplification step must equal the original expression, and each equation step must still hold
 at the answer. Steps containing powers are covered by each generator's answer oracle.
+
+## P2d-1: Grade 10 algebra and gate coverage
+
+- A gate counts a mock exam only if it covered **every** topic of the level (`MockResult.topicIds`);
+  this closes the "one-topic mock passes gate A" deferral.
+- Expression `form: 'factored'` means **fully factored**: the answer must be a constant times brackets, every
+  bracket a _primitive_ linear factor (gcd of its coefficients is 1), and the constant equal to the polynomial's
+  greatest common factor. A bracket-only check (the first version) let `(x^2+5x+6)`, `2(6x+16)` and
+  `(2x+4)(x+3)` pass. The P2d-1 review caught it on every factoring problem. Expansion answers use
+  `maxTerms` + no brackets.
+- Answer labels are meaningful: number and set answers may name their `variable`, so `y = -3` is
+  incorrect as an axis of symmetry, and points are matched by `x =` / `y =` labels before position.
+- **Deferred to P2d-2 (must land before gate A is usable):** mocks are built at difficulty 3, which never tests
+  the quadratic formula, a·c factoring, differences of squares, rational roots or substitution systems. The
+  mock must mix difficulties so the gate certifies the full MPM2D skill set.
+- Irrational quadratic roots are rounded with `roundFloat` (the true value can't sit exactly on a half,
+  so float rounding is safe there, unlike money, which stays on exact BigInt half-up).
+- Algebra steps are checked symbolically: expansions stay equal to the product, and system steps
+  hold at the solution.

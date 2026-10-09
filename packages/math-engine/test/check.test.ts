@@ -290,3 +290,87 @@ describe('checkAnswer: review fixes (P2c)', () => {
     ).toBe('unreadable');
   });
 });
+
+describe('checkAnswer: factored form', () => {
+  const factored: Answer = { type: 'expression', text: '(x+2)(x+3)', form: 'factored' };
+
+  it.each([
+    ['(x + 2)(x + 3)', 'correct'],
+    ['(x+3)(x+2)', 'correct'],
+    ['x^2 + 5x + 6', 'incorrect'],
+    ['x(x + 5) + 6', 'incorrect'],
+    ['(x + 2)(x + 4)', 'incorrect'],
+  ])('(x+2)(x+3) vs %j is %s', (given, outcome) => {
+    expect(checkAnswer(factored, given)).toBe(outcome);
+  });
+
+  it('accepts a common factor and a negative leading sign', () => {
+    expect(checkAnswer({ type: 'expression', text: '3(x+4)', form: 'factored' }, '3(x + 4)')).toBe(
+      'correct',
+    );
+    expect(
+      checkAnswer({ type: 'expression', text: '-(x-2)(x+2)', form: 'factored' }, '-(x - 2)(x + 2)'),
+    ).toBe('correct');
+  });
+});
+
+describe('checkAnswer: factored means fully factored (review C1)', () => {
+  const trinomial: Answer = { type: 'expression', text: '(x+2)(x+3)', form: 'factored' };
+  const gcf: Answer = { type: 'expression', text: '4(3x+8)', form: 'factored' };
+  const withContent: Answer = { type: 'expression', text: '2(x+2)(x+3)', form: 'factored' };
+  const squares: Answer = { type: 'expression', text: '4(x+1)(x-1)', form: 'factored' };
+
+  it.each([
+    [trinomial, '(x^2+5x+6)'],
+    [trinomial, '1(x^2+5x+6)'],
+    [trinomial, '\\left(x^2+5x+6\\right)'],
+    [gcf, '2(6x+16)'],
+    [gcf, '(12x+32)'],
+    [withContent, '2(x^2+5x+6)'],
+    [withContent, '(2x+4)(x+3)'],
+    [squares, '(4x^2-4)'],
+    [squares, '4(x^2-1)'],
+    [squares, '2(2x^2-2)'],
+    [squares, '(2x+2)(2x-2)'],
+  ])('rejects the not-fully-factored %#: %j', (answer, given) => {
+    expect(checkAnswer(answer, given)).toBe('incorrect');
+  });
+
+  it.each([
+    [trinomial, '(x + 3)(x + 2)'],
+    [gcf, '4(3x + 8)'],
+    [withContent, '2(x + 3)(x + 2)'],
+    [squares, '4(x - 1)(x + 1)'],
+    [{ type: 'expression', text: '-(x-2)(x+2)', form: 'factored' } as Answer, '(2 - x)(x + 2)'],
+    [{ type: 'expression', text: '(x+2)(x+2)', form: 'factored' } as Answer, '(x + 2)^2'],
+  ])('accepts the fully factored %#: %j', (answer, given) => {
+    expect(checkAnswer(answer, given)).toBe('correct');
+  });
+});
+
+describe('checkAnswer: labels must match (review I1, I2)', () => {
+  const point: Answer = { type: 'point', coords: [rational(2), rational(3)] };
+
+  it.each([
+    ['y = 3, x = 2', 'correct'],
+    ['x = 2, y = 3', 'correct'],
+    ['(2, 3)', 'correct'],
+    ['y = 2, x = 3', 'incorrect'],
+    ['x = 2, x = 3', 'incorrect'],
+  ])('point (2, 3) vs %j is %s', (given, outcome) => {
+    expect(checkAnswer(point, given)).toBe(outcome);
+  });
+
+  it('rejects the wrong variable on a labelled number answer', () => {
+    const axis: Answer = { type: 'number', value: rational(-3), variable: 'x' };
+    expect(checkAnswer(axis, 'x = -3')).toBe('correct');
+    expect(checkAnswer(axis, '-3')).toBe('correct');
+    expect(checkAnswer(axis, 'y = -3')).toBe('incorrect');
+  });
+
+  it('rejects the wrong variable on labelled set answers', () => {
+    const zeros: Answer = { type: 'set', items: [rational(2), rational(3)], variable: 'x' };
+    expect(checkAnswer(zeros, 'x = 2, x = 3')).toBe('correct');
+    expect(checkAnswer(zeros, 'y = 2, y = 3')).toBe('incorrect');
+  });
+});

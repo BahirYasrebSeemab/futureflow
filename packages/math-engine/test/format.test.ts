@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { decimalText, formatLinear, moneyText, show, signed } from '../src/format';
+import {
+  decimalText,
+  formatLinear,
+  formatPolynomial,
+  moneyText,
+  show,
+  signed,
+} from '../src/format';
 import { rational } from '../src/rational';
 
 describe('signed', () => {
@@ -52,5 +59,19 @@ describe('moneyText', () => {
     expect(moneyText(rational(588, 10))).toBe('58.80');
     expect(moneyText(rational(4862025, 1000))).toBe('4862.03');
     expect(moneyText(rational(5))).toBe('5.00');
+  });
+});
+
+describe('formatPolynomial', () => {
+  it.each([
+    [[1, -5, 6], 'x^2 - 5x + 6'],
+    [[2, 0], '2x'],
+    [[-1, 0, 9], '-x^2 + 9'],
+    [[4, 0, -25], '4x^2 - 25'],
+    [[1, 1], 'x + 1'],
+    [[0, 0], '0'],
+    [[2, -6, 8, 0], '2x^3 - 6x^2 + 8x'],
+  ])('%j → %s', (coefficients, text) => {
+    expect(formatPolynomial(coefficients)).toBe(text);
   });
 });

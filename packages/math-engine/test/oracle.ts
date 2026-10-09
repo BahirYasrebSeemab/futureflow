@@ -43,3 +43,15 @@ export const numberAnswer = (answer: Answer): number => {
   if (answer.type !== 'number') throw new Error(`expected a number answer, got ${answer.type}`);
   return toNumber(answer.value);
 };
+
+/** The claim in a step: text after the last ": " (or the whole step when it has no label). */
+export const afterLabel = (step: string): string => {
+  const colon = step.lastIndexOf(': ');
+  return colon < 0 ? step : step.slice(colon + 2);
+};
+
+/** True when both sides of "lhs = rhs" agree at the given values. */
+export const holdsAt = (equation: string, values: Record<string, number>): boolean => {
+  const [lhs = '', rhs = ''] = equation.split('=');
+  return Math.abs(evaluate(lhs, values) - evaluate(rhs, values)) < 1e-9;
+};
