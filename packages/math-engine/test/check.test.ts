@@ -290,3 +290,26 @@ describe('checkAnswer: review fixes (P2c)', () => {
     ).toBe('unreadable');
   });
 });
+
+describe('checkAnswer: factored form', () => {
+  const factored: Answer = { type: 'expression', text: '(x+2)(x+3)', form: 'factored' };
+
+  it.each([
+    ['(x + 2)(x + 3)', 'correct'],
+    ['(x+3)(x+2)', 'correct'],
+    ['x^2 + 5x + 6', 'incorrect'],
+    ['x(x + 5) + 6', 'incorrect'],
+    ['(x + 2)(x + 4)', 'incorrect'],
+  ])('(x+2)(x+3) vs %j is %s', (given, outcome) => {
+    expect(checkAnswer(factored, given)).toBe(outcome);
+  });
+
+  it('accepts a common factor and a negative leading sign', () => {
+    expect(checkAnswer({ type: 'expression', text: '3(x+4)', form: 'factored' }, '3(x + 4)')).toBe(
+      'correct',
+    );
+    expect(
+      checkAnswer({ type: 'expression', text: '-(x-2)(x+2)', form: 'factored' }, '-(x - 2)(x + 2)'),
+    ).toBe('correct');
+  });
+});

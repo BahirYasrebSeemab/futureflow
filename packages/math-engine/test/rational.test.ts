@@ -7,6 +7,7 @@ import {
   mul,
   parseRational,
   rational,
+  roundFloat,
   roundToCents,
   toNumber,
   toText,
@@ -81,5 +82,12 @@ describe('roundToCents (exact half-up)', () => {
     [5, 1, 500],
   ])('%i/%i rounds to %i cents', (num, den, cents) => {
     expect(roundToCents(rational(num, den))).toEqual(rational(cents, 100));
+  });
+});
+
+describe('roundFloat', () => {
+  it('rounds an irrational value to the given places', () => {
+    expect(roundFloat(Math.SQRT2, 2)).toEqual(rational(141, 100));
+    expect(roundFloat(-Math.PI, 1)).toEqual(rational(-31, 10));
   });
 });

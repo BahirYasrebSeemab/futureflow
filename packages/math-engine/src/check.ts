@@ -3,7 +3,12 @@ import { equals, parseRational, toNumber, toText, type Rational } from './ration
 
 export type Answer =
   | Readonly<{ type: 'number'; value: Rational; unit?: 'percent' }>
-  | Readonly<{ type: 'expression'; text: string; maxTerms?: number; form?: 'monomial' }>
+  | Readonly<{
+      type: 'expression';
+      text: string;
+      maxTerms?: number;
+      form?: 'monomial' | 'factored';
+    }>
   | Readonly<{ type: 'set'; items: readonly Rational[] }>
   | Readonly<{ type: 'point'; coords: readonly Rational[] }>
   | Readonly<{ type: 'choice'; options: readonly string[]; correctIndex: number }>
@@ -127,13 +132,31 @@ function sampleEqual(a: Expr, b: Expr): boolean {
   return comparable >= MIN_COMPARABLE_SAMPLES;
 }
 
+/** Terms outside every bracket: "(x+2)(x+3)" has 1, "x(x+5) + 6" has 2. A leading sign doesn't count. */
+function topLevelTerms(text: string): number {
+  let depth = 0;
+  let terms = 1;
+  [...text.replace(/\s+/g, '')].forEach((ch, i, all) => {
+    if (ch === '(' || ch === '{') depth += 1;
+    else if (ch === ')' || ch === '}') depth -= 1;
+    else if (
+      (ch === '+' || ch === '-') &&
+      depth === 0 &&
+      i > 0 &&
+      !'(^*{'.includes(all[i - 1] ?? '')
+    )
+      terms += 1;
+  });
+  return terms;
+}
+
 const MONOMIAL = /^-?(\d+\*?)?[a-z](\^\{?\d+\}?)?(\*\d+)?$/i;
 
 function checkExpression(
   expected: string,
   given: string,
   maxTerms?: number,
-  form?: 'monomial',
+  form?: 'monomial' | 'factored',
 ): CheckOutcome {
   const target = ce().parse(normalize(expected));
   const allowed = new Set(target.unknowns);
@@ -149,6 +172,7 @@ function checkExpression(
     return 'incorrect';
   }
   if (form === 'monomial' && !MONOMIAL.test(text.replace(/\s+/g, ''))) return 'incorrect';
+  if (form === 'factored' && !(text.includes('(') && topLevelTerms(text) === 1)) return 'incorrect';
   // Only `true` is a proof: the CAS answers `false` for some true identities (2^x·2 vs 2^(x+1)).
   if (target.isIdenticallyEqual(parsed) === true) return 'correct';
   return sampleEqual(target, parsed) ? 'correct' : 'incorrect';

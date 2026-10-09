@@ -38,3 +38,21 @@ export function moneyText(r: Rational): string {
   const sign = rounded.num < 0 ? '-' : '';
   return `${sign}${Math.floor(cents / 100)}.${String(cents % 100).padStart(2, '0')}`;
 }
+
+/** Polynomial from coefficients, highest power first: [1, -5, 6] → "x^2 - 5x + 6". */
+export function formatPolynomial(coefficients: readonly number[], symbol = 'x'): string {
+  const degree = coefficients.length - 1;
+  const terms = coefficients.flatMap((c, i) => {
+    if (c === 0) return [];
+    const power = degree - i;
+    const variable = power === 0 ? '' : power === 1 ? symbol : `${symbol}^${power}`;
+    const magnitude = Math.abs(c) === 1 && variable !== '' ? '' : String(Math.abs(c));
+    return [{ negative: c < 0, body: `${magnitude}${variable}` }];
+  });
+  if (terms.length === 0) return '0';
+  return terms
+    .map((t, i) =>
+      i === 0 ? `${t.negative ? '-' : ''}${t.body}` : `${t.negative ? '-' : '+'} ${t.body}`,
+    )
+    .join(' ');
+}
