@@ -6,6 +6,7 @@ import { expectGeneratorContract } from './contract';
 import { evaluate, numberAnswer, RUNS, seedAndDifficulty } from './oracle';
 import { similarTrianglesGenerator } from '../src/generators/similar-triangles';
 import { rightTriangleTrigonometryGenerator } from '../src/generators/right-triangle-trigonometry';
+import { sineAndCosineLawsGenerator } from '../src/generators/sine-and-cosine-laws';
 
 const points = (text: string): [number, number][] =>
   [...text.matchAll(/\((-?\d+), (-?\d+)\)/g)].map((m) => [Number(m[1]), Number(m[2])]);
@@ -114,6 +115,41 @@ describe('right-triangle-trigonometry oracle', () => {
         }
         expect(checked, `no checkable trig step in ${problem.steps.join(' | ')}`).toBe(1);
         expect(places === 0 ? Number.isInteger(answer) : true).toBe(true);
+      }),
+      RUNS,
+    );
+  });
+});
+
+expectGeneratorContract(sineAndCosineLawsGenerator);
+
+describe('sine-and-cosine-laws oracle', () => {
+  it('the answer satisfies the sine or cosine law with the prompt values, rounded safely', () => {
+    fc.assert(
+      fc.property(seedAndDifficulty, ([seed, d]) => {
+        const problem = sineAndCosineLawsGenerator.generate(seed, d);
+        const v = (name: string): number =>
+          Number(new RegExp(`${name} = (\\d+)`).exec(problem.prompt)?.[1]);
+        const angleOf = (name: string): number =>
+          Number(new RegExp(`∠${name} = (\\d+)°`).exec(problem.prompt)?.[1]) * RAD;
+        const answer = numberAnswer(problem.answer);
+        let exact: number;
+        if (d <= 2) exact = (v('a') * Math.sin(angleOf('B'))) / Math.sin(angleOf('A'));
+        else if (d === 3) {
+          expect(v('b')).toBeLessThan(v('a'));
+          exact = Math.asin((v('b') * Math.sin(angleOf('A'))) / v('a')) / RAD;
+        } else if (d === 4)
+          exact = Math.sqrt(
+            v('b') ** 2 + v('c') ** 2 - 2 * v('b') * v('c') * Math.cos(angleOf('A')),
+          );
+        else
+          exact =
+            Math.acos((v('b') ** 2 + v('c') ** 2 - v('a') ** 2) / (2 * v('b') * v('c'))) / RAD;
+        const scale = /nearest degree/.test(problem.prompt) ? 1 : 10;
+        expect(answer).toBe(Math.round(exact * scale) / scale);
+        expect(Math.abs(exact * scale - Math.floor(exact * scale) - 0.5)).toBeGreaterThanOrEqual(
+          0.001,
+        );
       }),
       RUNS,
     );

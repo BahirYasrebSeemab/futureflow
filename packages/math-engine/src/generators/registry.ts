@@ -1,4 +1,5 @@
 import type { Generator } from '../types';
+import { sineAndCosineLawsGenerator } from './sine-and-cosine-laws';
 import { rightTriangleTrigonometryGenerator } from './right-triangle-trigonometry';
 import { similarTrianglesGenerator } from './similar-triangles';
 import { analyticGeometryGenerator } from './analytic-geometry';
@@ -59,4 +60,5 @@ export const DEFAULT_REGISTRY: GeneratorRegistry = createRegistry([
   analyticGeometryGenerator,
   similarTrianglesGenerator,
   rightTriangleTrigonometryGenerator,
+  sineAndCosineLawsGenerator,
 ]);
