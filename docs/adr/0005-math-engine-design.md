@@ -85,3 +85,14 @@ at the answer. Steps containing powers are covered by each generator's answer or
   so float rounding is safe there, unlike money, which stays on exact BigInt half-up).
 - Algebra steps are checked symbolically: expansions stay equal to the product, and system steps
   hold at the solution.
+
+## P2d-2: geometry, trigonometry and mixed mocks
+
+- Mock exams rise through difficulties 3 → 4 → 5 on each round through the topics; `recommendedMockSize`
+  (3 × topics) tests every topic at every mock difficulty, so gate A certifies the hard MPM2D skills.
+- Measured answers (trig, non-triple lengths) use `roundSafely`: a problem whose exact value is within 0.001
+  of a rounding half is redrawn, so a learner's calculator can't legitimately round the other way. Angles avoid
+  30°, 45°, 60° and 90°, whose ratios are exact.
+- Sine-law angle problems only use the unambiguous case (b < a).
+- Length answers carry `lengthUnit` (default cm; the shadow problem uses m); `°`/`degrees` is stripped.
+- Every topic in `ONTARIO_GRAPH` (L0–L2) now has a generator.

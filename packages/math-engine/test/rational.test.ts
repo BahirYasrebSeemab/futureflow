@@ -8,6 +8,7 @@ import {
   parseRational,
   rational,
   roundFloat,
+  roundSafely,
   roundToCents,
   toNumber,
   toText,
@@ -89,5 +90,17 @@ describe('roundFloat', () => {
   it('rounds an irrational value to the given places', () => {
     expect(roundFloat(Math.SQRT2, 2)).toEqual(rational(141, 100));
     expect(roundFloat(-Math.PI, 1)).toEqual(rational(-31, 10));
+  });
+});
+
+describe('roundSafely', () => {
+  it('rounds when the value is clearly on one side of a half', () => {
+    expect(roundSafely(6.8829, 1)).toEqual(rational(69, 10));
+    expect(roundSafely(36.03, 0)).toEqual(rational(36));
+  });
+
+  it('refuses values within 0.001 of a rounding boundary', () => {
+    expect(roundSafely(6.85005, 1)).toBeNull();
+    expect(roundSafely(36.4996, 0)).toBeNull();
   });
 });

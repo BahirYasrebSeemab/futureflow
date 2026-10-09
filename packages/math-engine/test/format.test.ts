@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   decimalText,
+  deg,
   formatLinear,
   formatPolynomial,
   moneyText,
@@ -73,5 +74,11 @@ describe('formatPolynomial', () => {
     [[2, -6, 8, 0], '2x^3 - 6x^2 + 8x'],
   ])('%j → %s', (coefficients, text) => {
     expect(formatPolynomial(coefficients)).toBe(text);
+  });
+});
+
+describe('deg', () => {
+  it('writes degrees', () => {
+    expect(deg(35)).toBe('35°');
   });
 });

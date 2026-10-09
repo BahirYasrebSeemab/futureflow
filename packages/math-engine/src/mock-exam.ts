@@ -5,10 +5,29 @@ import type { KnowledgeGraph } from './graph';
 import { createRng } from './rng';
 import type { Difficulty, Gate, Generator, LevelId, Problem } from './types';
 
-export const MOCK_DIFFICULTY: Difficulty = 3;
 const MAX_SEED = 2 ** 31 - 1;
 
 export type MockExam = Readonly<{ level: LevelId; problems: readonly Problem[] }>;
+
+/** Each round through the topics is one level harder, so every skill variant (d1–d5) is tested. */
+export const MOCK_DIFFICULTIES: readonly Difficulty[] = [1, 2, 3, 4, 5];
+
+const levelGenerators = (
+  graph: KnowledgeGraph,
+  registry: GeneratorRegistry,
+  level: LevelId,
+): Generator[] =>
+  graph.topics
+    .filter((t) => t.level === level)
+    .map((t) => registry.get(t.id))
+    .filter((g): g is Generator => g !== undefined);
+
+/** Enough problems for every topic at every mock difficulty. */
+export const recommendedMockSize = (
+  graph: KnowledgeGraph,
+  registry: GeneratorRegistry,
+  level: LevelId,
+): number => levelGenerators(graph, registry, level).length * MOCK_DIFFICULTIES.length;
 
 export function buildMockExam(
   graph: KnowledgeGraph,
@@ -17,18 +36,16 @@ export function buildMockExam(
   seed: number,
   size: number,
 ): MockExam {
-  const generators = graph.topics
-    .filter((t) => t.level === level)
-    .map((t) => registry.get(t.id))
-    .filter((g): g is Generator => g !== undefined);
+  const generators = levelGenerators(graph, registry, level);
   if (generators.length === 0 || size <= 0) return { level, problems: [] };
   const rng = createRng(seed);
-  const problems = Array.from({ length: size }, (_, i) =>
-    (generators[i % generators.length] as Generator).generate(
-      rng.int(0, MAX_SEED),
-      MOCK_DIFFICULTY,
-    ),
-  );
+  const problems = Array.from({ length: size }, (_, i) => {
+    const generator = generators[i % generators.length] as Generator;
+    const difficulty = MOCK_DIFFICULTIES[
+      Math.floor(i / generators.length) % MOCK_DIFFICULTIES.length
+    ] as Difficulty;
+    return generator.generate(rng.int(0, MAX_SEED), difficulty);
+  });
   return { level, problems };
 }
 
@@ -40,6 +57,7 @@ export type MockResult = Readonly<{
   level: LevelId;
   score: number;
   topicIds: readonly string[];
+  problemCount: number;
 }>;
 
 export const mockTopicIds = (exam: MockExam): string[] => [
@@ -59,6 +77,7 @@ export function gatePassed(
   const counts = (r: MockResult): boolean =>
     r.level === gate.level &&
     r.score >= gate.minScore &&
-    required.every((id) => r.topicIds.includes(id));
+    required.every((id) => r.topicIds.includes(id)) &&
+    r.problemCount >= required.length * MOCK_DIFFICULTIES.length;
   return new Set(results.filter(counts).map((r) => r.day)).size >= gate.requiredPasses;
 }

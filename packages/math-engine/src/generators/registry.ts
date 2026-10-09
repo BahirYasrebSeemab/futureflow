@@ -1,4 +1,8 @@
 import type { Generator } from '../types';
+import { sineAndCosineLawsGenerator } from './sine-and-cosine-laws';
+import { rightTriangleTrigonometryGenerator } from './right-triangle-trigonometry';
+import { similarTrianglesGenerator } from './similar-triangles';
+import { analyticGeometryGenerator } from './analytic-geometry';
 import { linearSystemsGenerator } from './linear-systems';
 import { quadraticRelationsGenerator } from './quadratic-relations';
 import { quadraticEquationsGenerator } from './quadratic-equations';
@@ -53,4 +57,8 @@ export const DEFAULT_REGISTRY: GeneratorRegistry = createRegistry([
   quadraticEquationsGenerator,
   quadraticRelationsGenerator,
   linearSystemsGenerator,
+  analyticGeometryGenerator,
+  similarTrianglesGenerator,
+  rightTriangleTrigonometryGenerator,
+  sineAndCosineLawsGenerator,
 ]);

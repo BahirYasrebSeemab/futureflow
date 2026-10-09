@@ -72,3 +72,16 @@ export function roundToCents(r: Rational): Rational {
 /** Rounds an irrational value (e.g. a root from the quadratic formula) to `places` decimals. */
 export const roundFloat = (value: number, places: number): Rational =>
   rational(Math.round(value * 10 ** places), 10 ** places);
+
+const BOUNDARY_MARGIN = 0.05;
+
+/**
+ * Rounds a measured value, but refuses (null) when it sits within 0.05 of the last kept place of a
+ * rounding boundary (6.8505 is 68.505 tenths): a learner rounding intermediate values to 4 decimals,
+ * or a calculator, could then legitimately round either way, so the problem is redrawn.
+ */
+export function roundSafely(value: number, places: number): Rational | null {
+  const scaled = value * 10 ** places;
+  const distanceFromHalf = Math.abs(scaled - Math.floor(scaled) - 0.5);
+  return distanceFromHalf < BOUNDARY_MARGIN ? null : roundFloat(value, places);
+}
