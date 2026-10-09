@@ -29,7 +29,7 @@ export const quadraticEquationsGenerator: Generator = {
       seed,
       difficulty,
       prompt: `Solve: ${prompt}`,
-      answer: { type: 'set', items: roots },
+      answer: { type: 'set', items: roots, variable: 'x' },
       hints: [hint],
       steps,
     });
@@ -67,8 +67,11 @@ export const quadraticEquationsGenerator: Generator = {
     }
 
     if (difficulty === 4) {
-      const [p, q] = [rng.int(1, 3), rng.int(2, 3)];
-      const [r, s] = [signedBetween(rng, 1, 5), signedBetween(rng, 1, 5)];
+      // p ≥ 2 and r coprime to p: the first root is a true fraction, so the leading coefficient is ≥ 2.
+      const [p, q] = [rng.int(2, 3), rng.int(2, 3)];
+      let r = signedBetween(rng, 1, 5);
+      while (r % p === 0) r += 1;
+      const s = signedBetween(rng, 1, 5);
       const rootA = rational(r, p);
       const candidate = rational(s, q);
       // -s/q can't also equal r/p (that would need s = 0), so the two roots are always distinct.
@@ -80,7 +83,7 @@ export const quadraticEquationsGenerator: Generator = {
       const [d1, d2] = [roots[0].den, roots[1].den];
       const coefficients = [d1 * d2, -(d1 * b2 + d2 * b1), b1 * b2];
       return make(
-        `${formatPolynomial(coefficients)} = 0`,
+        `${formatPolynomial(coefficients)} = 0. Give exact answers (fractions where needed).`,
         roots,
         'Factor (try a × c), then set each factor to zero.',
         [`Factor: ${factor(d1, -b1)}${factor(d2, -b2)} = 0`, rootsText(roots)],

@@ -68,7 +68,7 @@ describe('quadratic-equations oracle', () => {
         const roots = problem.answer.items.map(toNumber);
         expect(roots).toHaveLength(2);
         expect(roots[0]).not.toBe(roots[1]);
-        const equation = promptMath(problem.prompt).replace(/\. Round.*$/, '');
+        const equation = promptMath(problem.prompt).replace(/\. (Round|Give).*$/, '');
         const [lhs = ''] = equation.split('=');
         if (/Round to two/.test(problem.prompt)) {
           const coefficients = /^(-?\d*)x\^2 ([+-]) (\d*)x ([+-]) (\d+) = 0/.exec(equation);
@@ -173,5 +173,122 @@ describe('Grade 10 algebra coverage', () => {
     ]) {
       expect(DEFAULT_REGISTRY.has(id), id).toBe(true);
     }
+  });
+});
+
+describe('review fixes (P2d-1)', () => {
+  const brackets = (text: string): string[] =>
+    [...text.matchAll(/\(([^()]+)\)/g)].map((m) => m[1] ?? '');
+  const linearCoefficients = (inner: string): [number, number] => {
+    const compact = inner.replace(/\s+/g, '');
+    const m = /^(-?\d*)x([+-]\d+)?$/.exec(compact);
+    if (m === null) throw new Error(`not linear: ${inner}`);
+    const p = m[1] === '' ? 1 : m[1] === '-' ? -1 : Number(m[1]);
+    return [p, Number(m[2] ?? '0')];
+  };
+  const gcdOf = (a: number, b: number): number => (b === 0 ? Math.abs(a) : gcdOf(b, a % b));
+
+  it('every factoring model answer is fully factored (no common factor left in a bracket)', () => {
+    fc.assert(
+      fc.property(seedAndDifficulty, ([seed, d]) => {
+        const problem = factoringGenerator.generate(seed, d);
+        if (problem.answer.type !== 'expression') throw new Error('expected an expression');
+        for (const inner of brackets(problem.answer.text)) {
+          const [p, q] = linearCoefficients(inner);
+          expect(gcdOf(p, q), problem.answer.text).toBe(1);
+        }
+      }),
+      RUNS,
+    );
+  });
+
+  it('every factoring step that names the factors names a correct factorization', () => {
+    fc.assert(
+      fc.property(seedAndDifficulty, ([seed, d]) => {
+        const problem = factoringGenerator.generate(seed, d);
+        const original = promptMath(problem.prompt);
+        for (const step of problem.steps) {
+          const claim = /(?:factors are|grouping:|Divide each term by \d+:) (.+)$/.exec(step);
+          if (claim === null) continue;
+          for (const x of SAMPLE_X)
+            expect(evaluate(claim[1] ?? '', { x }), step).toBeCloseTo(evaluate(original, { x }), 6);
+        }
+      }),
+      RUNS,
+    );
+  });
+
+  it('quadratic-equations steps: the factored form equals the equation and every stated root solves it', () => {
+    fc.assert(
+      fc.property(seedAndDifficulty, ([seed, d]) => {
+        const problem = quadraticEquationsGenerator.generate(seed, d);
+        const [lhs = ''] = promptMath(problem.prompt)
+          .replace(/\. (Round|Give).*$/, '')
+          .split('=');
+        for (const step of problem.steps) {
+          const factored = /^Factor: (.+) = 0$/.exec(step);
+          if (factored)
+            for (const x of SAMPLE_X)
+              expect(evaluate(factored[1] ?? '', { x }), step).toBeCloseTo(evaluate(lhs, { x }), 6);
+          const roots = /^x = (\S+) or x = (\S+)$/.exec(step);
+          if (roots)
+            for (const r of [roots[1], roots[2]])
+              expect(Math.abs(evaluate(lhs, { x: evaluate(r ?? '') })), step).toBeLessThan(1e-9);
+          const formula = /^x = \((-?\d+) ± √(\d+)\) ÷ (\d+)$/.exec(step);
+          if (formula && problem.answer.type === 'set') {
+            const [b, disc, twoA] = [Number(formula[1]), Number(formula[2]), Number(formula[3])];
+            const expected = [(b + Math.sqrt(disc)) / twoA, (b - Math.sqrt(disc)) / twoA].map(
+              (v) => Math.round(v * 100) / 100,
+            );
+            expect(problem.answer.items.map(toNumber).sort()).toEqual(expected.sort());
+          }
+        }
+      }),
+      RUNS,
+    );
+  });
+
+  it('quadratic-relations steps state the same vertex and zeros as the answer', () => {
+    fc.assert(
+      fc.property(seedAndDifficulty, ([seed, d]) => {
+        const problem = quadraticRelationsGenerator.generate(seed, d);
+        const f = (x: number): number =>
+          evaluate(/^For y = (.+), /.exec(problem.prompt)?.[1] ?? '', { x });
+        for (const step of problem.steps) {
+          const vertex = /vertex is \((-?\d+), (-?\d+)\)/.exec(step);
+          if (vertex) {
+            expect(f(Number(vertex[1])), step).toBeCloseTo(Number(vertex[2]), 9);
+            expect(f(Number(vertex[1]) - 1)).toBeCloseTo(f(Number(vertex[1]) + 1), 9);
+          }
+          const zeros = /^x = (-?\d+) or x = (-?\d+)$/.exec(step);
+          if (zeros)
+            for (const z of [zeros[1], zeros[2]]) expect(f(Number(z)), step).toBeCloseTo(0, 9);
+        }
+      }),
+      RUNS,
+    );
+  });
+
+  it('labels: a horizontal line is not an axis of symmetry, and roots are x-values', () => {
+    const axis = quadraticRelationsGenerator.generate(4, 2);
+    if (axis.answer.type !== 'number') throw new Error('expected a number');
+    const h = toNumber(axis.answer.value);
+    expect(checkAnswer(axis.answer, `x = ${h}`)).toBe('correct');
+    expect(checkAnswer(axis.answer, `y = ${h}`)).toBe('incorrect');
+    const roots = quadraticEquationsGenerator.generate(4, 2);
+    if (roots.answer.type !== 'set') throw new Error('expected a set');
+    const [r = 0, s = 0] = roots.answer.items.map(toNumber);
+    expect(checkAnswer(roots.answer, `y = ${r}, y = ${s}`)).toBe('incorrect');
+  });
+
+  it('d4 quadratic equations say "exact" and are not secretly d2 problems', () => {
+    fc.assert(
+      fc.property(fc.integer({ min: 0, max: 2 ** 31 - 1 }), (seed) => {
+        const problem = quadraticEquationsGenerator.generate(seed, 4);
+        expect(problem.prompt).toMatch(/Give exact answers/);
+        expect(problem.prompt).not.toMatch(/^Solve: x\^2/);
+      }),
+      RUNS,
+    );
   });
 });

@@ -38,7 +38,7 @@ export const quadraticRelationsGenerator: Generator = {
       return {
         ...base,
         prompt: `For y = ${f}, what is the axis of symmetry?`,
-        answer: { type: 'number', value: rational(h) },
+        answer: { type: 'number', value: rational(h), variable: 'x' },
         hints: ['The axis of symmetry is the vertical line through the vertex: x = h.'],
         steps: [`The vertex is (${h}, ${k})`, `The axis of symmetry is x = ${h}`],
       };
@@ -48,7 +48,7 @@ export const quadraticRelationsGenerator: Generator = {
       return {
         ...base,
         prompt: `For y = ${f}, what is the ${isMinimum ? 'minimum' : 'maximum'} value of y?`,
-        answer: { type: 'number', value: rational(k) },
+        answer: { type: 'number', value: rational(k), variable: 'y' },
         hints: [
           'If a > 0 the parabola opens up (a minimum at the vertex); if a < 0 it opens down (a maximum).',
         ],
@@ -63,7 +63,7 @@ export const quadraticRelationsGenerator: Generator = {
       return {
         ...base,
         prompt: `For y = ${f}, what is the y-intercept?`,
-        answer: { type: 'number', value: rational(intercept) },
+        answer: { type: 'number', value: rational(intercept), variable: 'y' },
         hints: ['The y-intercept is where x = 0.'],
         steps: [`Substitute x = 0: ${a} × ${show(-h)}² + ${show(k)} = ${intercept}`],
       };
@@ -75,7 +75,7 @@ export const quadraticRelationsGenerator: Generator = {
     const problem: Problem = {
       ...base,
       prompt: `For y = ${factored}, what are the zeros?`,
-      answer: { type: 'set', items: [rational(r), rational(s)] },
+      answer: { type: 'set', items: [rational(r), rational(s)], variable: 'x' },
       hints: ['The zeros are where y = 0: set each factor to zero.'],
       steps: [
         `Set y = 0: ${formatPolynomial([1, -r])} = 0 or ${formatPolynomial([1, -s])} = 0`,
