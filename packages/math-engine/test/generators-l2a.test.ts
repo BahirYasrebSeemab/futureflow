@@ -5,6 +5,8 @@ import { polynomialOperationsGenerator } from '../src/generators/polynomial-oper
 import { expectGeneratorContract } from './contract';
 import { afterLabel, evaluate, promptMath, RUNS, seedAndDifficulty } from './oracle';
 import { factoringGenerator } from '../src/generators/factoring';
+import { quadraticEquationsGenerator } from '../src/generators/quadratic-equations';
+import { toNumber } from '../src/rational';
 
 const SAMPLE_X = [1.3, -0.7, 2.9];
 
@@ -49,5 +51,47 @@ describe('factoring oracle', () => {
       }),
       RUNS,
     );
+  });
+});
+
+expectGeneratorContract(quadraticEquationsGenerator);
+
+describe('quadratic-equations oracle', () => {
+  it('has two distinct roots that satisfy the equation (or match the formula when rounded)', () => {
+    fc.assert(
+      fc.property(seedAndDifficulty, ([seed, d]) => {
+        const problem = quadraticEquationsGenerator.generate(seed, d);
+        if (problem.answer.type !== 'set') throw new Error('expected a set');
+        const roots = problem.answer.items.map(toNumber);
+        expect(roots).toHaveLength(2);
+        expect(roots[0]).not.toBe(roots[1]);
+        const equation = promptMath(problem.prompt).replace(/\. Round.*$/, '');
+        const [lhs = ''] = equation.split('=');
+        if (/Round to two/.test(problem.prompt)) {
+          const coefficients = /^(-?\d*)x\^2 ([+-]) (\d*)x ([+-]) (\d+) = 0/.exec(equation);
+          if (coefficients === null) throw new Error(`unexpected equation: ${equation}`);
+          const [, aText = '', bSign, bText = '', cSign, cText = ''] = coefficients;
+          const a = Number(aText);
+          const b = (bSign === '-' ? -1 : 1) * Number(bText || '1');
+          const c = (cSign === '-' ? -1 : 1) * Number(cText);
+          const root = (sign: number): number =>
+            Math.round(((-b + sign * Math.sqrt(b * b - 4 * a * c)) / (2 * a)) * 100) / 100;
+          expect([...roots].sort((x, y) => x - y)).toEqual(
+            [root(-1), root(1)].sort((x, y) => x - y),
+          );
+        } else {
+          for (const x of roots) expect(Math.abs(evaluate(lhs, { x }))).toBeLessThan(1e-9);
+        }
+      }),
+      RUNS,
+    );
+  });
+
+  it('accepts the roots in any order and with x =', () => {
+    const problem = quadraticEquationsGenerator.generate(11, 2);
+    if (problem.answer.type !== 'set') throw new Error('expected a set');
+    const [first, second] = problem.answer.items.map(toNumber);
+    expect(checkAnswer(problem.answer, `x = ${second}, x = ${first}`)).toBe('correct');
+    expect(checkAnswer(problem.answer, `${first}`)).toBe('incorrect');
   });
 });

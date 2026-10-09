@@ -1,4 +1,5 @@
 import type { Generator } from '../types';
+import { quadraticEquationsGenerator } from './quadratic-equations';
 import { factoringGenerator } from './factoring';
 import { polynomialOperationsGenerator } from './polynomial-operations';
 import { financialLiteracyGenerator } from './financial-literacy';
@@ -47,4 +48,5 @@ export const DEFAULT_REGISTRY: GeneratorRegistry = createRegistry([
   financialLiteracyGenerator,
   polynomialOperationsGenerator,
   factoringGenerator,
+  quadraticEquationsGenerator,
 ]);
