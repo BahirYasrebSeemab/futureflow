@@ -35,3 +35,4 @@ export * from './generators/quadratic-relations';
 export * from './generators/linear-systems';
 export * from './generators/analytic-geometry';
 export * from './generators/similar-triangles';
+export * from './generators/right-triangle-trigonometry';
