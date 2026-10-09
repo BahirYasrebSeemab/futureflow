@@ -170,3 +170,123 @@ describe('checkAnswer: percent sign', () => {
     expect(checkAnswer(num(10), '10%')).toBe('incorrect');
   });
 });
+
+describe('checkAnswer: inequality', () => {
+  const greater: Answer = { type: 'inequality', variable: 'x', op: '>', bound: rational(3) };
+  const atLeast: Answer = { type: 'inequality', variable: 'x', op: '≥', bound: rational(3) };
+
+  it.each([
+    ['x > 3', 'correct'],
+    ['x>3', 'correct'],
+    ['3 < x', 'correct'],
+    ['x > 6/2', 'correct'],
+    ['x >= 3', 'incorrect'],
+    ['x < 3', 'incorrect'],
+    ['x > 4', 'incorrect'],
+    ['y > 3', 'unreadable'],
+    ['x >', 'unreadable'],
+    ['banana', 'unreadable'],
+  ])('x > 3 vs %j is %s', (given, outcome) => {
+    expect(checkAnswer(greater, given)).toBe(outcome);
+  });
+
+  it.each(['x >= 3', 'x => 3', 'x ≥ 3', '3 <= x', '3 ≤ x'])('x ≥ 3 accepts %j', (given) => {
+    expect(checkAnswer(atLeast, given)).toBe('correct');
+  });
+
+  it('round-trips through answerText', () => {
+    expect(answerText(atLeast)).toBe('x ≥ 3');
+    expect(checkAnswer(atLeast, answerText(atLeast))).toBe('correct');
+  });
+});
+
+describe('checkAnswer: y = prefix on expressions', () => {
+  it('accepts "y = …" when y is not part of the expected expression', () => {
+    expect(checkAnswer({ type: 'expression', text: '2x+1' }, 'y = 2x + 1')).toBe('correct');
+    expect(checkAnswer({ type: 'expression', text: '2x+1' }, 'y = 2x + 3')).toBe('incorrect');
+  });
+});
+
+describe('checkAnswer: monomial form', () => {
+  const answer: Answer = { type: 'expression', text: '6x^7', form: 'monomial' };
+
+  it.each([
+    ['6x^7', 'correct'],
+    ['6*x^7', 'correct'],
+    ['6 x^7', 'correct'],
+    ['6x^(7)', 'correct'],
+    ['2x^3*3x^4', 'incorrect'],
+    ['6x^3*x^4', 'incorrect'],
+    ['6x^6', 'incorrect'],
+  ])('6x^7 vs %j is %s', (given, outcome) => {
+    expect(checkAnswer(answer, given)).toBe(outcome);
+  });
+});
+
+describe('checkAnswer: multi-digit exponents', () => {
+  const answer: Answer = { type: 'expression', text: '8x^12', form: 'monomial' };
+
+  it('reads x^12 as x to the twelfth, not x^1 times 2', () => {
+    expect(checkAnswer(answer, '8x^12')).toBe('correct');
+    expect(checkAnswer(answer, '16x')).toBe('incorrect');
+    expect(checkAnswer({ type: 'expression', text: '4x^10' }, '0')).toBe('incorrect');
+  });
+});
+
+describe('checkAnswer: π and units', () => {
+  it('reads π answers and rejects decimal approximations of them', () => {
+    const circle: Answer = { type: 'expression', text: '25π' };
+    expect(checkAnswer(circle, '25π')).toBe('correct');
+    expect(checkAnswer(circle, '25pi')).toBe('correct');
+    expect(checkAnswer(circle, '25*pi')).toBe('correct');
+    expect(checkAnswer(circle, '78.5')).toBe('incorrect');
+  });
+
+  it.each(['28 cm²', '28cm^2', '28 cm2', '28 cm'])('strips the cm unit in %j', (given) => {
+    expect(checkAnswer(num(28), given)).toBe('correct');
+  });
+});
+
+describe('checkAnswer: money', () => {
+  const total: Answer = { type: 'number', value: rational(5649, 100) };
+
+  it.each([
+    ['56.49', 'correct'],
+    ['$56.49', 'correct'],
+    ['$ 56.49', 'correct'],
+    ['56.48', 'incorrect'],
+    ['56.4887', 'incorrect'],
+  ])('$56.49 vs %j is %s', (given, outcome) => {
+    expect(checkAnswer(total, given)).toBe(outcome);
+  });
+});
+
+describe('checkAnswer: review fixes (P2c)', () => {
+  const twelfth: Answer = { type: 'expression', text: '8x^12', form: 'monomial' };
+
+  it.each(['8x^ 12', '8 x ^ 12', '8·x^12', 'x^12*8', '8x¹²'])(
+    'accepts the correct exponent answer %j',
+    (given) => {
+      expect(checkAnswer(twelfth, given)).toBe('correct');
+    },
+  );
+
+  it('accepts superscript exponents', () => {
+    expect(checkAnswer({ type: 'expression', text: 'x^7', form: 'monomial' }, 'x⁷')).toBe(
+      'correct',
+    );
+  });
+
+  it.each(['28 m²', '28 km', '28 mm'])(
+    'does not accept the wrong unit %j for a cm answer',
+    (given) => {
+      expect(checkAnswer(num(28), given)).not.toBe('correct');
+    },
+  );
+
+  it.each(['x > 3%', 'x > 3m'])('does not accept a bound with a unit or percent (%j)', (given) => {
+    expect(
+      checkAnswer({ type: 'inequality', variable: 'x', op: '>', bound: rational(3) }, given),
+    ).toBe('unreadable');
+  });
+});

@@ -1,4 +1,10 @@
 import type { Generator } from '../types';
+import { financialLiteracyGenerator } from './financial-literacy';
+import { dataAndStatisticsGenerator } from './data-and-statistics';
+import { measurementAndGeometryGenerator } from './measurement-and-geometry';
+import { exponentLawsGenerator } from './exponent-laws';
+import { linearRelationsGenerator } from './linear-relations';
+import { linearInequalitiesGenerator } from './linear-inequalities';
 import { exponentsAndRootsGenerator } from './exponents-and-roots';
 import { ratiosAndRatesGenerator } from './ratios-and-rates';
 import { percentsGenerator } from './percents';
@@ -31,4 +37,10 @@ export const DEFAULT_REGISTRY: GeneratorRegistry = createRegistry([
   factorsAndMultiplesGenerator,
   algebraicExpressionsGenerator,
   linearEquationsGenerator,
+  linearInequalitiesGenerator,
+  linearRelationsGenerator,
+  exponentLawsGenerator,
+  measurementAndGeometryGenerator,
+  dataAndStatisticsGenerator,
+  financialLiteracyGenerator,
 ]);

@@ -50,3 +50,19 @@ These spec §10 items are intentionally not in P2a. Each has an owning phase:
 | §10.5 mastery check of mixed difficulty  | Streak of 5 at the scheduled difficulty                                        | P4: a mastery _check_ is a session-level choice of difficulties (the scheduler targets one band per attempt); the app picks mixed difficulties for the 5-problem check |
 | §10.7 timed, final-weighted mock exams   | Even topic coverage; no timer                                                  | P4 (timer); P2d (weighting, plus a coverage check before a gate can pass)                                                                                              |
 | §10.1 graph as versioned JSON            | Typed TypeScript constant (type-checked and validated by tests)                | P3, if the server must ship graph updates over the air                                                                                                                 |
+
+## Answer types added in P2c
+
+- `inequality` (`x ≥ 3`; reads `3 ≤ x`, `x >= 3`, `x => 3`). Moved from P2d because linear inequalities are Grade 9.
+- Expression `form: 'monomial'`: exponent-law answers must be a single simplified term.
+- Number `tolerance`: rounded money answers (to the nearest cent, ±0.005) are correct only when the prompt asks for rounding.
+- Input forgiveness: `$`, trailing length/area/volume units, `π`/`pi`, and a `y =` prefix on equation answers.
+- Numeric exponents are braced before parsing (`x^12` → `x^{12}`): the CAS reads `^` like LaTeX, where `x^12`
+  would mean `x¹·2`. This was found by an oracle test (a wrong `16x` was accepted for `8x^12`) before any lesson used it.
+
+## Step verification
+
+Every worked step is machine-checked. A test-side extractor finds numeric chains (`a op b op c = d`) in every
+generator's steps and recomputes them with exact rationals, across the whole registry. Symbolic steps are checked
+per generator: each simplification step must equal the original expression, and each equation step must still hold
+at the answer. Steps containing powers are covered by each generator's answer oracle.

@@ -7,6 +7,7 @@ import {
   mul,
   parseRational,
   rational,
+  roundToCents,
   toNumber,
   toText,
 } from '../src/rational';
@@ -66,5 +67,19 @@ describe('parseRational', () => {
 describe('mul', () => {
   it('multiplies and reduces', () => {
     expect(mul(rational(2, 3), rational(9, 4))).toEqual({ num: 3, den: 2 });
+  });
+});
+
+describe('roundToCents (exact half-up)', () => {
+  it.each([
+    [4862025, 1000, 486203],
+    [19775, 1000, 1978],
+    [37855, 1000, 3786],
+    [68365, 1000, 6837],
+    [64975, 1000, 6498],
+    [564887, 10000, 5649],
+    [5, 1, 500],
+  ])('%i/%i rounds to %i cents', (num, den, cents) => {
+    expect(roundToCents(rational(num, den))).toEqual(rational(cents, 100));
   });
 });

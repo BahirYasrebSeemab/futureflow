@@ -28,9 +28,11 @@ export const fractionsGenerator: Generator = {
         `A common denominator of ${b} and ${d} is ${common}.`,
       ],
       steps: [
-        `${a}/${b} ${op} ${c}/${d} = ${left}/${common} ${op} ${right}/${common}`,
-        `= ${combined}/${common}`,
-        `= ${toText(value)}`,
+        `Rewrite with the common denominator ${common}: ${a}/${b} = ${left}/${common} and ${c}/${d} = ${right}/${common}`,
+        `${left}/${common} ${op} ${right}/${common} = ${combined}/${common}`,
+        ...(toText(value) === `${combined}/${common}`
+          ? []
+          : [`Simplify: ${combined}/${common} = ${toText(value)}`]),
       ],
     };
   },
