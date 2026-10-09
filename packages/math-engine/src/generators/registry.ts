@@ -1,4 +1,5 @@
 import type { Generator } from '../types';
+import { similarTrianglesGenerator } from './similar-triangles';
 import { analyticGeometryGenerator } from './analytic-geometry';
 import { linearSystemsGenerator } from './linear-systems';
 import { quadraticRelationsGenerator } from './quadratic-relations';
@@ -55,4 +56,5 @@ export const DEFAULT_REGISTRY: GeneratorRegistry = createRegistry([
   quadraticRelationsGenerator,
   linearSystemsGenerator,
   analyticGeometryGenerator,
+  similarTrianglesGenerator,
 ]);
