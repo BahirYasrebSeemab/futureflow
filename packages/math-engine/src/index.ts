@@ -33,3 +33,4 @@ export * from './generators/factoring';
 export * from './generators/quadratic-equations';
 export * from './generators/quadratic-relations';
 export * from './generators/linear-systems';
+export * from './generators/analytic-geometry';
