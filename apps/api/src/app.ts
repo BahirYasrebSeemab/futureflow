@@ -12,6 +12,7 @@ import { deviceRoutes, pairRoutes } from './routes/device';
 import { ledgerRoutes } from './routes/ledger';
 import { planRoutes } from './routes/plans';
 import { telemetryRoutes } from './routes/telemetry';
+import { todayRoutes } from './routes/today';
 
 /** A full 500-event batch is ~150 KB; anything far larger is a mistake or an attack. */
 export const MAX_BODY_BYTES = 256 * 1024;
@@ -54,6 +55,7 @@ export function createApp(options: AppOptions = {}): Hono<AppEnv> {
   authed.route('/', planRoutes);
   authed.route('/', dayTypeRoutes);
   authed.route('/', telemetryRoutes);
+  authed.route('/', todayRoutes);
   v1.route('/', authed);
 
   app.route('/v1', v1);

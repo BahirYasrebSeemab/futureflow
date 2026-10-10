@@ -63,4 +63,24 @@ export const d1Ledger = (db: D1Database): LedgerRepo => ({
       .all<EventRow>();
     return { events: results.map(toEvent), next: results.at(-1)?.seq ?? since };
   },
+
+  async forDay(day) {
+    const { results } = await db
+      .prepare(`SELECT ${COLUMNS} FROM ledger_events WHERE day = ?1 ORDER BY seq`)
+      .bind(day)
+      .all<EventRow>();
+    return results.map(toEvent);
+  },
+
+  async totals() {
+    const row = await db
+      .prepare(
+        `SELECT COALESCE(SUM(seconds), 0) AS balance,
+                COALESCE(SUM(CASE WHEN kind IN ('unlock_borrow', 'borrow_repay')
+                                  THEN seconds END), 0) AS borrow
+         FROM ledger_events`,
+      )
+      .first<{ balance: number; borrow: number }>();
+    return { balance: row?.balance ?? 0, outstandingBorrow: Math.max(0, row?.borrow ?? 0) };
+  },
 });

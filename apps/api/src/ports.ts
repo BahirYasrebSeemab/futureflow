@@ -24,6 +24,9 @@ export interface LedgerRepo {
   ): Promise<string[]>;
   /** Events after the cursor `since`, in server order; `next` is the cursor to send next time. */
   page(since: number, limit: number): Promise<{ events: LedgerEvent[]; next: number }>;
+  forDay(day: string): Promise<LedgerEvent[]>;
+  /** Balance = sum of all events; borrowed time not yet repaid (never negative). */
+  totals(): Promise<{ balance: number; outstandingBorrow: number }>;
 }
 
 export interface PlanRepo {
