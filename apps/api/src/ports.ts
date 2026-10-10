@@ -1,4 +1,4 @@
-import type { LedgerEvent, Plan } from '@mflow/core';
+import type { DayRecord, LedgerEvent, Plan } from '@mflow/core';
 
 /** Repository ports. Routes depend on these; `adapters/d1` implements them. */
 
@@ -31,4 +31,28 @@ export interface PlanRepo {
   save(plan: Plan, at: number): Promise<boolean>;
 }
 
-export type Repos = Readonly<{ devices: DeviceRepo; ledger: LedgerRepo; plans: PlanRepo }>;
+export type AwayWindow = Readonly<{
+  id: string;
+  place: string;
+  from: string;
+  to: string;
+  keptTaskIds: readonly string[];
+}>;
+
+/** A day record plus where it came from and what the phone measured (km, rounded to 10). */
+export type DayEntry = Readonly<{ record: DayRecord; windowId?: string; distanceKm?: number }>;
+
+export interface DayRepo {
+  between(from: string, to: string): Promise<DayRecord[]>;
+  entry(day: string): Promise<DayEntry | null>;
+  /** Upserts the entries (and inserts the window, if given) in one transaction. */
+  save(entries: readonly DayEntry[], at: number, window?: AwayWindow): Promise<void>;
+  window(id: string): Promise<AwayWindow | null>;
+}
+
+export type Repos = Readonly<{
+  devices: DeviceRepo;
+  ledger: LedgerRepo;
+  plans: PlanRepo;
+  days: DayRepo;
+}>;

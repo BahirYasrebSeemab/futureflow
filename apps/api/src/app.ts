@@ -7,6 +7,7 @@ import { requireDevice } from './auth/require-device';
 import type { AppEnv } from './env';
 import { fail, ok } from './http/envelope';
 import { rateLimit } from './http/rate-limit';
+import { dayTypeRoutes } from './routes/day-types';
 import { deviceRoutes, pairRoutes } from './routes/device';
 import { ledgerRoutes } from './routes/ledger';
 import { planRoutes } from './routes/plans';
@@ -50,6 +51,7 @@ export function createApp(options: AppOptions = {}): Hono<AppEnv> {
   authed.route('/', deviceRoutes);
   authed.route('/', ledgerRoutes);
   authed.route('/', planRoutes);
+  authed.route('/', dayTypeRoutes);
   v1.route('/', authed);
 
   app.route('/v1', v1);
