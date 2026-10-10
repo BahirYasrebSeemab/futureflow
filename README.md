@@ -22,3 +22,24 @@ ledger that a native guard enforces.
     bun run test        # all packages
     bun run coverage    # with coverage gates
     bun run lint && bun run typecheck
+
+## API (`apps/api`)
+
+Cloudflare Worker (Hono + D1). See `docs/adr/0006-cloudflare-worker-api.md`.
+
+```bash
+bun run --cwd apps/api test          # tests inside workerd with a local D1
+cp apps/api/.dev.vars.example apps/api/.dev.vars   # then set SETUP_CODE
+bun run --cwd apps/api migrate:local
+bun run --cwd apps/api dev           # http://localhost:8787/v1/health
+```
+
+First deploy (owner only):
+
+```bash
+bun x wrangler login
+bun x wrangler d1 create mflow       # put the printed id into apps/api/wrangler.jsonc
+bun x wrangler secret put SETUP_CODE --cwd apps/api
+bun x wrangler d1 migrations apply mflow --remote --cwd apps/api
+bun x wrangler deploy --cwd apps/api
+```
