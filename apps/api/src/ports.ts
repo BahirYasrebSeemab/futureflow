@@ -1,3 +1,4 @@
+import type { Heartbeat, MathAttempt, ReadingLog } from '@mflow/contracts';
 import type { DayRecord, LedgerEvent, Plan } from '@mflow/core';
 
 /** Repository ports. Routes depend on these; `adapters/d1` implements them. */
@@ -50,9 +51,22 @@ export interface DayRepo {
   window(id: string): Promise<AwayWindow | null>;
 }
 
+export interface TelemetryRepo {
+  addHeartbeat(deviceId: string, beat: Heartbeat, receivedAt: number): Promise<void>;
+  /** False when a log with this id is already stored (it is never overwritten). */
+  addReading(deviceId: string, log: ReadingLog, at: number): Promise<boolean>;
+  /** Inserts attempts whose id is new; returns the ids written, in order. */
+  addAttempts(
+    deviceId: string,
+    attempts: readonly MathAttempt[],
+    receivedAt: number,
+  ): Promise<string[]>;
+}
+
 export type Repos = Readonly<{
   devices: DeviceRepo;
   ledger: LedgerRepo;
   plans: PlanRepo;
   days: DayRepo;
+  telemetry: TelemetryRepo;
 }>;
