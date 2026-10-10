@@ -5,6 +5,7 @@ import {
   eventsForDay,
   mergeEvents,
   outstandingBorrowSeconds,
+  semanticKey,
   sumKind,
 } from '../src/ledger';
 import { DEFAULT_RULES } from '../src/rules';
@@ -111,5 +112,21 @@ describe('mergeEvents', () => {
 describe('DEFAULT_RULES', () => {
   it('is frozen', () => {
     expect(Object.isFrozen(DEFAULT_RULES)).toBe(true);
+  });
+});
+
+describe('semanticKey', () => {
+  it('names the business identity of once-per-day and once-per-ref events', () => {
+    const day = '2026-10-09';
+    expect(semanticKey(ev({ kind: 'base_grant', seconds: 900, day }))).toBe(`${day}:base_grant`);
+    expect(semanticKey(ev({ kind: 'expire', seconds: -60, day }))).toBe(`${day}:expire`);
+    expect(semanticKey(ev({ kind: 'math_reward', seconds: 180, refId: 'a1' }))).toBe(
+      'math_reward:a1',
+    );
+  });
+
+  it('is null for events that may repeat', () => {
+    expect(semanticKey(ev({ kind: 'usage_spend', seconds: -60 }))).toBeNull();
+    expect(semanticKey(ev({ kind: 'task_reward', seconds: 60 }))).toBeNull();
   });
 });

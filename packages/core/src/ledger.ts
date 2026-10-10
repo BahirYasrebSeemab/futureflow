@@ -61,7 +61,7 @@ const ONCE_PER_DAY: ReadonlySet<LedgerEventKind> = new Set([
 const ONCE_PER_REF: ReadonlySet<LedgerEventKind> = new Set(['task_reward', 'math_reward']);
 
 /** Business identity: two writers (phone, server) creating "the same" grant share this key. */
-function semanticKey(e: LedgerEvent): string | null {
+export function semanticKey(e: LedgerEvent): string | null {
   if (ONCE_PER_DAY.has(e.kind)) return `${e.day}:${e.kind}`;
   if (ONCE_PER_REF.has(e.kind) && e.refId !== undefined) return `${e.kind}:${e.refId}`;
   return null;

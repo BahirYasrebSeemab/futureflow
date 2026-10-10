@@ -1,4 +1,6 @@
+import type { LedgerEvent } from '@mflow/core';
 import { env } from 'cloudflare:test';
+import { v7 as uuidv7 } from 'uuid';
 import { createApp, type AppOptions } from '../src/app';
 
 /** 2026-10-09 12:00 UTC, a Friday. */
@@ -54,3 +56,7 @@ export async function pairDevice(
   if (reply.status !== 201) throw new Error(`pairing failed with ${reply.status}`);
   return reply.body.data;
 }
+
+export const event = (
+  over: Partial<LedgerEvent> & Pick<LedgerEvent, 'kind' | 'seconds'>,
+): LedgerEvent => ({ id: uuidv7(), day: '2026-10-09', at: T0, ...over });
