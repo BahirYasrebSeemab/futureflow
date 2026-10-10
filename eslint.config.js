@@ -10,6 +10,7 @@ export default defineConfig([
       '**/dist/**',
       'learning/**',
       '.superpowers/**',
+      'apps/api/worker-configuration.d.ts',
     ],
   },
   js.configs.recommended,

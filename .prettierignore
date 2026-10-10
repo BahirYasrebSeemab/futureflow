@@ -2,3 +2,4 @@ bun.lock
 coverage/
 learning/
 .superpowers/
+apps/api/worker-configuration.d.ts
