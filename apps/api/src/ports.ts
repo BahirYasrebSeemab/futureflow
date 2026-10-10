@@ -1,4 +1,4 @@
-import type { LedgerEvent } from '@mflow/core';
+import type { LedgerEvent, Plan } from '@mflow/core';
 
 /** Repository ports. Routes depend on these; `adapters/d1` implements them. */
 
@@ -25,4 +25,10 @@ export interface LedgerRepo {
   page(since: number, limit: number): Promise<{ events: LedgerEvent[]; next: number }>;
 }
 
-export type Repos = Readonly<{ devices: DeviceRepo; ledger: LedgerRepo }>;
+export interface PlanRepo {
+  get(day: string): Promise<Plan | null>;
+  /** Upserts a plan; a stored locked plan is never overwritten (returns false). */
+  save(plan: Plan, at: number): Promise<boolean>;
+}
+
+export type Repos = Readonly<{ devices: DeviceRepo; ledger: LedgerRepo; plans: PlanRepo }>;
