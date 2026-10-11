@@ -41,19 +41,30 @@ export const d1Ledger = (db: D1Database): LedgerRepo => ({
 
   async insert(events, deviceId, receivedAt) {
     if (events.length === 0) return [];
-    const rows = events.map((e) => ({ ...e, semanticKey: semanticKey(e) }));
-    const { results } = await db
-      .prepare(
-        `INSERT OR IGNORE INTO ledger_events
-           (id, day, at, kind, seconds, ref_id, reason, semantic_key, device_id, received_at)
-         SELECT value->>'id', value->>'day', value->>'at', value->>'kind', value->>'seconds',
-                value->>'refId', value->>'reason', value->>'semanticKey', ?2, ?3
-         FROM json_each(?1)
-         RETURNING id`,
-      )
-      .bind(JSON.stringify(rows), deviceId, receivedAt)
-      .all<{ id: string }>();
-    return results.map((r) => r.id);
+    const rows = JSON.stringify(events.map((e) => ({ ...e, semanticKey: semanticKey(e) })));
+    const insert = (filter: string) =>
+      db
+        .prepare(
+          `INSERT OR IGNORE INTO ledger_events
+             (id, day, at, kind, seconds, ref_id, reason, semantic_key, device_id, received_at)
+           SELECT value->>'id', value->>'day', value->>'at', value->>'kind', value->>'seconds',
+                  value->>'refId', value->>'reason', value->>'semanticKey', ?2, ?3
+           FROM json_each(?1)
+           WHERE ${filter}
+           RETURNING id`,
+        )
+        .bind(rows, deviceId, receivedAt);
+    // One transaction, two steps: everything else first, then only the repayments whose reward
+    // is actually stored. A repayment of a reward dropped as a duplicate (in this batch, an
+    // earlier one, or a racing request) is never paid.
+    const [first, second] = await db.batch<{ id: string }>([
+      insert(`value->>'kind' <> 'borrow_repay'`),
+      insert(
+        `value->>'kind' = 'borrow_repay'
+         AND EXISTS (SELECT 1 FROM ledger_events r WHERE r.id = value->>'refId')`,
+      ),
+    ]);
+    return [...(first?.results ?? []), ...(second?.results ?? [])].map((r) => r.id);
   },
 
   async page(since, limit) {

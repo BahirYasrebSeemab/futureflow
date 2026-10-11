@@ -134,3 +134,44 @@ describe('ledger sync', () => {
     expect((await call(app, 'GET', '/v1/ledger')).status).toBe(401);
   });
 });
+
+describe('review fixes', () => {
+  it('drops a repayment sent in a later batch than its duplicate reward', async () => {
+    const app = makeApp();
+    const phone = await pairDevice(app);
+    const tablet = await pairDevice(app, { code: 'second-setup-code-0123456789' });
+    const rewardA = event({ kind: 'task_reward', seconds: 1200, refId: 'task-1' });
+    await post(app, phone.token, [
+      event({ kind: 'unlock_borrow', seconds: 600 }),
+      rewardA,
+      event({ kind: 'borrow_repay', seconds: -600, refId: rewardA.id }),
+    ]);
+    const rewardB = event({ kind: 'task_reward', seconds: 1200, refId: 'task-1' });
+    await post(app, tablet.token, [rewardB]);
+
+    const repayB = event({ kind: 'borrow_repay', seconds: -600, refId: rewardB.id });
+    const sync = await post(app, tablet.token, [repayB]);
+
+    expect(sync.body.data).toEqual({ added: [], ignored: [repayB.id], rejected: [] });
+    const total = (await page(app, phone.token)).body.data.events.reduce(
+      (sum, e) => sum + e.seconds,
+      0,
+    );
+    expect(total).toBe(1200);
+  });
+
+  it('keeps a repayment whose reward arrives in the same batch', async () => {
+    const app = makeApp();
+    const { token } = await pairDevice(app);
+    const reward = event({ kind: 'math_reward', seconds: 180, refId: 'a1' });
+    const repay = event({ kind: 'borrow_repay', seconds: -180, refId: reward.id });
+
+    const sync = await post(app, token, [
+      event({ kind: 'unlock_borrow', seconds: 600 }),
+      reward,
+      repay,
+    ]);
+
+    expect(sync.body.data.added).toContain(repay.id);
+  });
+});
