@@ -16,16 +16,22 @@ cron on the free tier, and stay easy to port to Node later (the owner will rewri
 - **Layers:** routes (Hono + zod at the edge) → `@mflow/core` (rules) → ports (`src/ports.ts`) →
   D1 adapters (`src/adapters/d1`). Only adapters and `src/index.ts` touch Workers APIs. A Node port
   replaces `adapters/d1` (e.g. with SQLite or Postgres) and serves the same Hono app with `@hono/node-server`.
-- **Auth:** a one-time `SETUP_CODE` (a Worker secret) is traded for a device token (32 random bytes,
-  base64url). Only the SHA-256 hash is stored. Pairing a new phone means rotating `SETUP_CODE`.
-  The device row and the used code are written in one transaction, so a code pairs exactly once.
+- **Auth:** the phone generates a device token (32 random bytes, base64url) and registers it with
+  a one-time `SETUP_CODE` (a Worker secret). Only the token's SHA-256 hash is stored. Pairing a
+  new phone means rotating `SETUP_CODE`. The device row and the used code are written in one
+  transaction, so a code pairs exactly once. A retry with the same code and token (its first answer
+  was lost) gets 200 with the same device; because the phone made the token, nothing is lost.
   Revocation sets `devices.revoked_at`.
 - **Ledger sync:** the server reuses core's `mergeEvents` (same id or same business key = already
   stored; a repayment of a dropped reward is dropped). `ledger_events.id` and
   `ledger_events.semantic_key` are UNIQUE, so a racing duplicate is a no-op (`INSERT OR IGNORE`).
-  Bulk values travel as one JSON parameter through `json_each`, because D1 allows 100 bound
+  A `borrow_repay` is inserted in a second statement of the same transaction, and only if its
+  reward row is stored, so a repayment of a duplicate reward is never paid, even across batches
+  or racing requests. Bulk values travel as one JSON parameter through `json_each`, because D1 allows 100 bound
   parameters per statement. Pulls page by a server sequence (`seq`), not by time, so clock skew
   can't hide events. Events stamped more than 5 minutes ahead are rejected.
+- **Client ids for everything a retry could duplicate:** events, reading logs, math attempts and
+  away windows carry a client-generated UUIDv7, so a retried request finds what it already wrote.
 - **"Today" is the device's day:** `dayKeyFor(now, device.utcOffsetMinutes, 04:00)`. The offset is
   set at pairing and refreshed by every heartbeat.
 - **Base grant:** `GET /today` writes the day's `base_grant` if no writer has (spec §6.3). It is
