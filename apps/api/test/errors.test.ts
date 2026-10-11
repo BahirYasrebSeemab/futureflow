@@ -14,10 +14,28 @@ describe('error envelope', () => {
     expect([reply.status, reply.body.error?.code]).toEqual([400, 'invalid_request']);
   });
 
-  it('answers a body over 256 KiB with 413', async () => {
+  it('accepts the largest batch the schema allows', async () => {
     const app = makeApp();
     const { token } = await pairDevice(app);
-    const raw = JSON.stringify({ events: [], pad: 'x'.repeat(300_000) });
+    const events = Array.from({ length: 500 }, (_, i) =>
+      event({
+        kind: 'correction',
+        seconds: -1,
+        refId: String(i).padStart(128, 'r'),
+        reason: 'x'.repeat(500),
+      }),
+    );
+    const reply = await call<{ added: string[] }>(app, 'POST', '/v1/ledger/events', {
+      token,
+      body: { events },
+    });
+    expect([reply.status, reply.body.data.added.length]).toEqual([200, 500]);
+  });
+
+  it('answers a body over 512 KiB with 413', async () => {
+    const app = makeApp();
+    const { token } = await pairDevice(app);
+    const raw = JSON.stringify({ events: [], pad: 'x'.repeat(600_000) });
     const reply = await call(app, 'POST', '/v1/ledger/events', {
       token,
       raw,

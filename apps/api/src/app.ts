@@ -14,8 +14,11 @@ import { planRoutes } from './routes/plans';
 import { telemetryRoutes } from './routes/telemetry';
 import { todayRoutes } from './routes/today';
 
-/** A full 500-event batch is ~150 KB; anything far larger is a mistake or an attack. */
-export const MAX_BODY_BYTES = 256 * 1024;
+/**
+ * The largest batch the schemas accept (500 events with a 128-character refId and a 500-character
+ * reason) is ~385 KB, so it must fit. Anything far larger is a mistake or an attack.
+ */
+export const MAX_BODY_BYTES = 512 * 1024;
 
 export type AppOptions = Readonly<{
   now?: () => number;
