@@ -10,6 +10,7 @@ import {
 import { Hono } from 'hono';
 import { z } from 'zod';
 import type { AppEnv } from '../env';
+import type { AwayWindow } from '../ports';
 import { deviceToday, isWithinDays } from '../http/day';
 import { fail, ok } from '../http/envelope';
 import { valid } from '../http/validate';
@@ -18,6 +19,12 @@ import { valid } from '../http/validate';
 const MAX_AWAY_LEAD_DAYS = 60;
 
 const IdParam = z.object({ id: z.uuid() });
+
+const isSameWindow = (a: AwayWindow, b: AwayWindow): boolean =>
+  a.place === b.place &&
+  a.from === b.from &&
+  a.to === b.to &&
+  JSON.stringify(a.keptTaskIds) === JSON.stringify(b.keptTaskIds);
 
 const daysFrom = (from: string, to: string): string[] => {
   const days: string[] = [];
@@ -46,6 +53,13 @@ export const dayTypeRoutes = new Hono<AppEnv>()
       return fail(c, 'day_out_of_range');
     }
 
+    const stored = await deps.repos.days.window(body.id);
+    if (stored !== null) {
+      // A retry of the same request: answer with what was stored, write nothing.
+      if (!isSameWindow(stored, body)) return fail(c, 'already_declared');
+      return ok(c, { id: stored.id, days: await deps.repos.days.between(stored.from, stored.to) });
+    }
+
     const history = await deps.repos.days.between(body.from, body.to);
     const records: DayRecord[] = [];
     for (const day of daysFrom(body.from, body.to)) {
@@ -54,7 +68,7 @@ export const dayTypeRoutes = new Hono<AppEnv>()
       records.push(declared.value);
     }
     const window = {
-      id: deps.newId(),
+      id: body.id,
       place: body.place,
       from: body.from,
       to: body.to,

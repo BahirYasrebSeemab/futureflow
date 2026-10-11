@@ -45,7 +45,13 @@ describe('LedgerQuerySchema', () => {
 });
 
 describe('AwayRequestSchema', () => {
-  const base = { from: '2026-10-01', to: '2026-10-03', place: 'Dushanbe', keptTaskIds: [ID] };
+  const base = {
+    id: ID,
+    from: '2026-10-01',
+    to: '2026-10-03',
+    place: 'Dushanbe',
+    keptTaskIds: [ID],
+  };
 
   it('accepts a window of up to 30 days', () => {
     expect(AwayRequestSchema.safeParse(base).success).toBe(true);
@@ -55,6 +61,10 @@ describe('AwayRequestSchema', () => {
   it('rejects a window longer than 30 days or ending before it starts', () => {
     expect(AwayRequestSchema.safeParse({ ...base, to: '2026-10-31' }).success).toBe(false);
     expect(AwayRequestSchema.safeParse({ ...base, to: '2026-09-30' }).success).toBe(false);
+  });
+
+  it('requires a client-generated window id', () => {
+    expect(AwayRequestSchema.safeParse({ ...base, id: undefined }).success).toBe(false);
   });
 
   it('reports invalid days without throwing', () => {

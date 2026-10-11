@@ -42,6 +42,8 @@ const daysSpanned = (from: string, to: string): number =>
 
 export const AwayRequestSchema = z
   .object({
+    /** Client-generated (UUIDv7), so a retried request finds the window it already created. */
+    id: z.uuid(),
     from: DayKeySchema,
     to: DayKeySchema,
     place: z.string().trim().min(1).max(80),

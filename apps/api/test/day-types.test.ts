@@ -1,5 +1,6 @@
 import type { DayRecord } from '@mflow/core';
 import { env } from 'cloudflare:test';
+import { v7 as uuidv7 } from 'uuid';
 import { describe, expect, it } from 'vitest';
 import { call, makeApp, pairDevice, T0, type App, type Clock } from './helpers';
 
@@ -8,10 +9,17 @@ const KEPT = ['01920000-0000-7000-8000-000000000001'];
 
 const bad = (app: App, token: string, day: string) =>
   call<DayRecord>(app, 'POST', '/v1/day-type', { token, body: { day, kind: 'bad' } });
-const away = (app: App, token: string, from: string, to: string) =>
+const away = (
+  app: App,
+  token: string,
+  from: string,
+  to: string,
+  id = uuidv7(),
+  place = 'Dushanbe',
+) =>
   call<{ id: string; days: DayRecord[] }>(app, 'POST', '/v1/away', {
     token,
-    body: { from, to, place: 'Dushanbe', keptTaskIds: KEPT },
+    body: { id, from, to, place, keptTaskIds: KEPT },
   });
 const verdict = (app: App, token: string, id: string, body: object) =>
   call<DayRecord>(app, 'POST', `/v1/away/${id}/verdict`, { token, body });
@@ -156,5 +164,30 @@ describe('away verdict', () => {
       distanceKm: 15,
     });
     expect(reply.status).toBe(400);
+  });
+});
+
+describe('away window retries', () => {
+  it('a retried window with the same id answers 200 with the stored window', async () => {
+    const app = makeApp();
+    const { token } = await pairDevice(app);
+    const id = uuidv7();
+    const first = await away(app, token, '2026-10-09', '2026-10-10', id);
+
+    const retry = await away(app, token, '2026-10-09', '2026-10-10', id);
+
+    expect([retry.status, retry.body.data]).toEqual([200, first.body.data]);
+    expect(await count('away_windows')).toBe(1);
+  });
+
+  it('the same id with a different window is a conflict', async () => {
+    const app = makeApp();
+    const { token } = await pairDevice(app);
+    const id = uuidv7();
+    await away(app, token, '2026-10-09', '2026-10-10', id);
+
+    const other = await away(app, token, '2026-10-09', '2026-10-10', id, 'Toronto');
+
+    expect([other.status, other.body.error?.code]).toEqual([409, 'already_declared']);
   });
 });
