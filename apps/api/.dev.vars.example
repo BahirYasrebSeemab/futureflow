@@ -1,0 +1,3 @@
+# Copy to .dev.vars for `wrangler dev`. In production: `bun x wrangler secret put SETUP_CODE`.
+# One-time pairing code (16+ characters). Rotate it to pair a new phone.
+SETUP_CODE=change-me-to-a-long-random-string

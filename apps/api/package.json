@@ -1,0 +1,29 @@
+{
+  "name": "@mflow/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "types": "wrangler types",
+    "migrate:local": "wrangler d1 migrations apply mflow --local",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@hono/zod-validator": "^0.9.1",
+    "@mflow/contracts": "workspace:*",
+    "@mflow/core": "workspace:*",
+    "hono": "^4.13.13",
+    "uuid": "^14.0.2",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "^1.4.0",
+    "@vitest/coverage-istanbul": "^5.0.3",
+    "typescript": "^6",
+    "vitest": "^5.0.3",
+    "wrangler": "^4.149.0"
+  }
+}
