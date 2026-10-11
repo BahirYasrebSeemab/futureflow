@@ -1,22 +1,28 @@
 import { env } from 'cloudflare:test';
 import { describe, expect, it } from 'vitest';
 import { sha256Hex } from '../src/auth/token';
-import { call, makeApp, pairDevice, T0, TEST_SETUP_CODE } from './helpers';
+import { call, makeApp, pairDevice, phoneToken, T0, TEST_SETUP_CODE } from './helpers';
 
-const pairBody = { code: TEST_SETUP_CODE, deviceName: 'Redmi A5', utcOffsetMinutes: 300 };
+const PHONE_TOKEN = phoneToken();
+const pairBody = {
+  code: TEST_SETUP_CODE,
+  token: PHONE_TOKEN,
+  deviceName: 'Redmi A5',
+  utcOffsetMinutes: 300,
+};
 const deviceCount = async () =>
   (await env.DB.prepare('SELECT count(*) AS n FROM devices').first<{ n: number }>())?.n;
 
 describe('POST /v1/device/pair', () => {
-  it('pairs once and returns a 43-character token that authenticates the device', async () => {
+  it('pairs once; the token the phone generated then authenticates the device', async () => {
     const app = makeApp();
-    const reply = await call<{ deviceId: string; token: string }>(app, 'POST', '/v1/device/pair', {
+    const reply = await call<{ deviceId: string }>(app, 'POST', '/v1/device/pair', {
       body: pairBody,
     });
 
     expect(reply.status).toBe(201);
-    expect(reply.body.data.token).toMatch(/^[A-Za-z0-9_-]{43}$/);
-    const me = await call(app, 'GET', '/v1/device/me', { token: reply.body.data.token });
+    expect(reply.body.data).toEqual({ deviceId: expect.any(String) });
+    const me = await call(app, 'GET', '/v1/device/me', { token: PHONE_TOKEN });
     expect(me.body.data).toEqual({
       id: reply.body.data.deviceId,
       name: 'Redmi A5',
@@ -33,10 +39,40 @@ describe('POST /v1/device/pair', () => {
     expect(row?.token_hash).toBe(await sha256Hex(token));
   });
 
-  it('refuses a setup code that was already used, even when retried', async () => {
+  it('answers a retried pairing (same code, same token) with 200 and the same device', async () => {
+    const app = makeApp();
+    const first = await call<{ deviceId: string }>(app, 'POST', '/v1/device/pair', {
+      body: pairBody,
+    });
+    const retry = await call<{ deviceId: string }>(app, 'POST', '/v1/device/pair', {
+      body: pairBody,
+    });
+
+    expect([retry.status, retry.body.data]).toEqual([200, first.body.data]);
+    expect(await deviceCount()).toBe(1);
+  });
+
+  it('a known token with a fresh setup code answers with its existing device, not a 500', async () => {
+    const app = makeApp();
+    const first = await call<{ deviceId: string }>(app, 'POST', '/v1/device/pair', {
+      body: pairBody,
+    });
+    const code = 'rotated-setup-code-0123456789';
+    const again = await call<{ deviceId: string }>(app, 'POST', '/v1/device/pair', {
+      body: { ...pairBody, code },
+      env: { SETUP_CODE: code },
+    });
+
+    expect([again.status, again.body.data]).toEqual([200, first.body.data]);
+    expect(await deviceCount()).toBe(1);
+  });
+
+  it('refuses a used setup code with a different token', async () => {
     const app = makeApp();
     await call(app, 'POST', '/v1/device/pair', { body: pairBody });
-    const again = await call(app, 'POST', '/v1/device/pair', { body: pairBody });
+    const again = await call(app, 'POST', '/v1/device/pair', {
+      body: { ...pairBody, token: phoneToken() },
+    });
 
     expect(again.status).toBe(409);
     expect(again.body.error?.code).toBe('code_used');
@@ -61,7 +97,7 @@ describe('POST /v1/device/pair', () => {
 
   it('rejects an invalid body without echoing the submitted values', async () => {
     const reply = await call(makeApp(), 'POST', '/v1/device/pair', {
-      body: { code: 'short-secret', deviceName: 'Redmi A5', utcOffsetMinutes: 0 },
+      body: { ...pairBody, code: 'short-secret' },
     });
     expect([reply.status, reply.body.error?.code]).toEqual([400, 'invalid_request']);
     expect(reply.body.error?.message).toContain('code');

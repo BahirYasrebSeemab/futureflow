@@ -6,7 +6,7 @@ import type { DayRecord, LedgerEvent, Plan } from '@mflow/core';
 export type Device = Readonly<{ id: string; name: string; utcOffsetMinutes: number }>;
 
 export interface DeviceRepo {
-  /** Creates the device and marks the setup code used, atomically. False if the code was used. */
+  /** Creates the device and marks the code used, atomically. False if the code or token was used. */
   pair(codeHash: string, device: Device, tokenHash: string, at: number): Promise<boolean>;
   /** A device that is not revoked, or null. */
   findByTokenHash(tokenHash: string): Promise<Device | null>;

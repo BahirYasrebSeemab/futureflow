@@ -1,6 +1,6 @@
 import { PairRequestSchema } from '@mflow/contracts';
 import { Hono } from 'hono';
-import { constantTimeEqual, newToken, sha256Hex } from '../auth/token';
+import { constantTimeEqual, sha256Hex } from '../auth/token';
 import type { AppEnv } from '../env';
 import { fail, ok } from '../http/envelope';
 import { rateLimit } from '../http/rate-limit';
@@ -23,20 +23,19 @@ export const pairRoutes = new Hono<AppEnv>().post(
     if (!constantTimeEqual(codeHash, await sha256Hex(secret))) return fail(c, 'invalid_code');
 
     const { deps } = c.var;
+    const tokenHash = await sha256Hex(body.token);
     const device = {
       id: deps.newId(),
       name: body.deviceName,
       utcOffsetMinutes: body.utcOffsetMinutes,
     };
-    const token = newToken();
-    const paired = await deps.repos.devices.pair(
-      codeHash,
-      device,
-      await sha256Hex(token),
-      deps.now(),
-    );
-    if (!paired) return fail(c, 'code_used');
-    return ok(c, { deviceId: device.id, token }, 201);
+    if (await deps.repos.devices.pair(codeHash, device, tokenHash, deps.now())) {
+      return ok(c, { deviceId: device.id }, 201);
+    }
+    // The code is used. If it was used by this same phone (same token), this is a retry whose
+    // first answer was lost: tell it which device it is. Anyone else gets a conflict.
+    const paired = await deps.repos.devices.findByTokenHash(tokenHash);
+    return paired === null ? fail(c, 'code_used') : ok(c, { deviceId: paired.id });
   },
 );
 

@@ -44,17 +44,25 @@ export async function call<T = unknown>(
   return { status: res.status, body: (await res.json()) as Envelope<T> };
 }
 
+/** What the phone does: 32 random bytes, base64url (43 characters). */
+export const phoneToken = (): string =>
+  btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(32))))
+    .replaceAll('+', '-')
+    .replaceAll('/', '_')
+    .replace(/=+$/, '');
+
 export async function pairDevice(
   app: App,
   opts: { code?: string; utcOffsetMinutes?: number } = {},
 ): Promise<{ token: string; deviceId: string }> {
   const code = opts.code ?? TEST_SETUP_CODE;
-  const reply = await call<{ token: string; deviceId: string }>(app, 'POST', '/v1/device/pair', {
-    body: { code, deviceName: 'Redmi A5', utcOffsetMinutes: opts.utcOffsetMinutes ?? 0 },
+  const token = phoneToken();
+  const reply = await call<{ deviceId: string }>(app, 'POST', '/v1/device/pair', {
+    body: { code, token, deviceName: 'Redmi A5', utcOffsetMinutes: opts.utcOffsetMinutes ?? 0 },
     env: { SETUP_CODE: code },
   });
   if (reply.status !== 201) throw new Error(`pairing failed with ${reply.status}`);
-  return reply.body.data;
+  return { token, deviceId: reply.body.data.deviceId };
 }
 
 export const event = (

@@ -7,13 +7,17 @@ const DAY_MS = 86_400_000;
 /** UTC−12:00 to UTC+14:00, in minutes. */
 export const UtcOffsetSchema = z.number().int().min(-720).max(840);
 
+/** 32 random bytes as base64url. The phone generates it, so a retried pairing can be recognised. */
+export const DeviceTokenSchema = z.string().regex(/^[A-Za-z0-9_-]{43}$/);
+
 export const PairRequestSchema = z.object({
   code: z.string().min(16).max(128),
+  token: DeviceTokenSchema,
   deviceName: z.string().trim().min(1).max(64),
   utcOffsetMinutes: UtcOffsetSchema,
 });
 
-export const PairResponseSchema = z.object({ deviceId: z.uuid(), token: z.string().length(43) });
+export const PairResponseSchema = z.object({ deviceId: z.uuid() });
 
 export const LedgerQuerySchema = z.object({
   since: z.coerce.number().int().nonnegative().default(0),

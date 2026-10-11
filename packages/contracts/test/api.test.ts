@@ -12,7 +12,12 @@ import {
 const ID = '01920000-0000-7000-8000-000000000001';
 
 describe('PairRequestSchema', () => {
-  const base = { code: 'x'.repeat(16), deviceName: 'Redmi A5', utcOffsetMinutes: 300 };
+  const base = {
+    code: 'x'.repeat(16),
+    token: 'A'.repeat(43),
+    deviceName: 'Redmi A5',
+    utcOffsetMinutes: 300,
+  };
 
   it('accepts a pairing request and the full offset range', () => {
     expect(PairRequestSchema.parse(base)).toEqual(base);
@@ -22,6 +27,7 @@ describe('PairRequestSchema', () => {
 
   it.each([
     ['short code', { code: 'x'.repeat(15) }],
+    ['token that is not 43 base64url characters', { token: 'A'.repeat(42) + '=' }],
     ['blank device name', { deviceName: '   ' }],
     ['offset past UTC+14', { utcOffsetMinutes: 841 }],
     ['fractional offset', { utcOffsetMinutes: 30.5 }],
