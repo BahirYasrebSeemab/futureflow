@@ -1,3 +1,13 @@
 # Copy to .dev.vars for `wrangler dev`. In production: `bun x wrangler secret put SETUP_CODE`.
 # One-time pairing code (16+ characters). Rotate it to pair a new phone.
 SETUP_CODE=change-me-to-a-long-random-string
+
+# Optional AI keys. Without them, plans come from the deterministic template.
+# Gemini (free tier): https://aistudio.google.com/apikey
+GEMINI_API_KEY=
+# Jev (paid, judge only): https://typesafe.ai
+JEV_API_KEY=
+# Optional daily request limits per model (default 100 for Gemini, 200 for Jev).
+# Set GEMINI_DAILY_LIMIT to at most half of your AI Studio free-tier quota.
+GEMINI_DAILY_LIMIT=
+JEV_DAILY_LIMIT=

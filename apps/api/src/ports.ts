@@ -1,4 +1,5 @@
-import type { Heartbeat, MathAttempt, ReadingLog } from '@mflow/contracts';
+import type { UsageCounter } from '@mflow/ai';
+import type { Heartbeat, MathAttempt, ReadingLog, Roadmap } from '@mflow/contracts';
 import type { DayRecord, LedgerEvent, Plan } from '@mflow/core';
 
 /** Repository ports. Routes depend on these; `adapters/d1` implements them. */
@@ -66,10 +67,19 @@ export interface TelemetryRepo {
   ): Promise<string[]>;
 }
 
+export interface RoadmapRepo {
+  /** The stored roadmap, or empty lists before onboarding. */
+  get(): Promise<Roadmap>;
+  /** Replaces identities, skills and milestones in one transaction. */
+  replace(roadmap: Roadmap, at: number): Promise<void>;
+}
+
 export type Repos = Readonly<{
   devices: DeviceRepo;
   ledger: LedgerRepo;
   plans: PlanRepo;
   days: DayRepo;
   telemetry: TelemetryRepo;
+  roadmap: RoadmapRepo;
+  aiUsage: UsageCounter;
 }>;

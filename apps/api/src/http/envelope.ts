@@ -16,6 +16,7 @@ export const ERRORS = {
   too_few_tasks: [422, 'The plan needs more tasks before it can lock.'],
   too_many_tasks: [422, 'The plan has too many tasks to lock.'],
   day_out_of_range: [422, 'That day cannot be changed now.'],
+  nothing_to_plan: [422, 'No skill is active on that day. Set up the roadmap first.'],
   rate_limited: [429, 'Too many requests. Try again in a minute.'],
   internal: [500, 'Something went wrong on the server.'],
   pairing_disabled: [503, 'Pairing is not configured on the server.'],

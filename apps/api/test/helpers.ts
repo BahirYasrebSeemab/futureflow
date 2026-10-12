@@ -77,3 +77,57 @@ export const taskSpec = (title = 'Ship one PR'): TaskSpec => ({
   full: { title, criteria: 'a merged PR', seconds: 1200 },
   twoMinute: { title: 'Open the repo', criteria: 'one commit', seconds: 300 },
 });
+
+/** A small roadmap: one identity, Debugging (GitHub) and Math (rests on Saturday). */
+export const sampleRoadmap = () => {
+  const swe = uuidv7();
+  const debug = uuidv7();
+  const math = uuidv7();
+  return {
+    identities: [
+      {
+        id: swe,
+        title: 'Senior software engineer',
+        why: 'Build things that last',
+        deadline: '2028-01-01',
+      },
+    ],
+    skills: [
+      {
+        id: debug,
+        identityId: swe,
+        name: 'Debugging',
+        rubric: 'Root cause found and tested',
+        verifier: 'github',
+      },
+      {
+        id: math,
+        identityId: swe,
+        name: 'Math',
+        rubric: '10 problems at 70% or better',
+        verifier: 'math',
+        restWeekday: 6,
+      },
+    ],
+    milestones: [
+      { id: uuidv7(), skillId: debug, title: 'Fix 3 real bugs with tests', done: true },
+      {
+        id: uuidv7(),
+        skillId: debug,
+        title: 'Write a debugging checklist',
+        done: false,
+        targetDate: '2026-11-01',
+      },
+      { id: uuidv7(), skillId: math, title: 'Finish L0 fractions', done: false },
+    ],
+  };
+};
+
+/** A generateContent reply carrying `text`, as Gemini sends it. */
+export const geminiReply = (text: string) => ({
+  status: 200,
+  text: async () =>
+    JSON.stringify({
+      candidates: [{ content: { role: 'model', parts: [{ text }] }, finishReason: 'STOP' }],
+    }),
+});

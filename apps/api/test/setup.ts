@@ -9,5 +9,9 @@ beforeEach(async () => {
     `SELECT name FROM sqlite_master WHERE type = 'table'
      AND name NOT LIKE 'sqlite_%' AND name NOT LIKE 'd1_%' AND name NOT LIKE '_cf_%'`,
   ).all<{ name: string }>();
-  await env.DB.batch(results.map((t) => env.DB.prepare(`DELETE FROM ${t.name}`)));
+  // Foreign keys are checked at the end of the transaction, so table order does not matter.
+  await env.DB.batch([
+    env.DB.prepare('PRAGMA defer_foreign_keys = on'),
+    ...results.map((t) => env.DB.prepare(`DELETE FROM ${t.name}`)),
+  ]);
 });
