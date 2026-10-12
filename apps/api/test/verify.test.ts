@@ -1,9 +1,10 @@
+import { env } from 'cloudflare:test';
 import type { FetchLike } from '@mflow/ai';
 import type { LedgerEvent, TaskSpec } from '@mflow/core';
 import { v7 as uuidv7 } from 'uuid';
 import { describe, expect, it } from 'vitest';
 import { geminiJudgeReply, githubFake, type FakeCommit } from './github-fake';
-import { call, makeApp, pairDevice, taskSpec, type App } from './helpers';
+import { call, makeApp, pairDevice, taskSpec, type App, type Clock } from './helpers';
 
 const TOKEN = 'github_pat_' + 'x'.repeat(40);
 type Verdict = {
@@ -209,5 +210,42 @@ describe('POST /v1/verify', () => {
 
     expect(run.verdicts[0]).toMatchObject({ outcome: 'pass', evidenceIds: ['a1'] });
     expect(judge.calls()).toBe(calls);
+  });
+});
+
+describe('grace window after the day boundary', () => {
+  it("judges yesterday's late commits after 04:00 and lets the owner decide them until 16:00", async () => {
+    const clock: Clock = { now: Date.UTC(2026, 9, 8, 12, 0) };
+    const judge = judgeFake(0.9, { '0': 1, '1': 0, '2': 0, '3': 0, '4': 0, '5': 0 });
+    const fake = githubFake({
+      commits: [{ sha: 'late', date: '2026-10-09T03:30:00Z' }],
+      other: judge.other,
+    });
+    const app: App = makeApp(clock, { fetch: fake.fetch });
+    const { token } = await pairDevice(app);
+    await call(app, 'PUT', '/v1/github/link', {
+      token,
+      body: { token: TOKEN, repos: ['bahir/mflow'] },
+    });
+    const tasks = [taskSpec('Late fix'), taskSpec('Math', 'math'), taskSpec('Usage', 'usage')];
+    await call(app, 'PUT', '/v1/plans/2026-10-08', { token, body: { tasks } });
+    await call(app, 'POST', '/v1/plans/2026-10-08/lock', { token });
+
+    clock.now = Date.UTC(2026, 9, 9, 4, 30); // the 9th, 30 minutes after the boundary
+    await call(app, 'POST', '/v1/verify', { token, env: { GEMINI_API_KEY: 'g-key' } });
+    const decide = () =>
+      call(app, 'POST', `/v1/verdicts/${tasks[0]?.id}`, {
+        token,
+        body: { day: '2026-10-08', outcome: 'pass' },
+      });
+    const stored = await env.DB.prepare(
+      "SELECT outcome, suggestion FROM verdicts WHERE day = '2026-10-08'",
+    ).first();
+
+    expect(stored).toEqual({ outcome: 'pending', suggestion: 'pass' });
+    clock.now = Date.UTC(2026, 9, 9, 16, 1); // past the 12-hour grace
+    expect((await decide()).status).toBe(422);
+    clock.now = Date.UTC(2026, 9, 9, 15, 59);
+    expect((await decide()).status).toBe(200);
   });
 });

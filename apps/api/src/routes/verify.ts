@@ -2,10 +2,9 @@ import { VerdictRequestSchema } from '@mflow/contracts';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import type { AppEnv } from '../env';
-import { deviceToday } from '../http/day';
 import { fail, ok } from '../http/envelope';
 import { valid } from '../http/validate';
-import { requiredFor, runVerification, settle } from '../verification/run';
+import { openDays, requiredFor, runVerification, settle } from '../verification/run';
 
 const TaskParam = z.object({ taskId: z.string().min(1).max(64) });
 /** Verifiers the phone computes itself; GitHub and reading go through the judge first. */
@@ -25,7 +24,9 @@ export const verifyRoutes = new Hono<AppEnv>()
       const { deps, device } = c.var;
       const { taskId } = c.req.valid('param');
       const { day, outcome } = c.req.valid('json');
-      if (day !== deviceToday(device, deps.now())) return fail(c, 'day_out_of_range');
+      if (!openDays(deps.now(), device.utcOffsetMinutes).includes(day)) {
+        return fail(c, 'day_out_of_range');
+      }
 
       const plan = await deps.repos.plans.get(day);
       if (plan === null || plan.status !== 'locked') return fail(c, 'plan_not_locked');

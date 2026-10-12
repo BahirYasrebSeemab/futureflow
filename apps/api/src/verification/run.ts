@@ -30,6 +30,18 @@ export async function ownerDay(deps: Deps): Promise<{ day: string; offset: numbe
   return { day: dayKeyFor(deps.now(), offset, DEFAULT_RULES.dayBoundaryHour), offset };
 }
 
+/** For this long after the boundary, yesterday stays open: late-night commits, morning confirmations. */
+export const GRACE_HOURS = 12;
+const HOUR_MS = 60 * 60 * 1000;
+
+/** The days that can still be verified or decided: today, plus yesterday inside the grace window. */
+export function openDays(now: number, utcOffsetMinutes: number): string[] {
+  const boundary = DEFAULT_RULES.dayBoundaryHour;
+  const today = dayKeyFor(now, utcOffsetMinutes, boundary);
+  const graceDay = dayKeyFor(now - GRACE_HOURS * HOUR_MS, utcOffsetMinutes, boundary);
+  return graceDay === today ? [today] : [graceDay, today];
+}
+
 export async function requiredFor(deps: Deps, plan: Plan): Promise<RequiredTask[]> {
   const [entry, roadmap] = await Promise.all([
     deps.repos.days.entry(plan.day),
@@ -99,8 +111,15 @@ export async function settle(
 export async function runVerification(deps: Deps): Promise<VerificationRun> {
   const { day, offset } = await ownerDay(deps);
   const github = await collectGithub(deps, offset);
+  let judged = 0;
+  for (const open of openDays(deps.now(), offset)) judged += await verifyDay(deps, open, github);
+  return { day, github, judged };
+}
+
+/** Judges one day's changed evidence and settles it; returns how many tasks were judged. */
+async function verifyDay(deps: Deps, day: string, github: CollectStatus): Promise<number> {
   const plan = await deps.repos.plans.get(day);
-  if (plan === null || plan.status !== 'locked') return { day, github, judged: 0 };
+  if (plan === null || plan.status !== 'locked') return 0;
 
   const store = deps.repos.verification;
   const required = await requiredFor(deps, plan);
@@ -145,5 +164,5 @@ export async function runVerification(deps: Deps): Promise<VerificationRun> {
   }
 
   await settle(deps, plan, required);
-  return { day, github, judged };
+  return judged;
 }
