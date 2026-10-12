@@ -1,8 +1,10 @@
+import type { FetchLike } from '@mflow/ai';
 import { Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import { HTTPException } from 'hono/http-exception';
 import { v7 as uuidv7 } from 'uuid';
 import { d1Repos } from './adapters/d1';
+import { aiFromEnv, timeoutFetch } from './ai';
 import { requireDevice } from './auth/require-device';
 import type { AppEnv } from './env';
 import { fail, ok } from './http/envelope';
@@ -25,6 +27,8 @@ export type AppOptions = Readonly<{
   now?: () => number;
   newId?: () => string;
   limiter?: (key: string) => Promise<boolean>;
+  /** Outgoing HTTP for AI providers; tests pass a fake. */
+  fetch?: FetchLike;
 }>;
 
 export function createApp(options: AppOptions = {}): Hono<AppEnv> {
@@ -35,7 +39,9 @@ export function createApp(options: AppOptions = {}): Hono<AppEnv> {
   app.use('*', async (c, next) => {
     const limit =
       options.limiter ?? (async (key: string) => (await c.env.RATE_LIMITER.limit({ key })).success);
-    c.set('deps', { now, newId, repos: d1Repos(c.env.DB), limit });
+    const repos = d1Repos(c.env.DB);
+    const ai = aiFromEnv(c.env, repos.aiUsage, options.fetch ?? timeoutFetch, now);
+    c.set('deps', { now, newId, repos, limit, ai });
     await next();
   });
   app.use(

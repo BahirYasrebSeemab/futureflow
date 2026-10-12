@@ -1,4 +1,5 @@
 import type { Repos } from '../../ports';
+import { d1AiUsage } from './ai-usage';
 import { d1Days } from './days';
 import { d1Devices } from './devices';
 import { d1Ledger } from './ledger';
@@ -13,4 +14,5 @@ export const d1Repos = (db: D1Database): Repos => ({
   days: d1Days(db),
   telemetry: d1Telemetry(db),
   roadmap: d1Roadmap(db),
+  aiUsage: d1AiUsage(db),
 });

@@ -17,6 +17,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@hono/zod-validator": "^0.9.1",
+        "@mflow/ai": "workspace:*",
         "@mflow/contracts": "workspace:*",
         "@mflow/core": "workspace:*",
         "hono": "^4.13.13",

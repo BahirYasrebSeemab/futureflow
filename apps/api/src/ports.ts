@@ -1,3 +1,4 @@
+import type { UsageCounter } from '@mflow/ai';
 import type { Heartbeat, MathAttempt, ReadingLog, Roadmap } from '@mflow/contracts';
 import type { DayRecord, LedgerEvent, Plan } from '@mflow/core';
 
@@ -80,4 +81,5 @@ export type Repos = Readonly<{
   days: DayRepo;
   telemetry: TelemetryRepo;
   roadmap: RoadmapRepo;
+  aiUsage: UsageCounter;
 }>;

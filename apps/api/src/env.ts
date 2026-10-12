@@ -1,7 +1,8 @@
+import type { Ai } from '@mflow/ai';
 import type { Device, Repos } from './ports';
 
 /** Worker bindings: the generated `Env` plus secrets, which `wrangler types` cannot see. */
-export type Bindings = Env & { SETUP_CODE?: string };
+export type Bindings = Env & { SETUP_CODE?: string; GEMINI_API_KEY?: string; JEV_API_KEY?: string };
 
 /** Everything a handler needs from the outside world, injected so tests control it. */
 export type Deps = Readonly<{
@@ -10,6 +11,8 @@ export type Deps = Readonly<{
   repos: Repos;
   /** True when the request may proceed under the rate limit for `key`. */
   limit: (key: string) => Promise<boolean>;
+  /** The AI router: Gemini talk, Jev/Gemini judge, budget-guarded. */
+  ai: Ai;
 }>;
 
 export type AppEnv = { Bindings: Bindings; Variables: { deps: Deps; device: Device } };

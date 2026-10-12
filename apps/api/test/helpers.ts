@@ -122,3 +122,12 @@ export const sampleRoadmap = () => {
     ],
   };
 };
+
+/** A generateContent reply carrying `text`, as Gemini sends it. */
+export const geminiReply = (text: string) => ({
+  status: 200,
+  text: async () =>
+    JSON.stringify({
+      candidates: [{ content: { role: 'model', parts: [{ text }] }, finishReason: 'STOP' }],
+    }),
+});
