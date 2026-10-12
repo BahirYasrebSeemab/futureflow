@@ -43,3 +43,14 @@ bun x wrangler secret put SETUP_CODE --cwd apps/api
 bun x wrangler d1 migrations apply mflow --remote --cwd apps/api
 bun x wrangler deploy --cwd apps/api
 ```
+
+## AI (`packages/ai`)
+
+`talk()` (Gemini, free tier) and `judge()` (Jev when a key is set, else Gemini) behind one router with
+structured output, one repair retry, provider fallback and a daily budget. See `docs/adr/0007-ai-router.md`.
+Without keys, plans come from a deterministic template.
+
+```bash
+bun x wrangler secret put GEMINI_API_KEY --cwd apps/api   # optional, free: https://aistudio.google.com/apikey
+bun x wrangler secret put JEV_API_KEY --cwd apps/api      # optional, paid
+```
