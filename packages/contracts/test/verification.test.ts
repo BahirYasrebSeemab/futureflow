@@ -16,6 +16,8 @@ describe('GithubLinkRequestSchema', () => {
     ['a repository without an owner', { token, repos: ['mflow'] }],
     ['a URL instead of a name', { token, repos: ['https://github.com/a/b'] }],
     ['a repeated repository', { token, repos: ['a/b', 'a/b'] }],
+    ['a dot-dot path segment', { token, repos: ['../user'] }],
+    ['a single-dot name', { token, repos: ['a/.'] }],
   ])('rejects %s', (_label, value) => {
     expect(GithubLinkRequestSchema.safeParse(value).success).toBe(false);
   });

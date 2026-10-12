@@ -62,6 +62,9 @@ const STATUS_ERRORS: Readonly<Record<number, GithubError>> = {
   429: 'rate_limited',
 };
 
+/** Each `owner/name` segment URL-encoded, as a second guard behind the schema. */
+const repoPath = (name: string): string => name.split('/').map(encodeURIComponent).join('/');
+
 const cut = (patch: string): string =>
   patch.length <= MAX_PATCH_CHARS ? patch : `${patch.slice(0, MAX_PATCH_CHARS)}${CUT}`;
 
@@ -97,12 +100,12 @@ export function githubClient(token: string, fetch: FetchLike): GithubClient {
       return res.ok ? ok({ login: res.value.login }) : res;
     },
     async repo(name) {
-      const res = await get(`/repos/${name}`, z.object({}));
+      const res = await get(`/repos/${repoPath(name)}`, z.object({}));
       return res.ok ? ok(true as const) : res;
     },
     async commitsSince(repo, since, author) {
       const query = new URLSearchParams({ since, author, per_page: '100' });
-      const res = await get(`/repos/${repo}/commits?${query.toString()}`, ListSchema);
+      const res = await get(`/repos/${repoPath(repo)}/commits?${query.toString()}`, ListSchema);
       if (!res.ok) return res;
       return ok(
         res.value
@@ -112,7 +115,10 @@ export function githubClient(token: string, fetch: FetchLike): GithubClient {
       );
     },
     async commit(repo, sha) {
-      const res = await get(`/repos/${repo}/commits/${sha}`, DetailSchema);
+      const res = await get(
+        `/repos/${repoPath(repo)}/commits/${encodeURIComponent(sha)}`,
+        DetailSchema,
+      );
       if (!res.ok) return res;
       const c = res.value;
       return ok({

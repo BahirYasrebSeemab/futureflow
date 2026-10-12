@@ -1,8 +1,10 @@
 import { z } from 'zod';
 import { DayKeySchema } from './schemas';
 
-/** `owner/name`, as GitHub spells it. */
-export const RepoNameSchema = z.string().regex(/^[A-Za-z0-9_.-]{1,100}\/[A-Za-z0-9_.-]{1,100}$/);
+const SEGMENT = '(?!\\.{1,2}(?:/|$))[A-Za-z0-9_.-]{1,100}';
+
+/** `owner/name`, as GitHub spells it. `.` and `..` are refused: they would act as URL path steps. */
+export const RepoNameSchema = z.string().regex(new RegExp(`^${SEGMENT}/${SEGMENT}$`));
 
 export const GithubLinkRequestSchema = z
   .object({
