@@ -40,6 +40,16 @@ export async function requiredFor(deps: Deps, plan: Plan): Promise<RequiredTask[
   return requiredTasks(plan, entry?.record, rest);
 }
 
+/** A pending verdict with no judgment yet: the owner may decide it, and the judge retries. */
+const placeholder = (day: string, taskId: string): StoredVerdict => ({
+  day,
+  taskId,
+  outcome: 'pending',
+  confidence: 0,
+  by: 'judge',
+  evidenceIds: [],
+});
+
 /** Without automatic decisions every judge verdict waits for the owner, carrying its suggestion. */
 export function gate(
   verdict: Verdict,
@@ -107,14 +117,25 @@ export async function runVerification(deps: Deps): Promise<VerificationRun> {
     const previous = verdicts.find((v) => v.taskId === r.taskId);
     if (previous?.outcome === 'pass') continue;
     const ids = task.verifier === 'github' ? commits.map((c) => c.sha) : logs.map((l) => l.id);
-    if (ids.length === 0) continue;
+    // Spec §13.1: a dead GitHub token makes GitHub tasks pending, so the owner can still decide.
+    const unreadable = task.verifier === 'github' && github === 'invalid_token';
+    if (ids.length === 0) {
+      if (unreadable && previous === undefined)
+        await store.saveVerdict(placeholder(day, r.taskId), deps.now());
+      continue;
+    }
     if (previous !== undefined && sameIds(previous.evidenceIds, ids)) continue;
 
     const decision =
       task.verifier === 'github'
         ? await judgeGithub(deps.ai, r.version, commits)
         : await judgeReading(deps.ai, r.version, logs);
-    if (decision === null) continue; // AI unavailable: no verdict, the next run tries again
+    if (decision === null) {
+      // Spec §13.1: all AI unavailable → pending. Its empty evidence list never matches, so the
+      // next run asks the judge again; meanwhile the owner can decide by hand.
+      if (previous === undefined) await store.saveVerdict(placeholder(day, r.taskId), deps.now());
+      continue;
+    }
     const resolved = resolveDecision(r.taskId, ids, decision, 'judge', DEFAULT_RULES);
     await store.saveVerdict(
       gate(resolved, decision, day, deps.settings.judgeAutoDecide),

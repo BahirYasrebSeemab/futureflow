@@ -134,11 +134,62 @@ describe('POST /v1/verify', () => {
     ]);
   });
 
-  it('writes no verdict while the AI is unavailable, and judges once it is back', async () => {
-    const { app, token, verify } = await setup();
-    const noAi = await call<Run>(app, 'POST', '/v1/verify', { token });
-    const withAi = await verify();
-    expect([noAi.body.data.verdicts.length, withAi.body.data.verdicts.length]).toEqual([0, 1]);
+  it('with the AI down, evidence leaves a pending verdict the owner can decide; the judge retries later', async () => {
+    const { app, token, tasks, verify, ledger } = await setup();
+    const noAi = (await call<Run>(app, 'POST', '/v1/verify', { token })).body.data;
+
+    expect(noAi.verdicts).toEqual([
+      {
+        day: '2026-10-09',
+        taskId: tasks[0]?.id,
+        outcome: 'pending',
+        confidence: 0,
+        by: 'judge',
+        evidenceIds: [],
+      },
+    ]);
+    const withAi = (await verify()).body.data;
+    expect(withAi.verdicts[0]).toMatchObject({
+      outcome: 'pending',
+      suggestion: 'pass',
+      evidenceIds: ['a1'],
+    });
+
+    const decided = await call(app, 'POST', `/v1/verdicts/${tasks[0]?.id}`, {
+      token,
+      body: { day: '2026-10-09', outcome: 'pass' },
+    });
+    expect(decided.status).toBe(200);
+    expect((await ledger()).some((e) => e.kind === 'task_reward' && e.refId === tasks[0]?.id)).toBe(
+      true,
+    );
+  });
+
+  it('with the GitHub token dead, GitHub tasks become pending so the owner can still decide', async () => {
+    const fake = githubFake({ status: (url) => (url.includes('/commits') ? 401 : undefined) });
+    const app: App = makeApp(undefined, { fetch: fake.fetch });
+    const { token } = await pairDevice(app);
+    await call(app, 'PUT', '/v1/github/link', {
+      token,
+      body: { token: TOKEN, repos: ['bahir/mflow'] },
+    });
+    const tasks = [taskSpec('Fix the bug'), taskSpec('Read', 'reading'), taskSpec('Math', 'math')];
+    await call(app, 'PUT', '/v1/plans/2026-10-09', { token, body: { tasks } });
+    await call(app, 'POST', '/v1/plans/2026-10-09/lock', { token });
+
+    const run = (await call<Run>(app, 'POST', '/v1/verify', { token })).body.data;
+
+    expect(run.github).toBe('invalid_token');
+    expect(run.verdicts).toEqual([
+      {
+        day: '2026-10-09',
+        taskId: tasks[0]?.id,
+        outcome: 'pending',
+        confidence: 0,
+        by: 'judge',
+        evidenceIds: [],
+      },
+    ]);
   });
 
   it('does nothing before the plan is locked', async () => {
