@@ -69,11 +69,14 @@ export const event = (
   over: Partial<LedgerEvent> & Pick<LedgerEvent, 'kind' | 'seconds'>,
 ): LedgerEvent => ({ id: uuidv7(), day: '2026-10-09', at: T0, ...over });
 
-export const taskSpec = (title = 'Ship one PR'): TaskSpec => ({
+export const taskSpec = (
+  title = 'Ship one PR',
+  verifier: TaskSpec['verifier'] = 'github',
+): TaskSpec => ({
   id: uuidv7(),
   skillId: 'swe',
   when: '20:00 at my desk',
-  verifier: 'github',
+  verifier,
   full: { title, criteria: 'a merged PR', seconds: 1200 },
   twoMinute: { title: 'Open the repo', criteria: 'one commit', seconds: 300 },
 });

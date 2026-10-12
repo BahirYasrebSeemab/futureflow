@@ -18,6 +18,7 @@ import { planRoutes } from './routes/plans';
 import { proposeRoutes } from './routes/propose';
 import { telemetryRoutes } from './routes/telemetry';
 import { todayRoutes } from './routes/today';
+import { verifyRoutes } from './routes/verify';
 
 /**
  * The largest batch the schemas accept (500 events with a 128-character refId and a 500-character
@@ -87,6 +88,7 @@ export function createApp(options: AppOptions = {}): Hono<AppEnv> {
   authed.route('/', onboardingRoutes);
   authed.route('/', proposeRoutes);
   authed.route('/', githubRoutes);
+  authed.route('/', verifyRoutes);
   v1.route('/', authed);
 
   app.route('/v1', v1);
