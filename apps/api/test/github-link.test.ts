@@ -27,7 +27,12 @@ describe('GitHub link', () => {
   it('checks the token and repositories, seals the token and starts cursors a day back', async () => {
     const { app, token, reply } = await linked();
 
-    expect(reply.body.data).toEqual({ login: 'bahir', repos: ['bahir/mflow'], status: 'ok' });
+    expect(reply.body.data).toEqual({
+      login: 'bahir',
+      repos: ['bahir/mflow'],
+      status: 'ok',
+      unreadableRepos: [],
+    });
     const row = await env.DB.prepare('SELECT token_sealed FROM github_link').first<{
       token_sealed: string;
     }>();
@@ -38,7 +43,12 @@ describe('GitHub link', () => {
     }>();
     expect(cursor?.since).toBe(new Date(T0 - 86_400_000).toISOString());
     const got = await call(app, 'GET', '/v1/github/link', { token });
-    expect(got.body.data).toEqual({ login: 'bahir', repos: ['bahir/mflow'], status: 'ok' });
+    expect(got.body.data).toEqual({
+      login: 'bahir',
+      repos: ['bahir/mflow'],
+      status: 'ok',
+      unreadableRepos: [],
+    });
     expect(JSON.stringify(got.body)).not.toContain(TOKEN);
   });
 

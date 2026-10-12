@@ -81,6 +81,8 @@ export type GithubLink = Readonly<{
   tokenSealed: string;
   repos: readonly string[];
   status: 'ok' | 'invalid';
+  /** Linked repositories the token could not read on the last run (403/404). */
+  unreadableRepos: readonly string[];
 }>;
 
 export type CommitFile = Readonly<{
@@ -108,6 +110,7 @@ export interface VerificationRepo {
   /** Upserts the link and resets every repository cursor to `since` (ISO 8601). */
   saveLink(link: GithubLink, at: number, since: string): Promise<void>;
   setLinkStatus(status: GithubLink['status'], at: number): Promise<void>;
+  setUnreadable(repos: readonly string[], at: number): Promise<void>;
   deleteLink(): Promise<void>;
   cursor(repo: string): Promise<string | null>;
   setCursor(repo: string, since: string): Promise<void>;

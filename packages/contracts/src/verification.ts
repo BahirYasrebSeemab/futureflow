@@ -21,6 +21,8 @@ export const GithubLinkSchema = z.object({
   login: z.string(),
   repos: z.array(RepoNameSchema),
   status: z.enum(['ok', 'invalid']),
+  /** Linked repositories the token could not read on the last run. */
+  unreadableRepos: z.array(RepoNameSchema),
 });
 
 export const VerdictRequestSchema = z.object({

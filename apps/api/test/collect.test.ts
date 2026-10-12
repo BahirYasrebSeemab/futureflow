@@ -1,5 +1,6 @@
 import { env } from 'cloudflare:test';
 import { describe, expect, it } from 'vitest';
+import { d1Repos } from '../src/adapters/d1';
 import { makeDeps } from '../src/app';
 import { collectGithub, MAX_COMMIT_FETCHES_PER_RUN } from '../src/verification/github';
 import { githubFake, type FakeCommit } from './github-fake';
@@ -117,5 +118,23 @@ describe('collectGithub', () => {
       since: string;
     }>();
     expect(cursor?.since).toBe(new Date(T0 - 86_400_000).toISOString());
+  });
+});
+
+describe('repositories the token cannot read', () => {
+  it('reports them on the link until access returns', async () => {
+    let blocked = true;
+    const fake = githubFake({
+      status: (url) => (blocked && url.includes('/commits') ? 403 : undefined),
+    });
+    const deps = await linkWith(fake);
+    const link = async () => (await d1Repos(env.DB).verification.link())?.unreadableRepos;
+
+    expect(await collectGithub(deps, 0)).toBe('repo_unavailable');
+    expect(await link()).toEqual(['bahir/mflow']);
+
+    blocked = false;
+    expect(await collectGithub(deps, 0)).toBe('ok');
+    expect(await link()).toEqual([]);
   });
 });

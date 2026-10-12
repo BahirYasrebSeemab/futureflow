@@ -32,7 +32,13 @@ describe('verification repository', () => {
   it('stores the link and resets cursors; deleting removes both', async () => {
     const repo = d1Repos(env.DB).verification;
     await repo.saveLink(
-      { login: 'bahir', tokenSealed: 'v1.x.y', repos: ['bahir/mflow'], status: 'ok' },
+      {
+        login: 'bahir',
+        tokenSealed: 'v1.x.y',
+        repos: ['bahir/mflow'],
+        status: 'ok',
+        unreadableRepos: [],
+      },
       T0,
       '2026-10-08T12:00:00.000Z',
     );
@@ -42,6 +48,7 @@ describe('verification repository', () => {
       tokenSealed: 'v1.x.y',
       repos: ['bahir/mflow'],
       status: 'ok',
+      unreadableRepos: [],
     });
     expect(await repo.cursor('bahir/mflow')).toBe('2026-10-08T12:00:00.000Z');
     await repo.setLinkStatus('invalid', T0);

@@ -6,6 +6,8 @@ CREATE TABLE github_link (
   token_sealed TEXT NOT NULL,
   repos_json TEXT NOT NULL,
   status TEXT NOT NULL CHECK (status IN ('ok', 'invalid')),
+  -- Repositories the token currently cannot read (403/404), shown to the owner.
+  unreadable_json TEXT NOT NULL DEFAULT '[]',
   linked_at INTEGER NOT NULL,
   checked_at INTEGER NOT NULL
 );

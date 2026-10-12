@@ -8,6 +8,7 @@ type LinkRow = {
   token_sealed: string;
   repos_json: string;
   status: GithubLink['status'];
+  unreadable_json: string;
 };
 type CommitRow = { payload_json: string };
 type ReadingRow = {
@@ -51,7 +52,9 @@ const CommitSchema = z.object({
 export const d1Verification = (db: D1Database): VerificationRepo => ({
   async link() {
     const row = await db
-      .prepare('SELECT login, token_sealed, repos_json, status FROM github_link WHERE id = 1')
+      .prepare(
+        `SELECT login, token_sealed, repos_json, status, unreadable_json FROM github_link WHERE id = 1`,
+      )
       .first<LinkRow>();
     return row === null
       ? null
@@ -60,6 +63,7 @@ export const d1Verification = (db: D1Database): VerificationRepo => ({
           tokenSealed: row.token_sealed,
           repos: StringsSchema.parse(JSON.parse(row.repos_json)),
           status: row.status,
+          unreadableRepos: StringsSchema.parse(JSON.parse(row.unreadable_json)),
         };
   },
 
@@ -70,7 +74,7 @@ export const d1Verification = (db: D1Database): VerificationRepo => ({
           `INSERT INTO github_link (id, login, token_sealed, repos_json, status, linked_at, checked_at)
            VALUES (1, ?1, ?2, ?3, ?4, ?5, ?5)
            ON CONFLICT (id) DO UPDATE SET login = excluded.login, token_sealed = excluded.token_sealed,
-             repos_json = excluded.repos_json, status = excluded.status,
+             repos_json = excluded.repos_json, status = excluded.status, unreadable_json = '[]',
              linked_at = excluded.linked_at, checked_at = excluded.checked_at`,
         )
         .bind(link.login, link.tokenSealed, JSON.stringify(link.repos), link.status, at),
@@ -79,6 +83,13 @@ export const d1Verification = (db: D1Database): VerificationRepo => ({
         .prepare(`INSERT INTO github_cursor (repo, since) SELECT value, ?2 FROM json_each(?1)`)
         .bind(JSON.stringify(link.repos), since),
     ]);
+  },
+
+  async setUnreadable(repos, at) {
+    await db
+      .prepare('UPDATE github_link SET unreadable_json = ?1, checked_at = ?2 WHERE id = 1')
+      .bind(JSON.stringify(repos), at)
+      .run();
   },
 
   async setLinkStatus(status, at) {

@@ -21,7 +21,12 @@ export const githubRoutes = new Hono<AppEnv>()
     const link = await c.var.deps.repos.verification.link();
     return link === null
       ? fail(c, 'not_found')
-      : ok(c, { login: link.login, repos: link.repos, status: link.status });
+      : ok(c, {
+          login: link.login,
+          repos: link.repos,
+          status: link.status,
+          unreadableRepos: link.unreadableRepos,
+        });
   })
   .put('/github/link', valid('json', GithubLinkRequestSchema), async (c) => {
     const { deps } = c.var;
@@ -44,11 +49,17 @@ export const githubRoutes = new Hono<AppEnv>()
         tokenSealed: await seal(key, body.token),
         repos: body.repos,
         status: 'ok',
+        unreadableRepos: [],
       },
       now,
       new Date(now - LOOKBACK_MS).toISOString(),
     );
-    return ok(c, { login: user.value.login, repos: body.repos, status: 'ok' as const });
+    return ok(c, {
+      login: user.value.login,
+      repos: body.repos,
+      status: 'ok' as const,
+      unreadableRepos: [],
+    });
   })
   .delete('/github/link', async (c) => {
     await c.var.deps.repos.verification.deleteLink();
