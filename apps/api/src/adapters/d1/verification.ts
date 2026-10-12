@@ -124,6 +124,35 @@ export const d1Verification = (db: D1Database): VerificationRepo => ({
       .run();
   },
 
+  async cursors(repos) {
+    const { results } = await db
+      .prepare(
+        'SELECT repo, since FROM github_cursor WHERE repo IN (SELECT value FROM json_each(?1))',
+      )
+      .bind(JSON.stringify(repos))
+      .all<{ repo: string; since: string }>();
+    return new Map(results.map((r) => [r.repo, r.since]));
+  },
+
+  async saveCollected(commits, cursors, at) {
+    const rows = commits.map((c) => ({ ...c, payload: JSON.stringify(c) }));
+    await db.batch([
+      db
+        .prepare(
+          `INSERT OR IGNORE INTO github_commits (sha, repo, day, committed_at, payload_json, captured_at)
+           SELECT value->>'sha', value->>'repo', value->>'day', value->>'committedAt', value->>'payload', ?2
+           FROM json_each(?1)`,
+        )
+        .bind(JSON.stringify(rows), at),
+      db
+        .prepare(
+          `INSERT INTO github_cursor (repo, since) SELECT value->>'repo', value->>'since' FROM json_each(?1) WHERE true
+           ON CONFLICT (repo) DO UPDATE SET since = excluded.since`,
+        )
+        .bind(JSON.stringify(cursors)),
+    ]);
+  },
+
   async knownShas(shas) {
     if (shas.length === 0) return new Set();
     const { results } = await db

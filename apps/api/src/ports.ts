@@ -114,6 +114,14 @@ export interface VerificationRepo {
   deleteLink(): Promise<void>;
   cursor(repo: string): Promise<string | null>;
   setCursor(repo: string, since: string): Promise<void>;
+  /** Cursors of these repositories (missing ones are absent), in one query. */
+  cursors(repos: readonly string[]): Promise<Map<string, string>>;
+  /** Stores new commits and moves cursors in one transaction. */
+  saveCollected(
+    commits: readonly CommitEvidence[],
+    cursors: readonly Readonly<{ repo: string; since: string }>[],
+    at: number,
+  ): Promise<void>;
   knownShas(shas: readonly string[]): Promise<Set<string>>;
   addCommits(commits: readonly CommitEvidence[], at: number): Promise<void>;
   /** The day's commits, newest first. */

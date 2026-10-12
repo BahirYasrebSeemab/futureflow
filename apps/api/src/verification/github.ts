@@ -1,7 +1,7 @@
 import { dayKeyFor, DEFAULT_RULES } from '@mflow/core';
 import { importSecretKey, open } from '../crypto/secret-box';
 import type { Deps } from '../env';
-import { githubClient } from '../github/client';
+import { githubClient, type CommitSummary } from '../github/client';
 import type { CommitEvidence } from '../ports';
 
 /** Free Workers allow 50 outgoing requests per invocation; commit details are the expensive part. */
@@ -24,56 +24,61 @@ export async function collectGithub(deps: Deps, utcOffsetMinutes: number): Promi
   if (token === null) return 'key_missing';
 
   const client = githubClient(token, deps.fetch);
-  let budget = MAX_COMMIT_FETCHES_PER_RUN;
+  const now = new Date(deps.now()).toISOString();
+  const cursors = await store.cursors(link.repos);
+
+  // 1. List each repository (one subrequest each); a 401 ends the run, 403/404 marks the repo.
   const unreadable: string[] = [];
+  const listings: { repo: string; since: string; commits: CommitSummary[] }[] = [];
   for (const repo of link.repos) {
-    if (budget === 0) break;
-    const since = (await store.cursor(repo)) ?? new Date(deps.now()).toISOString();
+    const since = cursors.get(repo) ?? now;
     const listed = await client.commitsSince(repo, since, link.login);
-    if (!listed.ok) {
-      if (listed.error === 'unauthorized') {
-        await store.setLinkStatus('invalid', deps.now());
-        return 'invalid_token';
-      }
-      if (LOST_ACCESS.has(listed.error)) unreadable.push(repo);
-      continue;
-    }
-    const known = await store.knownShas(listed.value.map((c) => c.sha));
-    const collected: CommitEvidence[] = [];
+    if (listed.ok) listings.push({ repo, since, commits: listed.value });
+    else if (listed.error === 'unauthorized') return markInvalid(deps);
+    else if (LOST_ACCESS.has(listed.error)) unreadable.push(repo);
+  }
+
+  // 2. Fetch details for new commits within the budget, oldest first per repository.
+  const known = await store.knownShas(listings.flatMap((l) => l.commits.map((c) => c.sha)));
+  const collected: CommitEvidence[] = [];
+  const moved: { repo: string; since: string }[] = [];
+  let budget = MAX_COMMIT_FETCHES_PER_RUN;
+  let tokenDied = false;
+  for (const { repo, since, commits } of listings) {
     let cursor = since;
-    for (const summary of listed.value) {
-      if (known.has(summary.sha)) {
-        cursor = summary.date;
-        continue;
-      }
-      if (budget === 0) break;
-      budget -= 1;
-      const detail = await client.commit(repo, summary.sha);
-      if (!detail.ok) {
-        if (detail.error === 'unauthorized') {
-          await store.setLinkStatus('invalid', deps.now());
-          return 'invalid_token';
+    for (const summary of commits) {
+      if (!known.has(summary.sha)) {
+        if (budget === 0) break;
+        budget -= 1;
+        const detail = await client.commit(repo, summary.sha);
+        if (!detail.ok) {
+          tokenDied = detail.error === 'unauthorized';
+          break;
         }
-        break;
+        const { date, ...commit } = detail.value;
+        collected.push({
+          ...commit,
+          repo,
+          committedAt: date,
+          day: dayKeyFor(Date.parse(date), utcOffsetMinutes, DEFAULT_RULES.dayBoundaryHour),
+        });
       }
-      const { date, ...commit } = detail.value;
-      collected.push({
-        ...commit,
-        repo,
-        committedAt: date,
-        day: dayKeyFor(
-          Date.parse(detail.value.date),
-          utcOffsetMinutes,
-          DEFAULT_RULES.dayBoundaryHour,
-        ),
-      });
       cursor = summary.date;
     }
-    await store.addCommits(collected, deps.now());
-    if (cursor !== since) await store.setCursor(repo, cursor);
+    if (cursor !== since) moved.push({ repo, since: cursor });
+    if (tokenDied) break;
   }
+
+  // 3. One write for all evidence and cursors; then the link's health.
+  await store.saveCollected(collected, moved, deps.now());
+  if (tokenDied) return markInvalid(deps);
   if (JSON.stringify(unreadable) !== JSON.stringify(link.unreadableRepos)) {
     await store.setUnreadable(unreadable, deps.now());
   }
   return unreadable.length === 0 ? 'ok' : 'repo_unavailable';
+}
+
+async function markInvalid(deps: Deps): Promise<CollectStatus> {
+  await deps.repos.verification.setLinkStatus('invalid', deps.now());
+  return 'invalid_token';
 }

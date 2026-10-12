@@ -17,6 +17,8 @@ export type AiError = 'ai_unavailable';
 export interface UsageCounter {
   used(provider: string, day: string): Promise<number>;
   add(provider: string, day: string): Promise<void>;
+  /** Counts one call if fewer than `cap` were made that day; false (nothing counted) otherwise. Atomic. */
+  tryUse(provider: string, day: string, cap: number): Promise<boolean>;
 }
 
 export type Limited<P> = Readonly<{ provider: P; dailyLimit: number }>;
@@ -61,6 +63,12 @@ export function memoryUsage(): UsageCounter {
     async add(provider, day) {
       counts.set(key(provider, day), (counts.get(key(provider, day)) ?? 0) + 1);
     },
+    async tryUse(provider, day, cap) {
+      const used = counts.get(key(provider, day)) ?? 0;
+      if (used >= cap) return false;
+      counts.set(key(provider, day), used + 1);
+      return true;
+    },
   };
 }
 
@@ -102,9 +110,7 @@ export function createAi(config: AiConfig): Ai {
   async function admit(name: string, limit: number, importance: Importance): Promise<boolean> {
     const day = config.day();
     const cap = importance === 'flourish' ? Math.floor(limit * FLOURISH_SHARE) : limit;
-    if ((await config.usage.used(name, day)) >= cap) return false;
-    await config.usage.add(name, day);
-    return true;
+    return config.usage.tryUse(name, day, cap);
   }
 
   async function call(entry: Limited<TalkProvider>, importance: Importance, req: TalkRequest) {

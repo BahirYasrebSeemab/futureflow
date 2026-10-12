@@ -83,18 +83,24 @@ export async function settle(
 ): Promise<void> {
   const { ledger, verification } = deps.repos;
   const now = deps.now();
-  const verdicts = await verification.verdictsForDay(plan.day);
-  let events: LedgerEvent[] = await ledger.forDay(plan.day);
-  let { outstandingBorrow } = await ledger.totals();
+  const [verdicts, dayEvents, totals] = await Promise.all([
+    verification.verdictsForDay(plan.day),
+    ledger.forDay(plan.day),
+    ledger.totals(),
+  ]);
   const ctx = { day: plan.day, at: now, newId: deps.newId };
 
-  const pay = async (req: EarnRequest): Promise<void> => {
+  // Every payment is computed in memory (each one sees the ones before it), then written once.
+  let events: LedgerEvent[] = dayEvents;
+  let outstandingBorrow = totals.outstandingBorrow;
+  const payments: LedgerEvent[] = [];
+  const pay = (req: EarnRequest): void => {
     const earned = earn(events, req, ctx, DEFAULT_RULES, {
       planLocked: plan.status === 'locked',
       outstandingBorrow,
     });
     if (!earned.ok) return;
-    await appendEvents(ledger, earned.value, null, now);
+    payments.push(...earned.value);
     events = [...events, ...earned.value];
     outstandingBorrow = Math.max(0, outstandingBorrow + sumKind(earned.value, 'borrow_repay'));
   };
@@ -102,9 +108,10 @@ export async function settle(
   const passed = new Set(verdicts.filter((v) => v.outcome === 'pass').map((v) => v.taskId));
   for (const r of required) {
     if (passed.has(r.taskId))
-      await pay({ kind: 'task_reward', taskId: r.taskId, seconds: r.version.seconds });
+      pay({ kind: 'task_reward', taskId: r.taskId, seconds: r.version.seconds });
   }
-  if (allPassed(required, verdicts)) await pay({ kind: 'all_done_bonus' });
+  if (allPassed(required, verdicts)) pay({ kind: 'all_done_bonus' });
+  await appendEvents(ledger, payments, null, now);
 }
 
 /** Collect evidence, judge what changed, pay what passed. Safe to run any number of times. */

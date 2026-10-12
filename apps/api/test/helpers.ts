@@ -134,3 +134,40 @@ export const geminiReply = (text: string) => ({
       candidates: [{ content: { role: 'model', parts: [{ text }] }, finishReason: 'STOP' }],
     }),
 });
+
+/** Wraps a D1 binding and counts executed statements (each statement in a batch counts, as D1 does). */
+export function countingDb(db: D1Database): { db: D1Database; count: () => number } {
+  let statements = 0;
+  const targets = new WeakMap<object, D1PreparedStatement>();
+  const wrap = (stmt: D1PreparedStatement): D1PreparedStatement => {
+    const proxy = new Proxy(stmt, {
+      get(target, prop) {
+        if (prop === 'bind') return (...args: unknown[]) => wrap(target.bind(...args));
+        if (prop === 'run' || prop === 'all' || prop === 'first' || prop === 'raw') {
+          return (...args: unknown[]) => {
+            statements += 1;
+            return (target[prop] as (...a: unknown[]) => unknown).apply(target, args);
+          };
+        }
+        const value: unknown = Reflect.get(target, prop, target);
+        return typeof value === 'function' ? value.bind(target) : value;
+      },
+    });
+    targets.set(proxy, stmt);
+    return proxy;
+  };
+  const proxy = new Proxy(db, {
+    get(target, prop) {
+      if (prop === 'prepare') return (sql: string) => wrap(target.prepare(sql));
+      if (prop === 'batch') {
+        return (stmts: D1PreparedStatement[]) => {
+          statements += stmts.length;
+          return target.batch(stmts.map((s) => targets.get(s) ?? s));
+        };
+      }
+      const value: unknown = Reflect.get(target, prop, target);
+      return typeof value === 'function' ? value.bind(target) : value;
+    },
+  });
+  return { db: proxy, count: () => statements };
+}
