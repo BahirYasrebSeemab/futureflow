@@ -60,5 +60,6 @@ bun x wrangler secret put JEV_API_KEY --cwd apps/api      # optional, paid
 
 The hourly cron (and `POST /v1/verify`) collects your commits on linked repositories, asks the
 judge about GitHub and reading tasks, and pays rewards for passed tasks. Until the judge's accuracy
-is measured, judge verdicts wait for your confirmation (`POST /v1/verdicts/:taskId`). See
+is measured, judge verdicts wait for your confirmation (`POST /v1/verdicts/:taskId`). Only commits
+on each repository's default branch, authored with an email on your GitHub account, count. See
 `docs/adr/0008-verification.md`.
