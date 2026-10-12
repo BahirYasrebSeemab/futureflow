@@ -2,7 +2,14 @@ import type { Ai } from '@mflow/ai';
 import type { Device, Repos } from './ports';
 
 /** Worker bindings: the generated `Env` plus secrets, which `wrangler types` cannot see. */
-export type Bindings = Env & { SETUP_CODE?: string; GEMINI_API_KEY?: string; JEV_API_KEY?: string };
+export type Bindings = Env & {
+  SETUP_CODE?: string;
+  GEMINI_API_KEY?: string;
+  JEV_API_KEY?: string;
+  /** Optional per-model daily request limits (whole numbers). */
+  GEMINI_DAILY_LIMIT?: string;
+  JEV_DAILY_LIMIT?: string;
+};
 
 /** Everything a handler needs from the outside world, injected so tests control it. */
 export type Deps = Readonly<{

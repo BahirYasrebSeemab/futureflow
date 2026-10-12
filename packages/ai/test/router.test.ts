@@ -211,3 +211,30 @@ describe('judge', () => {
     expect((await ai.judge('state', questions)).ok).toBe(true);
   });
 });
+
+describe('failure reporting', () => {
+  it('reports each failed provider call by name and category, never the content', async () => {
+    const failures: [string, string][] = [];
+    const a = scriptedTalk('a', [err('unauthorized')]);
+    const b = scriptedTalk('b', [ok('prose'), ok('more prose')]);
+    const ai = createAi({
+      talk: [limited(a.provider), limited(b.provider)],
+      judge: [],
+      usage: memoryUsage(),
+      day: () => DAY,
+      onFailure: (provider, error) => failures.push([provider, error]),
+    });
+
+    await ai.talkJson({
+      system: 's',
+      prompt: 'secret prompt',
+      schema: Plan,
+      importance: 'essential',
+    });
+
+    expect(failures).toEqual([
+      ['a', 'unauthorized'],
+      ['b', 'invalid_output'],
+    ]);
+  });
+});

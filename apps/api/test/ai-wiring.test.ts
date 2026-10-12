@@ -1,6 +1,6 @@
 import { env } from 'cloudflare:test';
-import { describe, expect, it } from 'vitest';
-import { aiFromEnv, GEMINI_MODELS } from '../src/ai';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { aiFromEnv, dailyLimit, GEMINI_MODELS } from '../src/ai';
 import { d1AiUsage } from '../src/adapters/d1/ai-usage';
 import type { FetchLike } from '@mflow/ai';
 import { geminiReply, T0 } from './helpers';
@@ -82,5 +82,66 @@ describe('aiFromEnv', () => {
       await usage.used('a', '2026-10-10'),
       await usage.used('b', '2026-10-09'),
     ]).toEqual([2, 1, 0]);
+  });
+});
+
+describe('limits and failure logs', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('reads the daily limit per model from GEMINI_DAILY_LIMIT', async () => {
+    const { fetch, urls } = recording(() => geminiReply('hi'));
+    const ai = aiFromEnv(
+      { ...env, GEMINI_API_KEY: 'g-key', GEMINI_DAILY_LIMIT: '1' },
+      d1AiUsage(env.DB),
+      fetch,
+      () => T0,
+    );
+
+    await ai.talkText({ system: 's', prompt: 'p', importance: 'essential' });
+    await ai.talkText({ system: 's', prompt: 'p', importance: 'essential' });
+
+    expect(urls.map((u) => u.includes(GEMINI_MODELS[0]))).toEqual([true, false]);
+  });
+
+  it('defaults to a conservative limit when the setting is missing or invalid', () => {
+    expect([
+      dailyLimit(undefined, 100),
+      dailyLimit('abc', 100),
+      dailyLimit('0', 100),
+      dailyLimit('40', 100),
+    ]).toEqual([100, 100, 100, 40]);
+  });
+
+  it('logs one line per failed provider call: provider and category only', async () => {
+    const log = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const { fetch } = recording(() => ({
+      status: 400,
+      text: async () => '{"error":"API_KEY_INVALID"}',
+    }));
+    const ai = aiFromEnv({ ...env, GEMINI_API_KEY: 'bad-key' }, d1AiUsage(env.DB), fetch, () => T0);
+
+    await ai.talkText({ system: 's', prompt: 'private plan words', importance: 'essential' });
+
+    const lines = log.mock.calls.map(
+      (args) => JSON.parse(String(args[0])) as Record<string, unknown>,
+    );
+    expect(lines).toEqual([
+      {
+        level: 'warn',
+        event: 'ai_provider_failed',
+        provider: `gemini:${GEMINI_MODELS[0]}`,
+        error: 'unavailable',
+      },
+      {
+        level: 'warn',
+        event: 'ai_provider_failed',
+        provider: `gemini:${GEMINI_MODELS[1]}`,
+        error: 'unavailable',
+      },
+    ]);
+    expect(JSON.stringify(log.mock.calls)).not.toContain('private plan words');
+    expect(JSON.stringify(log.mock.calls)).not.toContain('bad-key');
   });
 });

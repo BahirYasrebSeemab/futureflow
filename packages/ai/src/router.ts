@@ -4,6 +4,7 @@ import type {
   Answers,
   JudgeProvider,
   JudgeState,
+  ProviderError,
   Questions,
   TalkProvider,
   TalkRequest,
@@ -26,6 +27,8 @@ export type AiConfig = Readonly<{
   usage: UsageCounter;
   /** The budget day (UTC date) for the counters. */
   day: () => string;
+  /** Called once per failed provider call with its name and error category; never content. */
+  onFailure?: (provider: string, error: ProviderError) => void;
 }>;
 
 /** Past this share of a provider's daily limit, only essential calls (plans, verification) go through. */
@@ -94,6 +97,8 @@ function parseJson<T>(text: string, schema: z.ZodType<T>): Result<T, string> {
 const REPAIR_NOTE = 'Your previous reply did not match the required JSON schema. Problems: ';
 
 export function createAi(config: AiConfig): Ai {
+  const report = (provider: string, error: ProviderError) => config.onFailure?.(provider, error);
+
   async function admit(name: string, limit: number, importance: Importance): Promise<boolean> {
     const day = config.day();
     const cap = importance === 'flourish' ? Math.floor(limit * FLOURISH_SHARE) : limit;
@@ -112,6 +117,7 @@ export function createAi(config: AiConfig): Ai {
       for (const entry of config.talk) {
         const res = await call(entry, importance, { system, prompt });
         if (res?.ok) return ok(res.value);
+        if (res) report(entry.provider.name, res.error);
       }
       return err('ai_unavailable');
     },
@@ -120,14 +126,23 @@ export function createAi(config: AiConfig): Ai {
       const jsonSchema = jsonSchemaOf(guide ?? schema);
       for (const entry of config.talk) {
         const first = await call(entry, importance, { system, prompt, jsonSchema });
-        if (!first?.ok) continue;
+        if (!first) continue;
+        if (!first.ok) {
+          report(entry.provider.name, first.error);
+          continue;
+        }
         const parsed = parseJson(first.value, schema);
         if (parsed.ok) return parsed;
         const repairPrompt = `${prompt}\n\n${REPAIR_NOTE}${parsed.error}. Reply again with JSON only.`;
         const second = await call(entry, importance, { system, prompt: repairPrompt, jsonSchema });
-        if (!second?.ok) continue;
+        if (!second) continue;
+        if (!second.ok) {
+          report(entry.provider.name, second.error);
+          continue;
+        }
         const repaired = parseJson(second.value, schema);
         if (repaired.ok) return repaired;
+        report(entry.provider.name, 'invalid_output');
       }
       return err('ai_unavailable');
     },
@@ -137,6 +152,7 @@ export function createAi(config: AiConfig): Ai {
         if (!(await admit(entry.provider.name, entry.dailyLimit, 'essential'))) continue;
         const res = await entry.provider.judge(state, questions);
         if (res.ok) return ok(res.value);
+        report(entry.provider.name, res.error);
       }
       return err('ai_unavailable');
     },

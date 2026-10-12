@@ -7,3 +7,7 @@ SETUP_CODE=change-me-to-a-long-random-string
 GEMINI_API_KEY=
 # Jev (paid, judge only): https://typesafe.ai
 JEV_API_KEY=
+# Optional daily request limits per model (default 100 for Gemini, 200 for Jev).
+# Set GEMINI_DAILY_LIMIT to at most half of your AI Studio free-tier quota.
+GEMINI_DAILY_LIMIT=
+JEV_DAILY_LIMIT=
