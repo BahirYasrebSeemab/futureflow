@@ -142,6 +142,7 @@ describe('TodaySchema', () => {
       dayRecord: { day: '2026-10-09', kind: 'bad' },
       balanceSeconds: -60,
       earnedTodaySeconds: 900,
+      verdicts: [],
     };
     expect(TodaySchema.parse(today)).toEqual(today);
   });

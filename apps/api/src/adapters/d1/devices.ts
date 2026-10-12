@@ -41,4 +41,14 @@ export const d1Devices = (db: D1Database): DeviceRepo => ({
       .bind(deviceId, minutes)
       .run();
   },
+
+  async latestOffset() {
+    const row = await db
+      .prepare(
+        `SELECT utc_offset_minutes FROM devices WHERE revoked_at IS NULL
+         ORDER BY created_at DESC LIMIT 1`,
+      )
+      .first<{ utc_offset_minutes: number }>();
+    return row?.utc_offset_minutes ?? null;
+  },
 });

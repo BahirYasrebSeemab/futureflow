@@ -1,6 +1,7 @@
 import { parseDayKey } from '@mflow/core';
 import { z } from 'zod';
 import { DayKeySchema, LedgerEventSchema, MAX_EVENTS_PER_BATCH, PlanSchema } from './schemas';
+import { VerdictSchema } from './verification';
 
 const DAY_MS = 86_400_000;
 
@@ -117,6 +118,7 @@ export const TodaySchema = z.object({
   dayRecord: DayRecordSchema.nullable(),
   balanceSeconds: z.number().int(),
   earnedTodaySeconds: z.number().int().nonnegative(),
+  verdicts: z.array(VerdictSchema),
 });
 
 export type Heartbeat = z.infer<typeof HeartbeatSchema>;

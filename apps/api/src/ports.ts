@@ -1,6 +1,6 @@
 import type { UsageCounter } from '@mflow/ai';
 import type { Heartbeat, MathAttempt, ReadingLog, Roadmap } from '@mflow/contracts';
-import type { DayRecord, LedgerEvent, Plan } from '@mflow/core';
+import type { DayRecord, LedgerEvent, Plan, Verdict } from '@mflow/core';
 
 /** Repository ports. Routes depend on these; `adapters/d1` implements them. */
 
@@ -12,6 +12,8 @@ export interface DeviceRepo {
   /** A device that is not revoked, or null. */
   findByTokenHash(tokenHash: string): Promise<Device | null>;
   setUtcOffset(deviceId: string, minutes: number): Promise<void>;
+  /** The UTC offset of the newest unrevoked device, or null before pairing. */
+  latestOffset(): Promise<number | null>;
 }
 
 export interface LedgerRepo {
@@ -74,6 +76,51 @@ export interface RoadmapRepo {
   replace(roadmap: Roadmap, at: number): Promise<void>;
 }
 
+export type GithubLink = Readonly<{
+  login: string;
+  tokenSealed: string;
+  repos: readonly string[];
+  status: 'ok' | 'invalid';
+}>;
+
+export type CommitFile = Readonly<{
+  filename: string;
+  additions: number;
+  deletions: number;
+  patch?: string;
+}>;
+
+export type CommitEvidence = Readonly<{
+  sha: string;
+  repo: string;
+  day: string;
+  committedAt: string;
+  message: string;
+  additions: number;
+  deletions: number;
+  files: readonly CommitFile[];
+}>;
+
+export type StoredVerdict = Verdict & Readonly<{ day: string; suggestion?: 'pass' | 'fail' }>;
+
+export interface VerificationRepo {
+  link(): Promise<GithubLink | null>;
+  /** Upserts the link and resets every repository cursor to `since` (ISO 8601). */
+  saveLink(link: GithubLink, at: number, since: string): Promise<void>;
+  setLinkStatus(status: GithubLink['status'], at: number): Promise<void>;
+  deleteLink(): Promise<void>;
+  cursor(repo: string): Promise<string | null>;
+  setCursor(repo: string, since: string): Promise<void>;
+  knownShas(shas: readonly string[]): Promise<Set<string>>;
+  addCommits(commits: readonly CommitEvidence[], at: number): Promise<void>;
+  /** The day's commits, newest first. */
+  commitsForDay(day: string): Promise<CommitEvidence[]>;
+  readingForDay(day: string): Promise<ReadingLog[]>;
+  verdictsForDay(day: string): Promise<StoredVerdict[]>;
+  /** Upserts by (day, task); a stored `pass` is final and is never overwritten. */
+  saveVerdict(verdict: StoredVerdict, at: number): Promise<void>;
+}
+
 export type Repos = Readonly<{
   devices: DeviceRepo;
   ledger: LedgerRepo;
@@ -82,4 +129,5 @@ export type Repos = Readonly<{
   telemetry: TelemetryRepo;
   roadmap: RoadmapRepo;
   aiUsage: UsageCounter;
+  verification: VerificationRepo;
 }>;

@@ -6,6 +6,7 @@ import { d1Ledger } from './ledger';
 import { d1Plans } from './plans';
 import { d1Roadmap } from './roadmap';
 import { d1Telemetry } from './telemetry';
+import { d1Verification } from './verification';
 
 export const d1Repos = (db: D1Database): Repos => ({
   devices: d1Devices(db),
@@ -15,4 +16,5 @@ export const d1Repos = (db: D1Database): Repos => ({
   telemetry: d1Telemetry(db),
   roadmap: d1Roadmap(db),
   aiUsage: d1AiUsage(db),
+  verification: d1Verification(db),
 });
