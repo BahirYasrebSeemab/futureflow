@@ -10,6 +10,7 @@ import { rateLimit } from './http/rate-limit';
 import { dayTypeRoutes } from './routes/day-types';
 import { deviceRoutes, pairRoutes } from './routes/device';
 import { ledgerRoutes } from './routes/ledger';
+import { onboardingRoutes } from './routes/onboarding';
 import { planRoutes } from './routes/plans';
 import { telemetryRoutes } from './routes/telemetry';
 import { todayRoutes } from './routes/today';
@@ -59,6 +60,7 @@ export function createApp(options: AppOptions = {}): Hono<AppEnv> {
   authed.route('/', dayTypeRoutes);
   authed.route('/', telemetryRoutes);
   authed.route('/', todayRoutes);
+  authed.route('/', onboardingRoutes);
   v1.route('/', authed);
 
   app.route('/v1', v1);
