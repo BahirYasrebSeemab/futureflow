@@ -3,7 +3,11 @@ import type { Result } from '@mflow/core';
 /** The slice of `fetch` the adapters use, injected so tests and runtimes supply their own. */
 export type FetchLike = (
   url: string,
-  init: Readonly<{ method: 'POST'; headers: Readonly<Record<string, string>>; body: string }>,
+  init: Readonly<{
+    method: 'GET' | 'POST';
+    headers: Readonly<Record<string, string>>;
+    body?: string;
+  }>,
 ) => Promise<Readonly<{ status: number; text(): Promise<string> }>>;
 
 /** Why one provider call failed. The router reacts by trying the next provider. */
