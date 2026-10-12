@@ -238,3 +238,41 @@ describe('failure reporting', () => {
     ]);
   });
 });
+
+describe('repair edge cases', () => {
+  it('reports a repair call that errors, then moves on', async () => {
+    const failures: string[] = [];
+    const a = scriptedTalk('a', [ok('prose'), err('rate_limited')]);
+    const ai = createAi({
+      talk: [limited(a.provider)],
+      judge: [],
+      usage: memoryUsage(),
+      day: () => DAY,
+      onFailure: (provider, error) => failures.push(`${provider}:${error}`),
+    });
+    const result = await ai.talkJson({
+      system: 's',
+      prompt: 'p',
+      schema: Plan,
+      importance: 'essential',
+    });
+    expect([result.ok, failures]).toEqual([false, ['a:rate_limited']]);
+  });
+
+  it('skips the repair when the budget ran out after the first try', async () => {
+    const a = scriptedTalk('a', [ok('prose')]);
+    const ai = createAi({
+      talk: [limited(a.provider, 1)],
+      judge: [],
+      usage: memoryUsage(),
+      day: () => DAY,
+    });
+    const result = await ai.talkJson({
+      system: 's',
+      prompt: 'p',
+      schema: Plan,
+      importance: 'essential',
+    });
+    expect([result.ok, a.prompts.length]).toEqual([false, 1]);
+  });
+});
