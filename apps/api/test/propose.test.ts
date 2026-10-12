@@ -30,7 +30,7 @@ const propose = (app: App, token: string, day: string, keyed = false) =>
   });
 
 describe('POST /v1/plans/:day/propose', () => {
-  it('without AI keys, proposes the template: one task per active skill, next open milestone', async () => {
+  it('without AI keys, proposes the template: next open milestones round-robin, at least 3 tasks', async () => {
     const { app, token, roadmap } = await setup();
 
     const reply = await propose(app, token, '2026-10-09'); // Friday: both skills active
@@ -42,6 +42,7 @@ describe('POST /v1/plans/:day/propose', () => {
     ).toEqual([
       [roadmap.skills[0]?.id, 'Write a debugging checklist', 'github', 1800],
       [roadmap.skills[1]?.id, 'Finish L0 fractions', 'math', 1800],
+      [roadmap.skills[0]?.id, 'Practice Debugging', 'github', 1800],
     ]);
     const stored = await call<Plan>(app, 'GET', '/v1/plans/2026-10-09', { token });
     expect(stored.body.data).toEqual(reply.body.data.plan);
@@ -50,7 +51,50 @@ describe('POST /v1/plans/:day/propose', () => {
   it('leaves out skills resting that day', async () => {
     const { app, token, roadmap } = await setup();
     const reply = await propose(app, token, '2026-10-10'); // Saturday: math rests
-    expect(reply.body.data.plan.tasks.map((t) => t.skillId)).toEqual([roadmap.skills[0]?.id]);
+    expect(reply.body.data.plan.tasks.map((t) => [t.skillId, t.full.title])).toEqual([
+      [roadmap.skills[0]?.id, 'Write a debugging checklist'],
+      [roadmap.skills[0]?.id, 'Practice Debugging'],
+      [roadmap.skills[0]?.id, 'Practice Debugging (session 2)'],
+    ]);
+  });
+
+  it('every proposal can be locked, even with one active skill', async () => {
+    const { app, token } = await setup();
+    await propose(app, token, '2026-10-10');
+    const locked = await call<Plan>(app, 'POST', '/v1/plans/2026-10-10/lock', { token });
+    expect([locked.status, locked.body.data.status]).toEqual([200, 'locked']);
+  });
+
+  it('tops a short AI proposal up from the template so it can lock', async () => {
+    let skillId = '';
+    const fetch: FetchLike = async () =>
+      geminiReply(
+        JSON.stringify({
+          tasks: [
+            {
+              skillId,
+              title: 'Write a debugging checklist',
+              criteria: 'A commit adding CHECKLIST.md',
+              minutes: 30,
+              when: '20:00 at my desk',
+              twoMinuteTitle: 'Open the file',
+              twoMinuteCriteria: 'A commit creating it',
+            },
+          ],
+        }),
+      );
+    const { app, token, roadmap } = await setup(fetch);
+    skillId = roadmap.skills[0]?.id ?? '';
+
+    const reply = await propose(app, token, '2026-10-10', true);
+
+    expect(reply.body.data.source).toBe('ai');
+    expect(reply.body.data.plan.tasks.map((t) => t.full.title)).toEqual([
+      'Write a debugging checklist',
+      'Practice Debugging',
+      'Practice Debugging (session 2)',
+    ]);
+    expect(reply.body.data.plan.tasks[0]?.full.criteria).toBe('A commit adding CHECKLIST.md');
   });
 
   it('uses the AI proposal, keeping only tasks for active skills, and counts the call', async () => {
@@ -89,7 +133,8 @@ describe('POST /v1/plans/:day/propose', () => {
     const reply = await propose(app, token, '2026-10-10', true);
 
     expect(reply.body.data.source).toBe('ai');
-    expect(reply.body.data.plan.tasks).toEqual([
+    expect(reply.body.data.plan.tasks).toHaveLength(3); // topped up from the template
+    expect(reply.body.data.plan.tasks.slice(0, 1)).toEqual([
       {
         id: expect.any(String),
         skillId: skillIds[0],
@@ -108,6 +153,7 @@ describe('POST /v1/plans/:day/propose', () => {
       },
     ]);
     const sent = JSON.stringify(calls[0]);
+    expect(sent).toContain('"minItems":3'); // the model is asked for a lockable plan
     expect(sent).toContain('Senior software engineer');
     expect(sent).not.toContain('Finish L0 fractions'); // the resting skill's milestones are not sent
     const usage = await env.DB.prepare('SELECT count FROM ai_usage').first<{ count: number }>();

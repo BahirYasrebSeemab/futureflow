@@ -20,28 +20,55 @@ export const activeSkills = (roadmap: Roadmap, day: DayKey): Skill[] =>
 const openMilestones = (roadmap: Roadmap, skillId: string) =>
   roadmap.milestones.filter((m) => m.skillId === skillId && !m.done);
 
-/** The deterministic plan: used when the AI is unavailable or its answer is unusable (spec §13.1). */
+const templateTask = (skill: Skill, title: string, newId: () => string): TaskSpec => {
+  const clipped = clip(title, TITLE_MAX);
+  return {
+    id: newId(),
+    skillId: skill.id,
+    when: 'Choose a time and an anchor habit',
+    verifier: skill.verifier,
+    full: { title: clipped, criteria: skill.rubric, seconds: PROPOSAL_TASK_SECONDS },
+    twoMinute: {
+      title: clip(`Two minutes: ${clipped}`, TITLE_MAX),
+      criteria: 'Start it for two minutes',
+      seconds: TWO_MINUTE_SECONDS,
+    },
+  };
+};
+
+/**
+ * The deterministic plan, used when the AI is unavailable or unusable (spec §13.1). Skills take
+ * turns: each offers its open milestones in order, then "Practice <skill>", then numbered extra
+ * sessions, so there are always enough tasks to lock (planMinTasks..planMaxTasks).
+ */
 export function templateTasks(roadmap: Roadmap, day: DayKey, newId: () => string): TaskSpec[] {
-  return activeSkills(roadmap, day)
-    .slice(0, DEFAULT_RULES.planMaxTasks)
-    .map((skill) => {
-      const title = clip(
-        openMilestones(roadmap, skill.id)[0]?.title ?? `Practice ${skill.name}`,
-        TITLE_MAX,
-      );
-      return {
-        id: newId(),
-        skillId: skill.id,
-        when: 'Choose a time and an anchor habit',
-        verifier: skill.verifier,
-        full: { title, criteria: skill.rubric, seconds: PROPOSAL_TASK_SECONDS },
-        twoMinute: {
-          title: clip(`Two minutes: ${title}`, TITLE_MAX),
-          criteria: 'Start it for two minutes',
-          seconds: TWO_MINUTE_SECONDS,
-        },
-      };
-    });
+  const active = activeSkills(roadmap, day);
+  const target = Math.min(
+    DEFAULT_RULES.planMaxTasks,
+    Math.max(DEFAULT_RULES.planMinTasks, active.length),
+  );
+  const queues = active.map((skill) => ({
+    skill,
+    titles: [...openMilestones(roadmap, skill.id).map((m) => m.title), `Practice ${skill.name}`],
+  }));
+  const tasks: TaskSpec[] = [];
+  for (let round = 0; queues.length > 0 && tasks.length < target; round++) {
+    for (const { skill, titles } of queues) {
+      if (tasks.length >= target) break;
+      const title =
+        titles[round] ?? `Practice ${skill.name} (session ${round - titles.length + 2})`;
+      tasks.push(templateTask(skill, title, newId));
+    }
+  }
+  return tasks;
+}
+
+/** Adds template tasks whose titles are not used yet until the plan can lock. */
+function topUp(tasks: readonly TaskSpec[], template: readonly TaskSpec[]): TaskSpec[] {
+  const titles = new Set(tasks.map((t) => t.full.title));
+  const extra = template.filter((t) => !titles.has(t.full.title));
+  const missing = Math.max(0, DEFAULT_RULES.planMinTasks - tasks.length);
+  return [...tasks, ...extra.slice(0, missing)];
 }
 
 const proposedTask = (skillId: z.ZodType<string>) =>
@@ -66,7 +93,7 @@ export const proposalSchema = (skillIds: readonly [string, ...string[]]) => ({
   guide: z.object({
     tasks: z
       .array(proposedTask(z.enum(skillIds)))
-      .min(1)
+      .min(DEFAULT_RULES.planMinTasks)
       .max(DEFAULT_RULES.planMaxTasks),
   }),
 });
@@ -149,5 +176,5 @@ export async function aiTasks(
       },
     ];
   });
-  return tasks.length === 0 ? null : tasks;
+  return tasks.length === 0 ? null : topUp(tasks, templateTasks(roadmap, day, newId));
 }
