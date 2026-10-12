@@ -96,6 +96,35 @@ describe('talkJson', () => {
       additionalProperties: false,
     });
   });
+
+  it('sends the guide schema to the provider but parses with the main schema', async () => {
+    const sent: unknown[] = [];
+    const provider: TalkProvider = {
+      name: 'a',
+      async talk(req) {
+        sent.push(req.jsonSchema);
+        return ok('{"tasks":["anything"]}');
+      },
+    };
+    const ai = createAi({
+      talk: [limited(provider)],
+      judge: [],
+      usage: memoryUsage(),
+      day: () => DAY,
+    });
+    const guide = z.object({ tasks: z.array(z.enum(['ship'])).min(1) });
+
+    const result = await ai.talkJson({
+      system: 's',
+      prompt: 'p',
+      schema: Plan,
+      guide,
+      importance: 'essential',
+    });
+
+    expect(result).toEqual({ ok: true, value: { tasks: ['anything'] } });
+    expect(JSON.stringify(sent[0])).toContain('ship');
+  });
 });
 
 describe('budget guard', () => {

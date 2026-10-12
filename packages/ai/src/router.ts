@@ -36,7 +36,14 @@ export interface Ai {
     req: Readonly<{ system: string; prompt: string; importance: Importance }>,
   ): Promise<Result<string, AiError>>;
   talkJson<T>(
-    req: Readonly<{ system: string; prompt: string; schema: z.ZodType<T>; importance: Importance }>,
+    req: Readonly<{
+      system: string;
+      prompt: string;
+      schema: z.ZodType<T>;
+      /** Sent to the provider instead of `schema` (it may be stricter); `schema` still parses. */
+      guide?: z.ZodType;
+      importance: Importance;
+    }>,
   ): Promise<Result<T, AiError>>;
   judge(state: JudgeState, questions: Questions): Promise<Result<Answers, AiError>>;
 }
@@ -109,8 +116,8 @@ export function createAi(config: AiConfig): Ai {
       return err('ai_unavailable');
     },
 
-    async talkJson({ system, prompt, schema, importance }) {
-      const jsonSchema = jsonSchemaOf(schema);
+    async talkJson({ system, prompt, schema, guide, importance }) {
+      const jsonSchema = jsonSchemaOf(guide ?? schema);
       for (const entry of config.talk) {
         const first = await call(entry, importance, { system, prompt, jsonSchema });
         if (!first?.ok) continue;

@@ -14,6 +14,7 @@ import { deviceRoutes, pairRoutes } from './routes/device';
 import { ledgerRoutes } from './routes/ledger';
 import { onboardingRoutes } from './routes/onboarding';
 import { planRoutes } from './routes/plans';
+import { proposeRoutes } from './routes/propose';
 import { telemetryRoutes } from './routes/telemetry';
 import { todayRoutes } from './routes/today';
 
@@ -67,6 +68,7 @@ export function createApp(options: AppOptions = {}): Hono<AppEnv> {
   authed.route('/', telemetryRoutes);
   authed.route('/', todayRoutes);
   authed.route('/', onboardingRoutes);
+  authed.route('/', proposeRoutes);
   v1.route('/', authed);
 
   app.route('/v1', v1);
