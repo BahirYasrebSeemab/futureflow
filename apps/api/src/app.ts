@@ -6,17 +6,19 @@ import { v7 as uuidv7 } from 'uuid';
 import { d1Repos } from './adapters/d1';
 import { aiFromEnv, timeoutFetch } from './ai';
 import { requireDevice } from './auth/require-device';
-import type { AppEnv } from './env';
+import type { AppEnv, Bindings, Deps } from './env';
 import { fail, ok } from './http/envelope';
 import { rateLimit } from './http/rate-limit';
 import { dayTypeRoutes } from './routes/day-types';
 import { deviceRoutes, pairRoutes } from './routes/device';
+import { githubRoutes } from './routes/github';
 import { ledgerRoutes } from './routes/ledger';
 import { onboardingRoutes } from './routes/onboarding';
 import { planRoutes } from './routes/plans';
 import { proposeRoutes } from './routes/propose';
 import { telemetryRoutes } from './routes/telemetry';
 import { todayRoutes } from './routes/today';
+import { verifyRoutes } from './routes/verify';
 
 /**
  * The largest batch the schemas accept (500 events with a 128-character refId and a 500-character
@@ -32,17 +34,33 @@ export type AppOptions = Readonly<{
   fetch?: FetchLike;
 }>;
 
-export function createApp(options: AppOptions = {}): Hono<AppEnv> {
+/** Everything a request or a cron run needs, from the Worker env plus test overrides. */
+export function makeDeps(env: Bindings, options: AppOptions = {}): Deps {
   const now = options.now ?? (() => Date.now());
   const newId = options.newId ?? (() => uuidv7());
+  const fetchImpl = options.fetch ?? timeoutFetch;
+  const limit =
+    options.limiter ?? (async (key: string) => (await env.RATE_LIMITER.limit({ key })).success);
+  const repos = d1Repos(env.DB);
+  return {
+    now,
+    newId,
+    repos,
+    limit,
+    fetch: fetchImpl,
+    ai: aiFromEnv(env, repos.aiUsage, fetchImpl, now),
+    settings: {
+      githubTokenKey: env.GITHUB_TOKEN_KEY,
+      judgeAutoDecide: env.JUDGE_AUTO_DECIDE === 'on',
+    },
+  };
+}
+
+export function createApp(options: AppOptions = {}): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
 
   app.use('*', async (c, next) => {
-    const limit =
-      options.limiter ?? (async (key: string) => (await c.env.RATE_LIMITER.limit({ key })).success);
-    const repos = d1Repos(c.env.DB);
-    const ai = aiFromEnv(c.env, repos.aiUsage, options.fetch ?? timeoutFetch, now);
-    c.set('deps', { now, newId, repos, limit, ai });
+    c.set('deps', makeDeps(c.env, options));
     await next();
   });
   app.use(
@@ -69,6 +87,8 @@ export function createApp(options: AppOptions = {}): Hono<AppEnv> {
   authed.route('/', todayRoutes);
   authed.route('/', onboardingRoutes);
   authed.route('/', proposeRoutes);
+  authed.route('/', githubRoutes);
+  authed.route('/', verifyRoutes);
   v1.route('/', authed);
 
   app.route('/v1', v1);

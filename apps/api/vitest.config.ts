@@ -9,7 +9,12 @@ export default defineConfig({
       wrangler: { configPath: './wrangler.jsonc' },
       miniflare: {
         // SETUP_CODE matches TEST_SETUP_CODE in test/helpers.ts.
-        bindings: { TEST_MIGRATIONS: migrations, SETUP_CODE: 'test-setup-code-0123456789' },
+        bindings: {
+          TEST_MIGRATIONS: migrations,
+          SETUP_CODE: 'test-setup-code-0123456789',
+          // Test-only AES-GCM key (bytes 0..31), matching test/secret-box.test.ts.
+          GITHUB_TOKEN_KEY: 'AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=',
+        },
       },
     }),
   ],

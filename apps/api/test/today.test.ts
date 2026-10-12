@@ -31,6 +31,7 @@ describe('GET /v1/today', () => {
       dayRecord: null,
       balanceSeconds: 900,
       earnedTodaySeconds: 900,
+      verdicts: [],
     });
     expect(second.body.data.balanceSeconds).toBe(900);
     expect(ledger.body.data.events.map((e) => [e.kind, e.seconds, e.day])).toEqual([

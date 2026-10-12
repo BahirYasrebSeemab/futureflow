@@ -37,5 +37,6 @@ export const todayRoutes = new Hono<AppEnv>().get('/today', async (c) => {
     dayRecord: entry?.record ?? null,
     balanceSeconds: totals.balance + paid.reduce((sum, e) => sum + e.seconds, 0),
     earnedTodaySeconds: earnedSeconds([...dayEvents, ...paid]),
+    verdicts: await deps.repos.verification.verdictsForDay(day),
   });
 });

@@ -101,7 +101,7 @@ describe('POST /v1/plans/:day/propose', () => {
     const calls: unknown[] = [];
     let skillIds: string[] = [];
     const fetch: FetchLike = async (_url, init) => {
-      calls.push(JSON.parse(init.body));
+      calls.push(JSON.parse(init.body ?? 'null'));
       return geminiReply(
         JSON.stringify({
           tasks: [

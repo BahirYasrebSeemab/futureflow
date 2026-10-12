@@ -40,6 +40,7 @@ First deploy (owner only):
 bun x wrangler login
 bun x wrangler d1 create mflow       # put the printed id into apps/api/wrangler.jsonc
 bun x wrangler secret put SETUP_CODE --cwd apps/api
+openssl rand -base64 32 | bun x wrangler secret put GITHUB_TOKEN_KEY --cwd apps/api
 bun x wrangler d1 migrations apply mflow --remote --cwd apps/api
 bun x wrangler deploy --cwd apps/api
 ```
@@ -54,3 +55,11 @@ Without keys, plans come from a deterministic template.
 bun x wrangler secret put GEMINI_API_KEY --cwd apps/api   # optional, free: https://aistudio.google.com/apikey
 bun x wrangler secret put JEV_API_KEY --cwd apps/api      # optional, paid
 ```
+
+## Verification
+
+The hourly cron (and `POST /v1/verify`) collects your commits on linked repositories, asks the
+judge about GitHub and reading tasks, and pays rewards for passed tasks. Until the judge's accuracy
+is measured, judge verdicts wait for your confirmation (`POST /v1/verdicts/:taskId`). Only commits
+on each repository's default branch, authored with an email on your GitHub account, count. See
+`docs/adr/0008-verification.md`.

@@ -6,5 +6,7 @@ declare namespace Cloudflare {
     JEV_API_KEY?: string;
     GEMINI_DAILY_LIMIT?: string;
     JEV_DAILY_LIMIT?: string;
+    GITHUB_TOKEN_KEY?: string;
+    JUDGE_AUTO_DECIDE?: string;
   }
 }

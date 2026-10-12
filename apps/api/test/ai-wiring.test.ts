@@ -145,3 +145,21 @@ describe('limits and failure logs', () => {
     expect(JSON.stringify(log.mock.calls)).not.toContain('bad-key');
   });
 });
+
+describe('budget under concurrency', () => {
+  it('admits calls atomically: three at once with a limit of 1 reach the model once', async () => {
+    const { fetch, urls } = recording(() => geminiReply('hi'));
+    const ai = aiFromEnv(
+      { ...env, GEMINI_API_KEY: 'g-key', GEMINI_DAILY_LIMIT: '1' },
+      d1AiUsage(env.DB),
+      fetch,
+      () => T0,
+    );
+
+    await Promise.all(
+      [1, 2, 3].map(() => ai.talkText({ system: 's', prompt: 'p', importance: 'essential' })),
+    );
+
+    expect(urls.filter((u) => u.includes(GEMINI_MODELS[0])).length).toBe(1);
+  });
+});
