@@ -16,10 +16,17 @@ export const ERRORS = {
   too_few_tasks: [422, 'The plan needs more tasks before it can lock.'],
   too_many_tasks: [422, 'The plan has too many tasks to lock.'],
   day_out_of_range: [422, 'That day cannot be changed now.'],
+  github_token_invalid: [
+    422,
+    'GitHub rejected the token. Create a new fine-grained, read-only token.',
+  ],
+  github_repo_unavailable: [422, 'One of the repositories cannot be read with this token.'],
   nothing_to_plan: [422, 'No skill is active on that day. Set up the roadmap first.'],
   rate_limited: [429, 'Too many requests. Try again in a minute.'],
   internal: [500, 'Something went wrong on the server.'],
+  github_unavailable: [502, 'GitHub is not answering right now. Try again later.'],
   pairing_disabled: [503, 'Pairing is not configured on the server.'],
+  github_key_missing: [503, 'GitHub linking is not configured on the server.'],
 } as const satisfies Record<string, readonly [ContentfulStatusCode, string]>;
 
 export type ErrorCode = keyof typeof ERRORS;

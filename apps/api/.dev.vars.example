@@ -11,3 +11,7 @@ JEV_API_KEY=
 # Set GEMINI_DAILY_LIMIT to at most half of your AI Studio free-tier quota.
 GEMINI_DAILY_LIMIT=
 JEV_DAILY_LIMIT=
+# Key that seals the GitHub token at rest (base64 of 32 random bytes): openssl rand -base64 32
+GITHUB_TOKEN_KEY=
+# "on" lets confident judge verdicts decide tasks alone. Keep off until the judge eval is recorded.
+JUDGE_AUTO_DECIDE=
