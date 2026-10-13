@@ -16,9 +16,10 @@ and never leave the owner without a review or a plan when the AI is down.
   rollover, gaps, nightly AI review and proposal, weekly summary) at ≤ 32 D1 statements, measured
   32 after sharing one owner context per tick and batching writes (47 before). Upkeep steps are idempotent: `expire` and
   `base_grant` by business key, `nightly_runs` per day, summaries per ISO week, heartbeat cursors.
-- **Rollover:** yesterday's leftover expires down to the running balance (debt first, core
-  `expireFromBalances`); today's base grant is paid. Rewards paid for yesterday later in the grace
-  window stay usable.
+- **Rollover:** everything still unused through yesterday expires, down to zero but never below it
+  (debt is paid first, core `expireFromBalances`); today's base grant is paid in the same write. A
+  reward paid to yesterday after its expiry (grace window) is usable that day and expires at the next
+  boundary, so nothing carries over for good.
 - **Guard gaps (spec §6.5):** a silence over 2 heartbeats is a gap; a new boot id or an uptime
   shorter than the silence means "phone off" (not a miss), otherwise "guard disabled" (a miss), as
   does time after a beat reporting the guard off. After ≥ 16 h of phone-off yesterday, the owner may

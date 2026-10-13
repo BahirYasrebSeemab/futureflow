@@ -50,3 +50,35 @@ describe('rollover', () => {
     expect(await rollover(makeDeps(env, { now: () => Date.UTC(2026, 9, 10, 5) }))).toBeNull();
   });
 });
+
+describe('rewards paid to yesterday after it expired', () => {
+  it('stay usable that day and expire at the next boundary (no permanent carry-over)', async () => {
+    const { deps, ledger, clock } = await setup([
+      event({ kind: 'base_grant', seconds: 900, day: '2026-10-09', at: Date.UTC(2026, 9, 9, 8) }),
+    ]);
+    await rollover(deps); // the 10th 04:30: the 9th's 900 expires, the 10th's base is paid
+    await call0(
+      deps,
+      event({
+        kind: 'task_reward',
+        seconds: 1800,
+        refId: 'late',
+        day: '2026-10-09',
+        at: Date.UTC(2026, 9, 10, 9),
+      }),
+    );
+
+    clock.now = Date.UTC(2026, 9, 11, 4, 30);
+    await rollover(deps);
+    clock.now = Date.UTC(2026, 9, 12, 4, 30);
+    await rollover(deps);
+
+    const balance = (await ledger()).reduce((sum, e) => sum + e.seconds, 0);
+    expect(balance).toBe(900); // only the 12th's base grant is left
+  });
+});
+
+/** Writes an event as the server would (a late reward from verification). */
+async function call0(deps: ReturnType<typeof makeDeps>, e: LedgerEvent) {
+  await deps.repos.ledger.insert([e], null, Date.UTC(2026, 9, 10, 9));
+}

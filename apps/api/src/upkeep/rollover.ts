@@ -4,9 +4,8 @@ import { appendEvents } from '../ledger/append';
 import { ownerOf, type Owner } from './owner';
 
 /**
- * At the boundary: yesterday's unused time expires (after paying older debt, core rule), and today's
+ * At the boundary: unused time through yesterday expires (debt is paid first, core rule), and today's
  * base grant is paid. Both are once per day by business key, so every upkeep tick may call this.
- * Rewards paid for yesterday later, inside the grace window, are not expired: earned time stays usable.
  */
 export async function rollover(
   deps: Deps,
@@ -19,16 +18,19 @@ export async function rollover(
   const { ledger } = deps.repos;
   const now = deps.now();
 
-  const [yesterdayEvents, running, todayEvents] = await Promise.all([
-    ledger.forDay(yesterday),
+  const [running, todayEvents] = await Promise.all([
     ledger.balanceThrough(yesterday),
     ledger.forDay(day),
   ]);
-  const dayBalance = yesterdayEvents.reduce((sum, e) => sum + e.seconds, 0);
-  const alreadyExpired = yesterdayEvents.some((e) => e.kind === 'expire');
-  const expire = alreadyExpired
-    ? null
-    : expireFromBalances(dayBalance, running, { day: yesterday, at: now, newId: deps.newId });
+  // Everything still unused through yesterday expires: normally just yesterday's leftover (older
+  // days already expired), plus any reward paid to yesterday after its expiry (grace window), so
+  // late time is usable on the day it arrives and never carries over for good. Debt is never
+  // expired: a negative running balance expires nothing.
+  const expire = expireFromBalances(running, running, {
+    day: yesterday,
+    at: now,
+    newId: deps.newId,
+  });
   // The base grant never repays debt (core rule), so the borrow total is not needed here.
   const grant = earn(
     todayEvents,
