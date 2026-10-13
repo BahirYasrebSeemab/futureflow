@@ -9,15 +9,20 @@ export function spend(seconds: number, ctx: EventContext): Result<LedgerEvent, '
   return ok({ id: ctx.newId(), day: ctx.day, at: ctx.at, kind: 'usage_spend', seconds: -seconds });
 }
 
-/**
- * Unused time does not roll over, but it pays off older debt first.
- * `history` is the full ledger through `ctx.day`; only `ctx.day`'s leftover can expire.
- */
-export function expireDay(history: readonly LedgerEvent[], ctx: EventContext): LedgerEvent | null {
-  const left = Math.min(balance(eventsForDay(history, ctx.day)), balance(history));
+/** Unused time does not roll over, but it pays off older debt first. */
+export function expireFromBalances(
+  dayBalance: number,
+  runningBalance: number,
+  ctx: EventContext,
+): LedgerEvent | null {
+  const left = Math.min(dayBalance, runningBalance);
   if (left <= 0) return null;
   return { id: ctx.newId(), day: ctx.day, at: ctx.at, kind: 'expire', seconds: -left };
 }
+
+/** `history` is the full ledger through `ctx.day`; only `ctx.day`'s leftover can expire. */
+export const expireDay = (history: readonly LedgerEvent[], ctx: EventContext): LedgerEvent | null =>
+  expireFromBalances(balance(eventsForDay(history, ctx.day)), balance(history), ctx);
 
 export type UnlockRequest = Readonly<{ reason: string; waitStartedAt: number }>;
 

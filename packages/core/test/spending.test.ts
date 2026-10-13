@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_RULES as R } from '../src/rules';
-import { expireDay, spend, unlock } from '../src/spending';
+import { expireDay, expireFromBalances, spend, unlock } from '../src/spending';
 import { ctx, ev } from './fixtures';
 
 const TEN_MIN_MS = 600_000;
@@ -109,5 +109,17 @@ describe('unlock', () => {
       ok: false,
       error: 'daily_limit_reached',
     });
+  });
+});
+
+describe('expireFromBalances', () => {
+  it('expires the smaller of the day leftover and the running balance', () => {
+    expect(expireFromBalances(300, 1000, ctx())).toMatchObject({ kind: 'expire', seconds: -300 });
+    expect(expireFromBalances(300, 100, ctx())).toMatchObject({ kind: 'expire', seconds: -100 });
+  });
+
+  it('expires nothing when either is zero or negative', () => {
+    expect(expireFromBalances(0, 500, ctx())).toBeNull();
+    expect(expireFromBalances(300, -50, ctx())).toBeNull();
   });
 });
