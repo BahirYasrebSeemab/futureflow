@@ -55,4 +55,39 @@ export const d1Telemetry = (db: D1Database): TelemetryRepo => ({
       .all<{ id: string }>();
     return results.map((r) => r.id);
   },
+
+  async beatsFrom(deviceId, seq, limit) {
+    const { results } = await db
+      .prepare(
+        `SELECT seq, at, boot_id, uptime_seconds, guard_enabled FROM heartbeats
+         WHERE device_id = ?1 AND seq >= ?2 ORDER BY seq LIMIT ?3`,
+      )
+      .bind(deviceId, seq, limit)
+      .all<{
+        seq: number;
+        at: number;
+        boot_id: string;
+        uptime_seconds: number;
+        guard_enabled: number;
+      }>();
+    return results.map((r) => ({
+      seq: r.seq,
+      beat: {
+        at: r.at,
+        bootId: r.boot_id,
+        uptimeSeconds: r.uptime_seconds,
+        guardEnabled: r.guard_enabled === 1,
+      },
+    }));
+  },
+
+  async mathSummary(day) {
+    const row = await db
+      .prepare(
+        'SELECT count(*) AS attempts, COALESCE(SUM(correct), 0) AS correct FROM math_attempts WHERE day = ?1',
+      )
+      .bind(day)
+      .first<{ attempts: number; correct: number }>();
+    return { attempts: row?.attempts ?? 0, correct: row?.correct ?? 0 };
+  },
 });

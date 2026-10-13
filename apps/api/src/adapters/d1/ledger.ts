@@ -94,4 +94,12 @@ export const d1Ledger = (db: D1Database): LedgerRepo => ({
       .first<{ balance: number; borrow: number }>();
     return { balance: row?.balance ?? 0, outstandingBorrow: Math.max(0, row?.borrow ?? 0) };
   },
+
+  async balanceThrough(day) {
+    const row = await db
+      .prepare('SELECT COALESCE(SUM(seconds), 0) AS balance FROM ledger_events WHERE day <= ?1')
+      .bind(day)
+      .first<{ balance: number }>();
+    return row?.balance ?? 0;
+  },
 });

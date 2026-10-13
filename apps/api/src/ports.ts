@@ -1,6 +1,8 @@
 import type { UsageCounter } from '@mflow/ai';
-import type { Heartbeat, MathAttempt, ReadingLog, Roadmap } from '@mflow/contracts';
-import type { DayRecord, LedgerEvent, Plan, Verdict } from '@mflow/core';
+import type { CoachMessage, Heartbeat, MathAttempt, ReadingLog, Roadmap } from '@mflow/contracts';
+import type { Beat, DayRecord, GuardGap, LedgerEvent, Plan, Verdict } from '@mflow/core';
+
+export type { CoachMessage } from '@mflow/contracts';
 
 /** Repository ports. Routes depend on these; `adapters/d1` implements them. */
 
@@ -30,6 +32,8 @@ export interface LedgerRepo {
   forDay(day: string): Promise<LedgerEvent[]>;
   /** Balance = sum of all events; borrowed time not yet repaid (never negative). */
   totals(): Promise<{ balance: number; outstandingBorrow: number }>;
+  /** Sum of all events on or before `day`. */
+  balanceThrough(day: string): Promise<number>;
 }
 
 export interface PlanRepo {
@@ -67,6 +71,8 @@ export interface TelemetryRepo {
     attempts: readonly MathAttempt[],
     receivedAt: number,
   ): Promise<string[]>;
+  beatsFrom(deviceId: string, seq: number, limit: number): Promise<{ seq: number; beat: Beat }[]>;
+  mathSummary(day: string): Promise<{ attempts: number; correct: number }>;
 }
 
 export interface RoadmapRepo {
@@ -132,6 +138,37 @@ export interface VerificationRepo {
   saveVerdict(verdict: StoredVerdict, at: number): Promise<void>;
 }
 
+export interface CoachRepo {
+  /** False when a message with this id is already stored (a retried send). */
+  addOwnerMessage(message: CoachMessage): Promise<boolean>;
+  replyTo(ownerMessageId: string): Promise<CoachMessage | null>;
+  addCoachMessage(message: CoachMessage): Promise<void>;
+  page(since: number, limit: number): Promise<{ messages: CoachMessage[]; next: number }>;
+  /** Messages on or after `sinceDay`, oldest first, at most `limit` (the newest ones). */
+  recent(sinceDay: string, limit: number): Promise<CoachMessage[]>;
+  latestSummary(): Promise<string | null>;
+  hasSummary(week: string): Promise<boolean>;
+  saveSummary(week: string, text: string, at: number): Promise<void>;
+  messagesForWeek(week: string): Promise<CoachMessage[]>;
+  /** Deletes messages before `beforeDay` whose week is summarized, and all before `hardBeforeDay`. */
+  deleteOld(beforeDay: string, hardBeforeDay: string): Promise<number>;
+}
+
+export interface UpkeepRepo {
+  nightlyDone(day: string): Promise<boolean>;
+  markNightly(day: string, at: number): Promise<void>;
+  devices(): Promise<string[]>;
+  guardCursor(deviceId: string): Promise<number>;
+  setGuardCursor(deviceId: string, seq: number): Promise<void>;
+  addGaps(
+    deviceId: string,
+    gaps: readonly GuardGap[],
+    dayOf: (at: number) => string,
+    at: number,
+  ): Promise<void>;
+  gapsForDay(day: string): Promise<GuardGap[]>;
+}
+
 export type Repos = Readonly<{
   devices: DeviceRepo;
   ledger: LedgerRepo;
@@ -141,4 +178,6 @@ export type Repos = Readonly<{
   roadmap: RoadmapRepo;
   aiUsage: UsageCounter;
   verification: VerificationRepo;
+  coach: CoachRepo;
+  upkeep: UpkeepRepo;
 }>;
