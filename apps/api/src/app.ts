@@ -9,6 +9,7 @@ import { requireDevice } from './auth/require-device';
 import type { AppEnv, Bindings, Deps } from './env';
 import { fail, ok } from './http/envelope';
 import { rateLimit } from './http/rate-limit';
+import { coachRoutes } from './routes/coach';
 import { dayTypeRoutes } from './routes/day-types';
 import { deviceRoutes, pairRoutes } from './routes/device';
 import { githubRoutes } from './routes/github';
@@ -91,6 +92,7 @@ export function createApp(options: AppOptions = {}): Hono<AppEnv> {
   authed.route('/', githubRoutes);
   authed.route('/', verifyRoutes);
   authed.route('/', guardRoutes);
+  authed.route('/', coachRoutes);
   v1.route('/', authed);
 
   app.route('/v1', v1);

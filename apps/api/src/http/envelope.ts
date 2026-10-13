@@ -27,6 +27,7 @@ export const ERRORS = {
   rate_limited: [429, 'Too many requests. Try again in a minute.'],
   internal: [500, 'Something went wrong on the server.'],
   github_unavailable: [502, 'GitHub is not answering right now. Try again later.'],
+  coach_unavailable: [503, 'The coach cannot answer right now. Try again soon.'],
   pairing_disabled: [503, 'Pairing is not configured on the server.'],
   github_key_missing: [503, 'GitHub linking is not configured on the server.'],
 } as const satisfies Record<string, readonly [ContentfulStatusCode, string]>;
