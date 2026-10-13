@@ -63,3 +63,9 @@ judge about GitHub and reading tasks, and pays rewards for passed tasks. Until t
 is measured, judge verdicts wait for your confirmation (`POST /v1/verdicts/:taskId`). Only commits
 on each repository's default branch, authored with an email on your GitHub account, count. See
 `docs/adr/0008-verification.md`.
+
+## Coach and upkeep
+
+A half-hourly cron rolls the day over, finds heartbeat gaps (phone off vs. guard disabled), writes
+the nightly review and tomorrow's draft plan at 21:00, and summarizes last week's chat on Mondays.
+Coach chat: `POST /v1/coach/messages`. See `docs/adr/0009-coach-and-upkeep.md`.
