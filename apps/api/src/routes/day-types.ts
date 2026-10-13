@@ -9,11 +9,13 @@ import {
 } from '@mflow/core';
 import { Hono } from 'hono';
 import { z } from 'zod';
-import type { AppEnv } from '../env';
+import type { AppEnv, Deps } from '../env';
 import type { AwayWindow } from '../ports';
 import { deviceToday, isWithinDays } from '../http/day';
 import { fail, ok } from '../http/envelope';
 import { valid } from '../http/validate';
+import { guardDay, PHONE_OFF_RECLASSIFY_HOURS } from '../upkeep/guard';
+import { openDays } from '../verification/run';
 
 /** How far ahead an away window may start. */
 const MAX_AWAY_LEAD_DAYS = 60;
@@ -32,12 +34,23 @@ const daysFrom = (from: string, to: string): string[] => {
   return days;
 };
 
+/** Yesterday may become a bad day next morning when the phone was off for (nearly) all of it (spec §6.5). */
+async function phoneWasOff(deps: Deps, day: string, offset: number, now: number): Promise<boolean> {
+  const open = openDays(now, offset);
+  if (open.length < 2 || open[0] !== day) return false;
+  const { phoneOffMinutes } = await guardDay(deps, day, offset);
+  return phoneOffMinutes >= PHONE_OFF_RECLASSIFY_HOURS * 60;
+}
+
 export const dayTypeRoutes = new Hono<AppEnv>()
   .post('/day-type', valid('json', BadDayRequestSchema), async (c) => {
     const { deps, device } = c.var;
     const { day } = c.req.valid('json');
     const now = deps.now();
-    if (day !== deviceToday(device, now)) return fail(c, 'day_out_of_range');
+    const today = deviceToday(device, now);
+    if (day !== today && !(await phoneWasOff(deps, day, device.utcOffsetMinutes, now))) {
+      return fail(c, 'day_out_of_range');
+    }
 
     const history = await deps.repos.days.between(addDays(day, -7), addDays(day, 7));
     const declared = declareBadDay(history, day, DEFAULT_RULES);
