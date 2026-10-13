@@ -10,6 +10,8 @@ export const telemetryRoutes = new Hono<AppEnv>()
     const { deps, device } = c.var;
     const beat = c.req.valid('json');
     const now = deps.now();
+    // A beat from the future would invent gaps (spec §6.5: reject events well in the future).
+    if (beat.at > now + MAX_FUTURE_SKEW_MS) return fail(c, 'clock_ahead');
     await deps.repos.telemetry.addHeartbeat(device.id, beat, now);
     await deps.repos.devices.setUtcOffset(device.id, beat.utcOffsetMinutes);
     return ok(c, { serverTime: now });

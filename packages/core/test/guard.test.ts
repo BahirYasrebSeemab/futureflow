@@ -73,3 +73,13 @@ describe('overlapMs', () => {
     expect(overlapMs(gaps, 'guard_disabled', 0, 1000)).toBe(100);
   });
 });
+
+describe('overlapMs with overlapping gaps', () => {
+  it('counts overlapping time once (two devices off together)', () => {
+    const gaps = [
+      { kind: 'phone_off' as const, from: 0, to: 100 },
+      { kind: 'phone_off' as const, from: 50, to: 150 },
+    ];
+    expect(overlapMs(gaps, 'phone_off', 0, 1000)).toBe(150);
+  });
+});

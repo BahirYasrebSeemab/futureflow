@@ -46,14 +46,24 @@ export function analyzeBeats(beats: readonly Beat[], rules: Rules): GuardGap[] {
   return gaps;
 }
 
-/** Milliseconds of [from, to) covered by gaps of `kind`. */
+/** Milliseconds of [from, to) covered by gaps of `kind`; overlapping gaps count once. */
 export function overlapMs(
   gaps: readonly GuardGap[],
   kind: GuardGapKind,
   from: number,
   to: number,
 ): number {
-  return gaps
+  const clipped = gaps
     .filter((g) => g.kind === kind)
-    .reduce((sum, g) => sum + Math.max(0, Math.min(g.to, to) - Math.max(g.from, from)), 0);
+    .map((g) => [Math.max(g.from, from), Math.min(g.to, to)] as const)
+    .filter(([a, b]) => b > a)
+    .sort((x, y) => x[0] - y[0]);
+  let total = 0;
+  let end = -Infinity;
+  for (const [a, b] of clipped) {
+    const start = Math.max(a, end);
+    if (b > start) total += b - start;
+    end = Math.max(end, b);
+  }
+  return total;
 }
