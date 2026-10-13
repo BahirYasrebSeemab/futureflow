@@ -1,14 +1,14 @@
 import type { Deps } from '../env';
 import { analyzeGuard } from './guard';
 import { ownerContext } from './owner';
-import { runNightly } from './nightly';
+import { runNightly, type NightlyReview } from './nightly';
 import { rollover } from './rollover';
 import { runWeekly } from './weekly';
 
 export type UpkeepRun = Readonly<{
   rolledOver: boolean;
   gaps: number;
-  nightly: 'ai' | 'template' | null;
+  nightly: NightlyReview | null;
   summarized: string | null;
   deleted: number;
 }>;

@@ -17,6 +17,9 @@ export type ReviewFacts = CoachFacts &
     guardDisabledMinutes: number;
   }>;
 
+/** How tonight's review came about; `kept` = written by an earlier tick that then failed. */
+export type NightlyReview = 'ai' | 'template' | 'kept';
+
 /** Spec §6.2: the night review opens at the reminder hour and lasts until the day boundary. */
 export function isNightly(now: number, utcOffsetMinutes: number): boolean {
   const hour =
@@ -76,26 +79,32 @@ const describeFacts = (f: ReviewFacts): string =>
 export async function runNightly(
   deps: Deps,
   owner?: Owner | null,
-): Promise<{ day: string; review: 'ai' | 'template'; proposed: boolean } | null> {
+): Promise<{ day: string; review: NightlyReview; proposed: boolean } | null> {
   const o = await ownerOf(deps, owner);
   if (o === null || !isNightly(deps.now(), o.offset)) return null;
   const { day, offset } = o;
   if (await deps.repos.upkeep.nightlyDone(day)) return null;
 
-  const [facts, roadmap] = await Promise.all([reviewFacts(deps, day, offset), o.roadmap()]);
-  const written = await deps.ai.talkText({
-    system: coachSystem(roadmap),
-    prompt: `Write tonight's review in 3 to 5 short sentences, specific to these facts:\n${describeFacts(facts)}`,
-    importance: 'essential',
-  });
-  await deps.repos.coach.addCoachMessage({
-    id: deps.newId(),
-    role: 'coach',
-    kind: 'review',
-    text: written.ok ? written.value.trim() : templateReview(facts),
-    day,
-    createdAt: deps.now(),
-  });
+  const roadmap = await o.roadmap();
+  // A tick that failed after writing the review must not write (or pay for) a second one.
+  let review: NightlyReview = 'kept';
+  if (!(await deps.repos.coach.hasReview(day))) {
+    const facts = await reviewFacts(deps, day, offset);
+    const written = await deps.ai.talkText({
+      system: coachSystem(roadmap),
+      prompt: `Write tonight's review in 3 to 5 short sentences, specific to these facts:\n${describeFacts(facts)}`,
+      importance: 'essential',
+    });
+    await deps.repos.coach.addCoachMessage({
+      id: deps.newId(),
+      role: 'coach',
+      kind: 'review',
+      text: written.ok ? written.value.trim() : templateReview(facts),
+      day,
+      createdAt: deps.now(),
+    });
+    review = written.ok ? 'ai' : 'template';
+  }
 
   const tomorrow = addDays(day, 1);
   let proposed = false;
@@ -111,5 +120,5 @@ export async function runNightly(
   }
 
   await deps.repos.upkeep.markNightly(day, deps.now());
-  return { day, review: written.ok ? 'ai' : 'template', proposed };
+  return { day, review, proposed };
 }

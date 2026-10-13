@@ -145,6 +145,8 @@ export interface CoachRepo {
   page(since: number, limit: number): Promise<{ messages: CoachMessage[]; next: number }>;
   /** Messages on or after `sinceDay`, oldest first, at most `limit` (the newest ones). */
   recent(sinceDay: string, limit: number): Promise<CoachMessage[]>;
+  /** True when the nightly review for `day` is already written. */
+  hasReview(day: string): Promise<boolean>;
   latestSummary(): Promise<string | null>;
   hasSummary(week: string): Promise<boolean>;
   saveSummary(week: string, text: string, at: number): Promise<void>;

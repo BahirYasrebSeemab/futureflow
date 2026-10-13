@@ -93,3 +93,45 @@ describe('nightly', () => {
     expect(text).toContain('1 emergency unlock');
   });
 });
+
+describe('nightly after a failure part-way', () => {
+  it('a retry after a failed proposal writes no second review and makes no second review call', async () => {
+    const reviewPrompts: number[] = [];
+    let run = 0;
+    const fetch: FetchLike = async (_url, init) => {
+      if ((init.body ?? '').includes("Write tonight's review")) reviewPrompts.push(run);
+      return geminiReply('Good day.');
+    };
+    const { app, token, deps } = await setup(fetch, true);
+    const base = deps();
+    let failOnce = true;
+    const flaky = {
+      ...base,
+      repos: {
+        ...base.repos,
+        plans: {
+          ...base.repos.plans,
+          save: async (...args: Parameters<typeof base.repos.plans.save>) => {
+            if (failOnce) {
+              failOnce = false;
+              throw new Error('D1 hiccup');
+            }
+            return base.repos.plans.save(...args);
+          },
+        },
+      },
+    };
+
+    await expect(runNightly(flaky)).rejects.toThrow('D1 hiccup');
+    run = 1;
+    const retry = await runNightly(flaky);
+
+    const page = await call<{ messages: { kind: string }[] }>(app, 'GET', '/v1/coach/messages', {
+      token,
+    });
+    expect(page.body.data.messages.filter((m) => m.kind === 'review')).toHaveLength(1);
+    expect(retry?.proposed).toBe(true);
+    expect(retry?.review).toBe('kept');
+    expect(reviewPrompts).toEqual([0]); // the review was asked for once, on the first run only
+  });
+});

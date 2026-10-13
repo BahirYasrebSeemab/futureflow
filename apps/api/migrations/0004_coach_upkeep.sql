@@ -13,6 +13,8 @@ CREATE TABLE coach_messages (
 );
 CREATE INDEX coach_messages_day ON coach_messages (day);
 CREATE INDEX coach_messages_week ON coach_messages (week);
+-- At most one nightly review per day, even if a tick fails after writing it.
+CREATE UNIQUE INDEX coach_messages_one_review ON coach_messages (day) WHERE kind = 'review';
 
 CREATE TABLE coach_summaries (
   week TEXT PRIMARY KEY,

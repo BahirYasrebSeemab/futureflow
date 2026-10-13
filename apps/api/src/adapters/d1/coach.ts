@@ -66,6 +66,13 @@ export const d1Coach = (db: D1Database): CoachRepo => {
         .all<Row>();
       return results.map(toMessage);
     },
+    async hasReview(day) {
+      const row = await db
+        .prepare("SELECT 1 FROM coach_messages WHERE day = ?1 AND kind = 'review'")
+        .bind(day)
+        .first();
+      return row !== null;
+    },
     async latestSummary() {
       const row = await db
         .prepare('SELECT text FROM coach_summaries ORDER BY week DESC LIMIT 1')
