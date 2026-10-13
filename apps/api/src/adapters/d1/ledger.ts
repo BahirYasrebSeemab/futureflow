@@ -57,12 +57,18 @@ export const d1Ledger = (db: D1Database): LedgerRepo => ({
     // One transaction, two steps: everything else first, then only the repayments whose reward
     // is actually stored. A repayment of a reward dropped as a duplicate (in this batch, an
     // earlier one, or a racing request) is never paid.
+    const hasRepay = events.some((e) => e.kind === 'borrow_repay');
     const [first, second] = await db.batch<{ id: string }>([
       insert(`value->>'kind' <> 'borrow_repay'`),
-      insert(
-        `value->>'kind' = 'borrow_repay'
+      // Skipped when the batch has no repayments: one D1 statement saved per write.
+      ...(hasRepay
+        ? [
+            insert(
+              `value->>'kind' = 'borrow_repay'
          AND EXISTS (SELECT 1 FROM ledger_events r WHERE r.id = value->>'refId')`,
-      ),
+            ),
+          ]
+        : []),
     ]);
     return [...(first?.results ?? []), ...(second?.results ?? [])].map((r) => r.id);
   },
@@ -93,5 +99,13 @@ export const d1Ledger = (db: D1Database): LedgerRepo => ({
       )
       .first<{ balance: number; borrow: number }>();
     return { balance: row?.balance ?? 0, outstandingBorrow: Math.max(0, row?.borrow ?? 0) };
+  },
+
+  async balanceThrough(day) {
+    const row = await db
+      .prepare('SELECT COALESCE(SUM(seconds), 0) AS balance FROM ledger_events WHERE day <= ?1')
+      .bind(day)
+      .first<{ balance: number }>();
+    return row?.balance ?? 0;
   },
 });

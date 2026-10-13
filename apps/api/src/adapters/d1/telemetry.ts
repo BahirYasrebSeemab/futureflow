@@ -55,4 +55,14 @@ export const d1Telemetry = (db: D1Database): TelemetryRepo => ({
       .all<{ id: string }>();
     return results.map((r) => r.id);
   },
+
+  async mathSummary(day) {
+    const row = await db
+      .prepare(
+        'SELECT count(*) AS attempts, COALESCE(SUM(correct), 0) AS correct FROM math_attempts WHERE day = ?1',
+      )
+      .bind(day)
+      .first<{ attempts: number; correct: number }>();
+    return { attempts: row?.attempts ?? 0, correct: row?.correct ?? 0 };
+  },
 });

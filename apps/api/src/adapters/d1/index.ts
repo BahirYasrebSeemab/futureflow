@@ -1,11 +1,13 @@
 import type { Repos } from '../../ports';
 import { d1AiUsage } from './ai-usage';
+import { d1Coach } from './coach';
 import { d1Days } from './days';
 import { d1Devices } from './devices';
 import { d1Ledger } from './ledger';
 import { d1Plans } from './plans';
 import { d1Roadmap } from './roadmap';
 import { d1Telemetry } from './telemetry';
+import { d1Upkeep } from './upkeep';
 import { d1Verification } from './verification';
 
 export const d1Repos = (db: D1Database): Repos => ({
@@ -17,4 +19,6 @@ export const d1Repos = (db: D1Database): Repos => ({
   roadmap: d1Roadmap(db),
   aiUsage: d1AiUsage(db),
   verification: d1Verification(db),
+  coach: d1Coach(db),
+  upkeep: d1Upkeep(db),
 });

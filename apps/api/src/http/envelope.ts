@@ -23,10 +23,12 @@ export const ERRORS = {
   ],
   github_repo_unavailable: [422, 'One of the repositories cannot be read with this token.'],
   plan_not_locked: [422, 'Lock the plan first.'],
+  clock_ahead: [422, "The phone's clock is ahead of the server. Check its date and time."],
   nothing_to_plan: [422, 'No skill is active on that day. Set up the roadmap first.'],
   rate_limited: [429, 'Too many requests. Try again in a minute.'],
   internal: [500, 'Something went wrong on the server.'],
   github_unavailable: [502, 'GitHub is not answering right now. Try again later.'],
+  coach_unavailable: [503, 'The coach cannot answer right now. Try again soon.'],
   pairing_disabled: [503, 'Pairing is not configured on the server.'],
   github_key_missing: [503, 'GitHub linking is not configured on the server.'],
 } as const satisfies Record<string, readonly [ContentfulStatusCode, string]>;

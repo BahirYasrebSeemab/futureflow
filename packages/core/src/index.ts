@@ -7,3 +7,4 @@ export * from './spending';
 export * from './plan';
 export * from './day-types';
 export * from './verdict';
+export * from './guard';

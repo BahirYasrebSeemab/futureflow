@@ -1,0 +1,44 @@
+-- P3c-2: coach chat and memory, nightly runs, heartbeat gaps.
+
+CREATE TABLE coach_messages (
+  seq INTEGER PRIMARY KEY AUTOINCREMENT,
+  id TEXT NOT NULL UNIQUE,
+  role TEXT NOT NULL CHECK (role IN ('owner', 'coach')),
+  kind TEXT NOT NULL CHECK (kind IN ('chat', 'review')),
+  text TEXT NOT NULL,
+  day TEXT NOT NULL,
+  week TEXT NOT NULL,
+  reply_to TEXT UNIQUE,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX coach_messages_day ON coach_messages (day);
+CREATE INDEX coach_messages_week ON coach_messages (week);
+-- At most one nightly review per day, even if a tick fails after writing it.
+CREATE UNIQUE INDEX coach_messages_one_review ON coach_messages (day) WHERE kind = 'review';
+
+CREATE TABLE coach_summaries (
+  week TEXT PRIMARY KEY,
+  text TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);
+
+CREATE TABLE nightly_runs (
+  day TEXT PRIMARY KEY,
+  done_at INTEGER NOT NULL
+);
+
+CREATE TABLE guard_cursor (
+  device_id TEXT PRIMARY KEY,
+  seq INTEGER NOT NULL
+);
+
+CREATE TABLE guard_gaps (
+  device_id TEXT NOT NULL,
+  from_at INTEGER NOT NULL,
+  to_at INTEGER NOT NULL,
+  kind TEXT NOT NULL CHECK (kind IN ('phone_off', 'guard_disabled')),
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (device_id, from_at)
+);
+-- Days are read by overlap (a gap can span several days), not by a stored day tag.
+CREATE INDEX guard_gaps_span ON guard_gaps (from_at, to_at);

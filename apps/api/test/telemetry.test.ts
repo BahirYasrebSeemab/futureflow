@@ -135,3 +135,19 @@ describe('POST /v1/math/attempts', () => {
     expect(reply.body.data.added).toHaveLength(500);
   });
 });
+
+describe('heartbeat clock check', () => {
+  it('refuses a beat stamped more than 5 minutes ahead of the server', async () => {
+    const app = makeApp();
+    const { token } = await pairDevice(app);
+    const ahead = await call(app, 'POST', '/v1/heartbeat', {
+      token,
+      body: { ...heartbeat, at: T0 + 300_001 },
+    });
+    const edge = await call(app, 'POST', '/v1/heartbeat', {
+      token,
+      body: { ...heartbeat, at: T0 + 300_000 },
+    });
+    expect([ahead.status, ahead.body.error?.code, edge.status]).toEqual([422, 'clock_ahead', 200]);
+  });
+});
