@@ -20,13 +20,23 @@ type MilestoneRow = {
 
 export const d1Roadmap = (db: D1Database): RoadmapRepo => ({
   async get() {
-    const [identities, skills, milestones] = await db.batch([
-      db.prepare('SELECT id, title, why, deadline FROM identities ORDER BY position'),
-      db.prepare(
-        'SELECT id, identity_id, name, rubric, verifier, rest_weekday FROM skills ORDER BY position',
-      ),
-      db.prepare('SELECT id, skill_id, title, target_date, done FROM milestones ORDER BY position'),
-    ]);
+    // One statement for all three lists (D1 budget); each list is a JSON array in position order.
+    const row = await db
+      .prepare(
+        `SELECT
+           (SELECT json_group_array(json_object('id', id, 'title', title, 'why', why, 'deadline', deadline))
+              FROM (SELECT * FROM identities ORDER BY position)) AS identities,
+           (SELECT json_group_array(json_object('id', id, 'identity_id', identity_id, 'name', name,
+                     'rubric', rubric, 'verifier', verifier, 'rest_weekday', rest_weekday))
+              FROM (SELECT * FROM skills ORDER BY position)) AS skills,
+           (SELECT json_group_array(json_object('id', id, 'skill_id', skill_id, 'title', title,
+                     'target_date', target_date, 'done', done))
+              FROM (SELECT * FROM milestones ORDER BY position)) AS milestones`,
+      )
+      .first<{ identities: string; skills: string; milestones: string }>();
+    const identities = { results: JSON.parse(row?.identities ?? '[]') as IdentityRow[] };
+    const skills = { results: JSON.parse(row?.skills ?? '[]') as SkillRow[] };
+    const milestones = { results: JSON.parse(row?.milestones ?? '[]') as MilestoneRow[] };
     return {
       identities: ((identities?.results ?? []) as IdentityRow[]).map((r) => ({
         id: r.id,

@@ -53,4 +53,49 @@ export const d1Upkeep = (db: D1Database): UpkeepRepo => ({
       .all<{ kind: GuardGap['kind']; from_at: number; to_at: number }>();
     return results.map((r) => ({ kind: r.kind, from: r.from_at, to: r.to_at }));
   },
+
+  async saveGaps(deviceId, gaps, dayOf, seq, at) {
+    const rows = gaps.map((g) => ({ ...g, day: dayOf(g.from) }));
+    await db.batch([
+      db
+        .prepare(
+          `INSERT OR IGNORE INTO guard_gaps (device_id, from_at, to_at, kind, day, created_at)
+           SELECT ?2, value->>'from', value->>'to', value->>'kind', value->>'day', ?3 FROM json_each(?1)`,
+        )
+        .bind(JSON.stringify(rows), deviceId, at),
+      db
+        .prepare(
+          `INSERT INTO guard_cursor (device_id, seq) VALUES (?1, ?2)
+           ON CONFLICT (device_id) DO UPDATE SET seq = excluded.seq`,
+        )
+        .bind(deviceId, seq),
+    ]);
+  },
+
+  async beatsFromCursor(deviceId, limit) {
+    const { results } = await db
+      .prepare(
+        `SELECT seq, at, boot_id, uptime_seconds, guard_enabled FROM heartbeats
+         WHERE device_id = ?1
+           AND seq >= COALESCE((SELECT seq FROM guard_cursor WHERE device_id = ?1), 0)
+         ORDER BY seq LIMIT ?2`,
+      )
+      .bind(deviceId, limit)
+      .all<{
+        seq: number;
+        at: number;
+        boot_id: string;
+        uptime_seconds: number;
+        guard_enabled: number;
+      }>();
+    return results.map((r) => ({
+      seq: r.seq,
+      beat: {
+        at: r.at,
+        bootId: r.boot_id,
+        uptimeSeconds: r.uptime_seconds,
+        guardEnabled: r.guard_enabled === 1,
+      },
+    }));
+  },
 });

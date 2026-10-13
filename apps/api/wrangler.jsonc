@@ -5,8 +5,8 @@
   "compatibility_date": "2026-10-01",
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
-  // Hourly verification tick (1 of the 5 free cron triggers).
-  "triggers": { "crons": ["0 * * * *"] },
+  // Hourly verification and half-hourly upkeep (2 of the 5 free cron triggers).
+  "triggers": { "crons": ["0 * * * *", "30 * * * *"] },
   "d1_databases": [
     {
       "binding": "DB",

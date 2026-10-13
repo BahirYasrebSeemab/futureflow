@@ -1,4 +1,5 @@
 import type { Roadmap } from '@mflow/contracts';
+import type { LedgerEvent } from '@mflow/core';
 import type { Deps } from '../env';
 import type { CoachMessage } from '../ports';
 
@@ -34,11 +35,15 @@ export type CoachFacts = Readonly<{
 }>;
 
 /** Only what the coach needs: no location, tokens or device data. */
-export async function todayFacts(deps: Deps, day: string): Promise<CoachFacts> {
+export async function todayFacts(
+  deps: Deps,
+  day: string,
+  dayEvents?: readonly LedgerEvent[],
+): Promise<CoachFacts> {
   const [plan, verdicts, events] = await Promise.all([
     deps.repos.plans.get(day),
     deps.repos.verification.verdictsForDay(day),
-    deps.repos.ledger.forDay(day),
+    dayEvents ?? deps.repos.ledger.forDay(day),
   ]);
   const outcome = new Map(verdicts.map((v) => [v.taskId, v.outcome]));
   const minutes = (kinds: readonly string[]) =>

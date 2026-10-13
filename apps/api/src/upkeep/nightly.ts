@@ -2,7 +2,7 @@ import { addDays, createDraft, DEFAULT_RULES, editDraft } from '@mflow/core';
 import { coachSystem, todayFacts, type CoachFacts } from '../coach/persona';
 import type { Deps } from '../env';
 import { activeSkills, aiTasks, templateTasks } from '../planning/propose';
-import { ownerDay } from '../verification/run';
+import { ownerOf, type Owner } from './owner';
 import { guardDay } from './guard';
 
 const HOUR_MS = 3_600_000;
@@ -47,9 +47,9 @@ export function templateReview(f: ReviewFacts): string {
 }
 
 async function reviewFacts(deps: Deps, day: string, offset: number): Promise<ReviewFacts> {
-  const [base, events, logs, math, guard] = await Promise.all([
-    todayFacts(deps, day),
-    deps.repos.ledger.forDay(day),
+  const events = await deps.repos.ledger.forDay(day);
+  const [base, logs, math, guard] = await Promise.all([
+    todayFacts(deps, day, events),
     deps.repos.verification.readingForDay(day),
     deps.repos.telemetry.mathSummary(day),
     guardDay(deps, day, offset),
@@ -75,16 +75,14 @@ const describeFacts = (f: ReviewFacts): string =>
 /** Once a night: the coach's review of today, then a draft plan for tomorrow if none exists. */
 export async function runNightly(
   deps: Deps,
+  owner?: Owner | null,
 ): Promise<{ day: string; review: 'ai' | 'template'; proposed: boolean } | null> {
-  const offset = await deps.repos.devices.latestOffset();
-  if (offset === null || !isNightly(deps.now(), offset)) return null;
-  const { day } = await ownerDay(deps);
+  const o = await ownerOf(deps, owner);
+  if (o === null || !isNightly(deps.now(), o.offset)) return null;
+  const { day, offset } = o;
   if (await deps.repos.upkeep.nightlyDone(day)) return null;
 
-  const [facts, roadmap] = await Promise.all([
-    reviewFacts(deps, day, offset),
-    deps.repos.roadmap.get(),
-  ]);
+  const [facts, roadmap] = await Promise.all([reviewFacts(deps, day, offset), o.roadmap()]);
   const written = await deps.ai.talkText({
     system: coachSystem(roadmap),
     prompt: `Write tonight's review in 3 to 5 short sentences, specific to these facts:\n${describeFacts(facts)}`,

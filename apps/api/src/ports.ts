@@ -71,7 +71,6 @@ export interface TelemetryRepo {
     attempts: readonly MathAttempt[],
     receivedAt: number,
   ): Promise<string[]>;
-  beatsFrom(deviceId: string, seq: number, limit: number): Promise<{ seq: number; beat: Beat }[]>;
   mathSummary(day: string): Promise<{ attempts: number; correct: number }>;
 }
 
@@ -167,6 +166,16 @@ export interface UpkeepRepo {
     at: number,
   ): Promise<void>;
   gapsForDay(day: string): Promise<GuardGap[]>;
+  /** Heartbeats from the device's cursor (inclusive), in one query. */
+  beatsFromCursor(deviceId: string, limit: number): Promise<{ seq: number; beat: Beat }[]>;
+  /** Stores gaps and moves the device's cursor in one transaction. */
+  saveGaps(
+    deviceId: string,
+    gaps: readonly GuardGap[],
+    dayOf: (at: number) => string,
+    seq: number,
+    at: number,
+  ): Promise<void>;
 }
 
 export type Repos = Readonly<{

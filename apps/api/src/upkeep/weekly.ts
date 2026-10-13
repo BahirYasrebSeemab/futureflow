@@ -1,7 +1,7 @@
 import { addDays, isoWeekKey, weekdayOf } from '@mflow/core';
 import { coachSystem } from '../coach/persona';
 import type { Deps } from '../env';
-import { ownerDay } from '../verification/run';
+import { ownerOf, type Owner } from './owner';
 
 /** Spec §9.3: chat transcripts are kept 30 days, then summarized and deleted. */
 export const RETENTION_DAYS = 30;
@@ -11,9 +11,11 @@ const MONDAY = 1;
 
 export async function runWeekly(
   deps: Deps,
+  owner?: Owner | null,
 ): Promise<{ summarized: string | null; deleted: number }> {
-  if ((await deps.repos.devices.latestOffset()) === null) return { summarized: null, deleted: 0 };
-  const { day } = await ownerDay(deps);
+  const o = await ownerOf(deps, owner);
+  if (o === null) return { summarized: null, deleted: 0 };
+  const { day } = o;
   const { coach } = deps.repos;
 
   let summarized: string | null = null;
@@ -22,7 +24,7 @@ export async function runWeekly(
     const messages = await coach.messagesForWeek(lastWeek);
     if (messages.length > 0) {
       const written = await deps.ai.talkText({
-        system: coachSystem(await deps.repos.roadmap.get()),
+        system: coachSystem(await o.roadmap()),
         prompt: [
           `Summarize week ${lastWeek} of our conversation in at most 5 sentences: what I worked on,`,
           'what slipped, and what I said I would change. This summary replaces the transcript.',

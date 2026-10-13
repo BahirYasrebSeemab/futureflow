@@ -7,6 +7,7 @@ import {
   type GuardGap,
 } from '@mflow/core';
 import type { Deps } from '../env';
+import { ownerOf, type Owner } from './owner';
 
 export const MAX_BEATS_PER_RUN = 500;
 /** "If the phone was off for a whole day" (spec §6.5), with slack for a few minutes on. */
@@ -47,22 +48,20 @@ export async function guardDay(
 }
 
 /** Turns new heartbeats into stored gaps for every device. Returns how many gaps were found. */
-export async function analyzeGuard(deps: Deps): Promise<number> {
-  const { upkeep, telemetry, devices } = deps.repos;
-  const offset = (await devices.latestOffset()) ?? 0;
+export async function analyzeGuard(deps: Deps, owner?: Owner | null): Promise<number> {
+  const { upkeep } = deps.repos;
+  const offset = (await ownerOf(deps, owner))?.offset ?? 0;
   const dayOf = (at: number) => dayKeyFor(at, offset, DEFAULT_RULES.dayBoundaryHour);
   let found = 0;
   for (const deviceId of await upkeep.devices()) {
-    const cursor = await upkeep.guardCursor(deviceId);
-    const rows = await telemetry.beatsFrom(deviceId, cursor, MAX_BEATS_PER_RUN);
+    const rows = await upkeep.beatsFromCursor(deviceId, MAX_BEATS_PER_RUN);
     if (rows.length < 2) continue;
     const gaps = analyzeBeats(
       rows.map((r) => r.beat),
       DEFAULT_RULES,
     );
-    await upkeep.addGaps(deviceId, gaps, dayOf, deps.now());
     const last = rows.at(-1);
-    if (last !== undefined) await upkeep.setGuardCursor(deviceId, last.seq);
+    if (last !== undefined) await upkeep.saveGaps(deviceId, gaps, dayOf, last.seq, deps.now());
     found += gaps.length;
   }
   return found;
