@@ -151,6 +151,8 @@ export interface CoachRepo {
   hasSummary(week: string): Promise<boolean>;
   saveSummary(week: string, text: string, at: number): Promise<void>;
   messagesForWeek(week: string): Promise<CoachMessage[]>;
+  /** The oldest week before `beforeWeek` that has messages but no summary, or null. */
+  oldestUnsummarizedWeek(beforeWeek: string): Promise<string | null>;
   /** Deletes messages before `beforeDay` whose week is summarized, and all before `hardBeforeDay`. */
   deleteOld(beforeDay: string, hardBeforeDay: string): Promise<number>;
 }

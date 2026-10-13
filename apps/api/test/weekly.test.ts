@@ -59,7 +59,7 @@ describe('weekly memory', () => {
     expect((await runWeekly(deps())).summarized).toBe('2026-W41');
   });
 
-  it('only summarizes on Monday, and deletes old chat by the retention rules', async () => {
+  it('deletes old chat by the retention rules, then summarizes the oldest unsummarized week on any day', async () => {
     const { clock, repo, msg, deps } = await setup(async () => geminiReply('s'));
     await msg('old-summarized', '2026-09-01');
     await msg('old-unsummarized', '2026-09-08');
@@ -69,7 +69,25 @@ describe('weekly memory', () => {
 
     const result = await runWeekly(deps());
 
-    expect(result).toEqual({ summarized: null, deleted: 2 });
+    expect(result).toEqual({ summarized: '2026-W37', deleted: 2 });
     expect((await repo.page(0, 10)).messages.map((m) => m.id)).toEqual(['old-unsummarized']);
+  });
+
+  it('a week the AI could not summarize on Monday is summarized on a later day', async () => {
+    let down = true;
+    const { clock, msg, deps } = await setup(async () =>
+      down ? { status: 503, text: async () => '{}' } : geminiReply('ok'),
+    );
+    await msg('a', '2026-10-07');
+    expect((await runWeekly(deps())).summarized).toBeNull();
+    down = false;
+    clock.now = Date.UTC(2026, 9, 13, 10); // Tuesday
+    expect((await runWeekly(deps())).summarized).toBe('2026-W41');
+  });
+
+  it('never summarizes the current week', async () => {
+    const { msg, deps } = await setup(async () => geminiReply('s'));
+    await msg('now', '2026-10-12'); // this week (W42)
+    expect((await runWeekly(deps())).summarized).toBeNull();
   });
 });

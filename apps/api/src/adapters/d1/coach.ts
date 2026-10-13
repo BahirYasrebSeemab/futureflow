@@ -101,6 +101,17 @@ export const d1Coach = (db: D1Database): CoachRepo => {
         .all<Row>();
       return results.map(toMessage);
     },
+    async oldestUnsummarizedWeek(beforeWeek) {
+      const row = await db
+        .prepare(
+          `SELECT week FROM coach_messages
+           WHERE week < ?1 AND week NOT IN (SELECT week FROM coach_summaries)
+           ORDER BY week LIMIT 1`,
+        )
+        .bind(beforeWeek)
+        .first<{ week: string }>();
+      return row?.week ?? null;
+    },
     async deleteOld(beforeDay, hardBeforeDay) {
       const result = await db
         .prepare(

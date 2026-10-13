@@ -78,3 +78,24 @@ describe('upkeep cron', () => {
     expect(logged).not.toContain('Private');
   });
 });
+
+describe('upkeep step isolation', () => {
+  it('a failing step is logged by name and the later steps still run', async () => {
+    const clock: Clock = { now: Date.UTC(2026, 9, 9, 21, 30) };
+    const app = makeApp(clock);
+    const { token } = await pairDevice(app);
+    await call(app, 'PUT', '/v1/onboarding/roadmap', { token, body: sampleRoadmap() });
+    await env.DB.exec('ALTER TABLE heartbeats RENAME TO heartbeats_offline'); // breaks the guard step
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    try {
+      const run = await runUpkeep(env, { now: () => clock.now });
+      expect(run.nightly).toBe('template');
+      expect(errors.mock.calls.map((a) => JSON.parse(String(a[0])) as unknown)).toEqual([
+        { level: 'error', event: 'upkeep_step_failed', step: 'guard', name: 'Error' },
+      ]);
+    } finally {
+      await env.DB.exec('ALTER TABLE heartbeats_offline RENAME TO heartbeats');
+    }
+  });
+});
