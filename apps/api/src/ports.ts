@@ -157,25 +157,12 @@ export interface UpkeepRepo {
   nightlyDone(day: string): Promise<boolean>;
   markNightly(day: string, at: number): Promise<void>;
   devices(): Promise<string[]>;
-  guardCursor(deviceId: string): Promise<number>;
-  setGuardCursor(deviceId: string, seq: number): Promise<void>;
-  addGaps(
-    deviceId: string,
-    gaps: readonly GuardGap[],
-    dayOf: (at: number) => string,
-    at: number,
-  ): Promise<void>;
-  gapsForDay(day: string): Promise<GuardGap[]>;
+  /** Gaps of any device that overlap [from, to): a gap can span several days. */
+  gapsBetween(from: number, to: number): Promise<GuardGap[]>;
   /** Heartbeats from the device's cursor (inclusive), in one query. */
   beatsFromCursor(deviceId: string, limit: number): Promise<{ seq: number; beat: Beat }[]>;
   /** Stores gaps and moves the device's cursor in one transaction. */
-  saveGaps(
-    deviceId: string,
-    gaps: readonly GuardGap[],
-    dayOf: (at: number) => string,
-    seq: number,
-    at: number,
-  ): Promise<void>;
+  saveGaps(deviceId: string, gaps: readonly GuardGap[], seq: number, at: number): Promise<void>;
 }
 
 export type Repos = Readonly<{

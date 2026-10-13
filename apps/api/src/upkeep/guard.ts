@@ -1,13 +1,5 @@
-import {
-  analyzeBeats,
-  dayKeyFor,
-  DEFAULT_RULES,
-  overlapMs,
-  parseDayKey,
-  type GuardGap,
-} from '@mflow/core';
+import { analyzeBeats, DEFAULT_RULES, overlapMs, parseDayKey, type GuardGap } from '@mflow/core';
 import type { Deps } from '../env';
-import { ownerOf, type Owner } from './owner';
 
 export const MAX_BEATS_PER_RUN = 500;
 /** "If the phone was off for a whole day" (spec §6.5), with slack for a few minutes on. */
@@ -35,8 +27,8 @@ export async function guardDay(
   day: string,
   utcOffsetMinutes: number,
 ): Promise<GuardDay> {
-  const gaps = await deps.repos.upkeep.gapsForDay(day);
   const { from, to } = dayWindow(day, utcOffsetMinutes);
+  const gaps = await deps.repos.upkeep.gapsBetween(from, to);
   const minutes = (kind: GuardGap['kind']) =>
     Math.round(overlapMs(gaps, kind, from, to) / MINUTE_MS);
   return {
@@ -48,10 +40,8 @@ export async function guardDay(
 }
 
 /** Turns new heartbeats into stored gaps for every device. Returns how many gaps were found. */
-export async function analyzeGuard(deps: Deps, owner?: Owner | null): Promise<number> {
+export async function analyzeGuard(deps: Deps): Promise<number> {
   const { upkeep } = deps.repos;
-  const offset = (await ownerOf(deps, owner))?.offset ?? 0;
-  const dayOf = (at: number) => dayKeyFor(at, offset, DEFAULT_RULES.dayBoundaryHour);
   let found = 0;
   for (const deviceId of await upkeep.devices()) {
     const rows = await upkeep.beatsFromCursor(deviceId, MAX_BEATS_PER_RUN);
@@ -61,7 +51,7 @@ export async function analyzeGuard(deps: Deps, owner?: Owner | null): Promise<nu
       DEFAULT_RULES,
     );
     const last = rows.at(-1);
-    if (last !== undefined) await upkeep.saveGaps(deviceId, gaps, dayOf, last.seq, deps.now());
+    if (last !== undefined) await upkeep.saveGaps(deviceId, gaps, last.seq, deps.now());
     found += gaps.length;
   }
   return found;

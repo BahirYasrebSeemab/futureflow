@@ -65,12 +65,9 @@ describe('coach repository', () => {
     await repo.markNightly('2026-10-09', T0);
     expect(await repo.nightlyDone('2026-10-09')).toBe(true);
 
-    expect(await repo.guardCursor('d1')).toBe(0);
-    await repo.setGuardCursor('d1', 7);
-    expect(await repo.guardCursor('d1')).toBe(7);
-
     const gap = { kind: 'phone_off' as const, from: T0, to: T0 + 3_600_000 };
-    await repo.addGaps('d1', [gap, gap], () => '2026-10-09', T0);
-    expect(await repo.gapsForDay('2026-10-09')).toEqual([gap]);
+    await repo.saveGaps('d1', [gap, gap], 7, T0);
+    expect(await repo.gapsBetween(T0 + 1, T0 + 2)).toEqual([gap]);
+    expect(await repo.gapsBetween(T0 + 3_600_000, T0 + 7_200_000)).toEqual([]);
   });
 });

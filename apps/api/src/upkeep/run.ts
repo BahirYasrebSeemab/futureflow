@@ -17,7 +17,7 @@ export type UpkeepRun = Readonly<{
 export async function upkeep(deps: Deps): Promise<UpkeepRun> {
   const owner = await ownerContext(deps);
   const rolled = await rollover(deps, owner);
-  const gaps = await analyzeGuard(deps, owner);
+  const gaps = await analyzeGuard(deps);
   const nightly = await runNightly(deps, owner);
   const weekly = await runWeekly(deps, owner);
   return {

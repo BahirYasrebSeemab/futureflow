@@ -14,7 +14,7 @@ import type { AwayWindow } from '../ports';
 import { deviceToday, isWithinDays } from '../http/day';
 import { fail, ok } from '../http/envelope';
 import { valid } from '../http/validate';
-import { guardDay, PHONE_OFF_RECLASSIFY_HOURS } from '../upkeep/guard';
+import { analyzeGuard, guardDay, PHONE_OFF_RECLASSIFY_HOURS } from '../upkeep/guard';
 import { openDays } from '../verification/run';
 
 /** How far ahead an away window may start. */
@@ -38,6 +38,7 @@ const daysFrom = (from: string, to: string): string[] => {
 async function phoneWasOff(deps: Deps, day: string, offset: number, now: number): Promise<boolean> {
   const open = openDays(now, offset);
   if (open.length < 2 || open[0] !== day) return false;
+  await analyzeGuard(deps); // the phone may have just come back: read its new beats first
   const { phoneOffMinutes } = await guardDay(deps, day, offset);
   return phoneOffMinutes >= PHONE_OFF_RECLASSIFY_HOURS * 60;
 }

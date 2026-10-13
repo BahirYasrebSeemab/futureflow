@@ -35,8 +35,8 @@ CREATE TABLE guard_gaps (
   from_at INTEGER NOT NULL,
   to_at INTEGER NOT NULL,
   kind TEXT NOT NULL CHECK (kind IN ('phone_off', 'guard_disabled')),
-  day TEXT NOT NULL,
   created_at INTEGER NOT NULL,
   PRIMARY KEY (device_id, from_at)
 );
-CREATE INDEX guard_gaps_day ON guard_gaps (day);
+-- Days are read by overlap (a gap can span several days), not by a stored day tag.
+CREATE INDEX guard_gaps_span ON guard_gaps (from_at, to_at);

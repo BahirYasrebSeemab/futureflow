@@ -19,50 +19,24 @@ export const d1Upkeep = (db: D1Database): UpkeepRepo => ({
       .all<{ id: string }>();
     return results.map((r) => r.id);
   },
-  async guardCursor(deviceId) {
-    const row = await db
-      .prepare('SELECT seq FROM guard_cursor WHERE device_id = ?1')
-      .bind(deviceId)
-      .first<{ seq: number }>();
-    return row?.seq ?? 0;
-  },
-  async setGuardCursor(deviceId, seq) {
-    await db
-      .prepare(
-        `INSERT INTO guard_cursor (device_id, seq) VALUES (?1, ?2)
-         ON CONFLICT (device_id) DO UPDATE SET seq = excluded.seq`,
-      )
-      .bind(deviceId, seq)
-      .run();
-  },
-  async addGaps(deviceId, gaps, dayOf, at) {
-    if (gaps.length === 0) return;
-    const rows = gaps.map((g) => ({ ...g, day: dayOf(g.from) }));
-    await db
-      .prepare(
-        `INSERT OR IGNORE INTO guard_gaps (device_id, from_at, to_at, kind, day, created_at)
-         SELECT ?2, value->>'from', value->>'to', value->>'kind', value->>'day', ?3 FROM json_each(?1)`,
-      )
-      .bind(JSON.stringify(rows), deviceId, at)
-      .run();
-  },
-  async gapsForDay(day) {
+  async gapsBetween(from, to) {
     const { results } = await db
-      .prepare('SELECT kind, from_at, to_at FROM guard_gaps WHERE day = ?1 ORDER BY from_at')
-      .bind(day)
+      .prepare(
+        'SELECT kind, from_at, to_at FROM guard_gaps WHERE from_at < ?2 AND to_at > ?1 ORDER BY from_at',
+      )
+      .bind(from, to)
       .all<{ kind: GuardGap['kind']; from_at: number; to_at: number }>();
     return results.map((r) => ({ kind: r.kind, from: r.from_at, to: r.to_at }));
   },
 
-  async saveGaps(deviceId, gaps, dayOf, seq, at) {
-    const rows = gaps.map((g) => ({ ...g, day: dayOf(g.from) }));
+  async saveGaps(deviceId, gaps, seq, at) {
     await db.batch([
       db
         .prepare(
-          `INSERT OR IGNORE INTO guard_gaps (device_id, from_at, to_at, kind, day, created_at)
-           SELECT ?2, value->>'from', value->>'to', value->>'kind', value->>'day', ?3 FROM json_each(?1)`,
+          `INSERT OR IGNORE INTO guard_gaps (device_id, from_at, to_at, kind, created_at)
+           SELECT ?2, value->>'from', value->>'to', value->>'kind', ?3 FROM json_each(?1)`,
         )
-        .bind(JSON.stringify(rows), deviceId, at),
+        .bind(JSON.stringify(gaps), deviceId, at),
       db
         .prepare(
           `INSERT INTO guard_cursor (device_id, seq) VALUES (?1, ?2)

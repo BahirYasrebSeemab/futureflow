@@ -77,3 +77,27 @@ describe('guard gaps', () => {
     expect([reply.status, reply.body.error?.code]).toEqual([422, 'day_out_of_range']);
   });
 });
+
+describe('gaps that span days', () => {
+  it('counts a gap on every day it covers, and reclassifies a whole day off right after boot', async () => {
+    const { app, token, clock, beat } = await setup();
+    await beat(Date.UTC(2026, 9, 9, 23)); // the 9th, 23:00
+    await beat(Date.UTC(2026, 9, 11, 9), 'boot-2', 60); // back on the 11th at 09:00
+    clock.now = Date.UTC(2026, 9, 11, 9, 5); // no upkeep tick has run yet
+
+    const tenth = await call<{ phoneOffMinutes: number }>(app, 'GET', '/v1/guard/2026-10-10', {
+      token,
+    });
+    const reply = await call(app, 'POST', '/v1/day-type', {
+      token,
+      body: { day: '2026-10-10', kind: 'bad' },
+    });
+
+    expect(tenth.body.data.phoneOffMinutes).toBe(0); // before analysis, nothing is known
+    expect(reply.status).toBe(201); // the reclassification analyzes the new beats itself
+    const after = await call<{ phoneOffMinutes: number }>(app, 'GET', '/v1/guard/2026-10-10', {
+      token,
+    });
+    expect(after.body.data.phoneOffMinutes).toBe(24 * 60);
+  });
+});
