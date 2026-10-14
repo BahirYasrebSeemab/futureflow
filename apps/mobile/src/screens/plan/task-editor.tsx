@@ -39,6 +39,7 @@ export function TaskEditor({ task, index, locked, onEdit, onRemove }: Props) {
         accessibilityLabel={label}
         value={value}
         onChangeText={(text) => onEdit({ [key]: text })}
+        multiline // long plan text wraps instead of hiding its start on a narrow phone
         style={input}
       />
     </View>
@@ -81,6 +82,7 @@ const styles = StyleSheet.create({
   label: { fontSize: 13, fontWeight: '600' },
   input: {
     minHeight: 44,
+    paddingVertical: space.sm,
     borderWidth: 1,
     borderRadius: radius.md,
     paddingHorizontal: space.sm,
