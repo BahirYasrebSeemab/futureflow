@@ -87,6 +87,8 @@ export const PAIRED = {
   device_id: '01920000-0000-7000-8000-0000000000d1',
 };
 
+const OFFLINE = { ok: false, error: { kind: 'network' } } as const;
+
 /** Real store (node:sqlite) and syncer, with a scripted API and memory secrets. */
 export async function testServices(
   api: Partial<Api> = {},
@@ -103,6 +105,15 @@ export async function testServices(
       data: { added: events.map((e) => e.id), ignored: [], rejected: [] },
     }),
     pullLedger: async (since) => ({ ok: true, data: { events: [], next: since } }),
+    getPlan: async () => ({ ok: true, data: null }),
+    getRoadmap: async () => ({ ok: true, data: null }),
+    savePlan: async () => OFFLINE,
+    proposePlan: async () => OFFLINE,
+    lockPlan: async () => OFFLINE,
+    declareBadDay: async () => OFFLINE,
+    declareAway: async () => OFFLINE,
+    sendAwayVerdict: async () => OFFLINE,
+    decideVerdict: async () => OFFLINE,
     ...api,
   };
   const now = () => NOW;

@@ -8,7 +8,11 @@ export const PULL_PAGE = MAX_EVENTS_PER_BATCH;
 /** Bounds each loop: 20 × 500 events per sync is far beyond a day's traffic. */
 export const MAX_ROUNDS = 20;
 
-export type SyncDeps = Readonly<{ api: Api; store: LocalStore; now: () => number }>;
+export type SyncDeps = Readonly<{
+  api: Pick<Api, 'pushEvents' | 'today' | 'pullLedger'>;
+  store: LocalStore;
+  now: () => number;
+}>;
 
 type Stop = Exclude<SyncStatus, 'ok'>;
 type Pushed = { stop: Stop | null; pushed: number; buried: number };

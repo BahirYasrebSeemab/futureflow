@@ -1,4 +1,4 @@
-import { createApi, type ApiDeps } from '@/lib/api/client';
+import { createApi, type Api, type ApiDeps } from '@/lib/api/client';
 import { errBody, jsonResponse, ledgerEvent, okBody, sampleToday } from './support/fakes';
 
 const TOKEN = 'a'.repeat(43);
@@ -162,4 +162,113 @@ test('an authenticated call without a token is refused before the network', asyn
     },
   });
   expect(calls).toHaveLength(0);
+});
+
+const PAIRED_ID = '01920000-0000-7000-8000-0000000000d1';
+const plan = sampleToday().plan!;
+const record = { day: '2026-10-14', kind: 'bad' as const };
+const away = {
+  id: PAIRED_ID,
+  from: '2026-10-15',
+  to: '2026-10-16',
+  place: 'Montreal',
+  keptTaskIds: [],
+};
+const verdict = {
+  day: '2026-10-14',
+  taskId: 't1',
+  outcome: 'pass' as const,
+  confidence: 1,
+  by: 'owner' as const,
+  evidenceIds: [],
+};
+
+type Case = [string, (a: Api) => Promise<unknown>, string, string, unknown, unknown];
+const cases: Case[] = [
+  [
+    'savePlan',
+    (a) => a.savePlan('2026-10-15', plan.tasks),
+    'PUT',
+    '/v1/plans/2026-10-15',
+    { tasks: plan.tasks },
+    plan,
+  ],
+  [
+    'proposePlan',
+    (a) => a.proposePlan('2026-10-15'),
+    'POST',
+    '/v1/plans/2026-10-15/propose',
+    undefined,
+    { plan, source: 'template' },
+  ],
+  [
+    'lockPlan',
+    (a) => a.lockPlan('2026-10-15'),
+    'POST',
+    '/v1/plans/2026-10-15/lock',
+    undefined,
+    plan,
+  ],
+  [
+    'declareBadDay',
+    (a) => a.declareBadDay('2026-10-14'),
+    'POST',
+    '/v1/day-type',
+    { day: '2026-10-14', kind: 'bad' },
+    record,
+  ],
+  [
+    'declareAway',
+    (a) => a.declareAway(away),
+    'POST',
+    '/v1/away',
+    away,
+    { id: PAIRED_ID, days: [record] },
+  ],
+  [
+    'sendAwayVerdict',
+    (a) => a.sendAwayVerdict(PAIRED_ID, { day: '2026-10-15', verified: 'yes', distanceKm: 540 }),
+    'POST',
+    `/v1/away/${PAIRED_ID}/verdict`,
+    { day: '2026-10-15', verified: 'yes', distanceKm: 540 },
+    record,
+  ],
+  [
+    'decideVerdict',
+    (a) => a.decideVerdict('t1', { day: '2026-10-14', outcome: 'pass' }),
+    'POST',
+    '/v1/verdicts/t1',
+    { day: '2026-10-14', outcome: 'pass' },
+    verdict,
+  ],
+];
+
+test.each(cases)('%s calls %s %s', async (_name, call, method, path, body, data) => {
+  const { api, calls } = setup(async () => jsonResponse(200, okBody(data)));
+  expect(await call(api)).toEqual({ ok: true, data });
+  expect(calls[0]?.init.method).toBe(method);
+  expect(calls[0]?.url).toBe(`https://api.test${path}`);
+  const sent = calls[0]?.init.body;
+  expect(sent === undefined ? undefined : JSON.parse(String(sent))).toEqual(body);
+});
+
+test('getPlan answers null for a day without a plan', async () => {
+  const { api } = setup(async () => jsonResponse(404, errBody('not_found', 'Not found.')));
+  expect(await api.getPlan('2026-10-15')).toEqual({ ok: true, data: null });
+});
+
+test('getPlan passes other failures through', async () => {
+  const { api } = setup(async () => {
+    throw new TypeError('offline');
+  });
+  expect(await api.getPlan('2026-10-15')).toEqual({ ok: false, error: { kind: 'network' } });
+});
+
+test('getPlan returns the plan, and getRoadmap may be empty', async () => {
+  const withPlan = setup(async () => jsonResponse(200, okBody(plan)));
+  expect(await withPlan.api.getPlan('2026-10-14')).toEqual({ ok: true, data: plan });
+  expect(withPlan.calls[0]?.url).toBe('https://api.test/v1/plans/2026-10-14');
+  const empty = setup(async () => jsonResponse(200, okBody(null)));
+  expect(await empty.api.getRoadmap()).toEqual({ ok: true, data: null });
+  expect(empty.calls[0]?.url).toBe('https://api.test/v1/onboarding/roadmap');
 });

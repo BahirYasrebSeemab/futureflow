@@ -1,12 +1,5 @@
 import type { LedgerEvent } from '@futureflow/core';
-import type {
-  Api,
-  ApiFailure,
-  ApiResult,
-  LedgerPage,
-  LedgerSyncResult,
-  Today,
-} from '@/lib/api/client';
+import type { ApiFailure, ApiResult, LedgerPage, LedgerSyncResult, Today } from '@/lib/api/client';
 import { migrate } from '@/lib/store/migrations';
 import { sqliteStore } from '@/lib/store/sqlite-store';
 import { createSyncer, syncOnce, type SyncDeps } from '@/lib/sync';
@@ -34,8 +27,7 @@ async function setup(script: Script = {}) {
   await migrate(db);
   const store = sqliteStore(db);
   const calls = { push: [] as number[], pull: [] as number[], today: 0 };
-  const api: Api = {
-    pair: async () => failure({ kind: 'network' }),
+  const api: SyncDeps['api'] = {
     pushEvents: async (events) => {
       calls.push.push(events.length);
       return (script.push ?? takeAll)(events);
