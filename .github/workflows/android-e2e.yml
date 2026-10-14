@@ -28,11 +28,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-      - uses: actions/setup-java@v4
+      # No Gradle cache: the android/ folder only exists after `expo prebuild`.
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
-          cache: gradle
       - run: bun install --frozen-lockfile
 
       - name: Start the Worker locally (throwaway setup code)
