@@ -56,6 +56,7 @@ async function setup(here: Coords | null, now = NOW) {
     secrets: services.secrets,
     locator: { coarse: async () => here },
     now: () => now,
+    utcOffsetMinutes: () => 0,
   };
   return { deps, sent };
 }
@@ -109,4 +110,29 @@ test('a failed send is retried next time', async () => {
   };
   expect(await checkAway(failing, awayToday)).toBe('skipped');
   expect(await deps.store.lastAwayCheck('2026-10-14')).toBeNull();
+});
+
+test('a snapshot from another day sends nothing (the trip may have ended)', async () => {
+  const { deps, sent } = await setup(TORONTO);
+  await saveHome(deps.secrets, TORONTO);
+  await deps.store.saveAwayWindow({ ...WINDOW, from: '2026-10-12', to: '2026-10-13' });
+  const yesterday = sampleToday({
+    day: '2026-10-13',
+    dayRecord: {
+      day: '2026-10-13',
+      kind: 'away',
+      away: { place: 'Montreal', keptTaskIds: [], verified: 'yes' },
+    },
+  });
+  expect(await checkAway(deps, yesterday)).toBe('skipped');
+  expect(sent).toEqual([]);
+});
+
+test('the day follows the 04:00 boundary in local time', async () => {
+  const early = Date.UTC(2026, 9, 15, 3); // 03:00 on the 15th is still the 14th's day
+  const { deps, sent } = await setup(MONTREAL, early);
+  await saveHome(deps.secrets, TORONTO);
+  await deps.store.saveAwayWindow(WINDOW);
+  expect(await checkAway(deps, awayToday)).toBe('sent');
+  expect(sent).toHaveLength(1);
 });

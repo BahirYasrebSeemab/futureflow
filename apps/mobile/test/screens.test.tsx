@@ -510,3 +510,48 @@ test('a pending task in a draft plan or on an excused day has no answer buttons'
   expect(await screen.findByText('Fractions practice')).toBeTruthy();
   expect(screen.queryByTestId(`did-it-${id}`)).toBeNull();
 });
+
+test('an away day is measured after the sync, with the fresh day', async () => {
+  type Sent = { ok: true; data: { day: string; kind: 'away' } };
+  const sendAwayVerdict = jest.fn<Promise<Sent>, [string, unknown]>(async () => ({
+    ok: true,
+    data: { day: '2026-10-14', kind: 'away' },
+  }));
+  const awayRecord = {
+    day: '2026-10-14',
+    kind: 'away' as const,
+    away: { place: 'Montreal', keptTaskIds: [], verified: 'pending' as const },
+  };
+  const services = await testServices(
+    {
+      today: async () => ({ ok: true, data: sampleToday({ dayRecord: awayRecord }) }),
+      sendAwayVerdict,
+    },
+    PAIRED,
+    { locator: { coarse: async () => ({ lat: 45.5, lon: -73.56 }) } },
+  );
+  await services.store.saveAwayWindow({
+    id: '01920000-0000-7000-8000-0000000000e1',
+    from: '2026-10-14',
+    to: '2026-10-14',
+  });
+  // The saved snapshot is from yesterday, before the sync brings today's away day.
+  await services.store.saveToday({ today: sampleToday({ day: '2026-10-13' }), savedAt: 0 });
+  mount(ready(services));
+  await waitFor(() => expect(sendAwayVerdict).toHaveBeenCalledTimes(1));
+  expect(sendAwayVerdict.mock.calls[0]![1]).toEqual({ day: '2026-10-14', verified: 'unknown' });
+});
+
+test('after a cancelled away day the Bad day button is back', async () => {
+  const services = await testServices(
+    {
+      today: async () => ({
+        ok: true,
+        data: sampleToday({ dayRecord: { day: '2026-10-14', kind: 'normal' } }),
+      }),
+    },
+    PAIRED,
+  );
+  mount(ready(services));
+  expect(await screen.findByTestId('bad-day')).toBeTruthy();
+});

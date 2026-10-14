@@ -1,4 +1,6 @@
+import { dayKeyFor, DEFAULT_RULES } from '@futureflow/core';
 import type { Api, Today } from './api/client';
+import { localOffsetMinutes } from './format';
 import type { Coords, Locator } from './location';
 import type { SecretStore } from './secrets';
 import type { LocalStore } from './store/types';
@@ -54,12 +56,18 @@ export type AwayDeps = Readonly<{
   secrets: SecretStore;
   locator: Locator;
   now: () => number;
+  /** The phone's UTC offset; defaults to the local one. */
+  utcOffsetMinutes?: () => number;
 }>;
 
 /** At most hourly on an away day: measures on the device and sends only the verdict. */
 export async function checkAway(deps: AwayDeps, today: Today): Promise<'sent' | 'skipped'> {
   if (today.dayRecord?.kind !== 'away') return 'skipped';
   const day = today.day;
+  // Only measure for the day it is now: a snapshot from yesterday would judge yesterday by today's place.
+  const now = deps.now();
+  const offset = deps.utcOffsetMinutes?.() ?? localOffsetMinutes(now);
+  if (day !== dayKeyFor(now, offset, DEFAULT_RULES.dayBoundaryHour)) return 'skipped';
   const window = (await deps.store.awayWindows()).find((w) => w.from <= day && day <= w.to);
   if (window === undefined) return 'skipped';
   const last = await deps.store.lastAwayCheck(day);

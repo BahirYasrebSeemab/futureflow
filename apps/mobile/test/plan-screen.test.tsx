@@ -176,3 +176,36 @@ test('loading the plan offline says planning needs a connection', async () => {
   await openPlan({ getPlan: async () => offline });
   expect(await screen.findByText('Planning needs a connection.')).toBeTruthy();
 });
+
+test('a slow answer for the day you left does not replace the day you chose', async () => {
+  let releaseToday: (v: ApiResult<Plan | null>) => void = () => undefined;
+  await openPlan({
+    getPlan: (day) =>
+      day === TOMORROW
+        ? Promise.resolve({ ok: true, data: proposed })
+        : new Promise((resolve) => {
+            releaseToday = resolve;
+          }),
+  });
+  fireEvent.press(await screen.findByTestId('plan-tomorrow'));
+  expect(await screen.findByDisplayValue('Fractions practice')).toBeTruthy();
+  await act(async () => releaseToday({ ok: true, data: null }));
+  expect(screen.getByText('Thursday 15 October')).toBeTruthy();
+  expect(screen.getByDisplayValue('Fractions practice')).toBeTruthy();
+});
+
+test('a failed load offers Try again, never Propose over a saved draft', async () => {
+  let calls = 0;
+  await openPlan({
+    getPlan: async () => {
+      calls++;
+      return calls === 1
+        ? { ok: false, error: { kind: 'server', status: 500, code: 'internal', message: 'x' } }
+        : { ok: true, data: null };
+    },
+  });
+  expect(await screen.findByText('The server had a problem. Try again soon.')).toBeTruthy();
+  expect(screen.queryByTestId('propose')).toBeNull();
+  fireEvent.press(screen.getByTestId('reload-plan'));
+  expect(await screen.findByTestId('propose')).toBeTruthy();
+});

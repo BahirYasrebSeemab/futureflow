@@ -134,7 +134,7 @@ export function TodayScreen() {
             onPress={() => router.push('/away')}
           />
         </View>
-        {record === null && (
+        {(record === null || record.kind === 'normal') && (
           <View style={styles.action}>
             <Button
               testID="bad-day"

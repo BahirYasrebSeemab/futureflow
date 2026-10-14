@@ -1,7 +1,9 @@
 import { fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
+import { Alert } from 'react-native';
+import { act } from 'expo-router/testing-library';
 import type { Api, ApiResult, Plan } from '@/lib/api/client';
 import { AppProvider, type AppServices } from '@/lib/app';
-import { readHome } from '@/lib/away';
+import { readHome, saveHome } from '@/lib/away';
 import type { Locator } from '@/lib/location';
 import { AwayScreen } from '@/screens/away';
 import { DiagnosticsScreen } from '@/screens/diagnostics';
@@ -112,4 +114,51 @@ test('the day count stays between 1 and 30', async () => {
   expect(screen.getByTestId('days-count')).toHaveTextContent('1');
   for (let i = 0; i < 40; i++) fireEvent.press(screen.getByTestId('days-plus'));
   expect(screen.getByTestId('days-count')).toHaveTextContent('30');
+});
+
+function answerAlert(label: string) {
+  const buttons = jest.mocked(Alert.alert).mock.calls.at(-1)?.[2] ?? [];
+  act(() => buttons.find((b) => b.text === label)?.onPress?.());
+}
+
+test('moving an existing home asks first, and Cancel keeps it', async () => {
+  jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+  const services = await testServices({}, PAIRED, { locator: { coarse: async () => TORONTO } });
+  await saveHome(services.secrets, { lat: 1, lon: 1 });
+  await services.syncer.sync();
+  renderRouter(
+    {
+      _layout: () => (
+        <AppProvider load={async () => services}>
+          <RootStack />
+        </AppProvider>
+      ),
+      index: TodayScreen,
+      away: AwayScreen,
+      plan: PlanScreen,
+      diagnostics: DiagnosticsScreen,
+    },
+    { initialUrl: '/away' },
+  );
+  fireEvent.press(await screen.findByTestId('set-home'));
+  await waitFor(() => expect(Alert.alert).toHaveBeenCalledTimes(1));
+  answerAlert('Cancel');
+  await act(async () => undefined);
+  expect(await readHome(services.secrets)).toEqual({ lat: 1, lon: 1 });
+  fireEvent.press(screen.getByTestId('set-home'));
+  answerAlert('Move home');
+  await waitFor(async () => expect(await readHome(services.secrets)).toEqual(TORONTO));
+});
+
+test('kept tasks are named for their day, and the screen warns about being home', async () => {
+  await openAway({
+    getPlan: async (day) => ({ ok: true, data: day === '2026-10-15' ? tomorrowPlan : null }),
+  });
+  fireEvent.press(await screen.findByTestId('start-1'));
+  expect(await screen.findByText('Keep these tasks on Tomorrow')).toBeTruthy();
+  fireEvent.press(screen.getByTestId('days-plus'));
+  expect(screen.getByText('On the other days every task is excused.')).toBeTruthy();
+  expect(
+    screen.getByText(/at home on a declared day, that day turns back into a normal day/),
+  ).toBeTruthy();
 });

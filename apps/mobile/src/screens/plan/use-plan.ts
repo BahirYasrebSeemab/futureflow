@@ -1,6 +1,6 @@
 import type { Skill } from '@futureflow/contracts';
 import { addDays, type TaskSpec } from '@futureflow/core';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ApiFailure, ApiResult, Plan } from '@/lib/api/client';
 import { useApp } from '@/lib/app';
 import { editTask, newTask, removeTask, type TaskEdit } from '@/lib/plan-draft';
@@ -16,6 +16,8 @@ type State = Readonly<{
   tasks: TaskSpec[];
   source: Source;
   message: string | null;
+  /** The last load failed: what the server holds is unknown, so nothing may be proposed over it. */
+  loadFailed: boolean;
   skills: Skill[];
 }>;
 
@@ -27,6 +29,7 @@ const INITIAL: State = {
   tasks: [],
   source: null,
   message: null,
+  loadFailed: false,
   skills: [],
 };
 
@@ -59,12 +62,16 @@ export function usePlan() {
   const { services } = useApp();
   const [target, setTarget] = useState<PlanTarget>('today');
   const [state, setState] = useState<State>(INITIAL);
+  const latest = useRef(0); // only the newest load may write its answer
 
   const load = useCallback(
     async (which: PlanTarget) => {
+      const request = ++latest.current;
+      const current = () => request === latest.current;
       setState((s) => ({ ...s, loading: true, message: null }));
       try {
         const snapshot = await services.store.savedToday();
+        if (!current()) return;
         if (snapshot === null) {
           const message = 'Open Today once, online, before planning.';
           setState((s) => ({ ...s, loading: false, day: null, message }));
@@ -75,6 +82,7 @@ export function usePlan() {
           services.api.getPlan(day),
           services.api.getRoadmap(),
         ]);
+        if (!current()) return;
         const saved = plan.ok ? plan.data : null;
         setState((s) => ({
           ...s,
@@ -85,10 +93,12 @@ export function usePlan() {
           source: null,
           skills: roadmap.ok ? (roadmap.data?.skills ?? []) : s.skills,
           message: plan.ok ? null : planMessage(plan.error),
+          loadFailed: !plan.ok,
         }));
       } catch {
+        if (!current()) return;
         const message = "Could not read this phone's saved data.";
-        setState((s) => ({ ...s, loading: false, message }));
+        setState((s) => ({ ...s, loading: false, message, loadFailed: true }));
       }
     },
     [services],
@@ -160,5 +170,6 @@ export function usePlan() {
     propose,
     save,
     lock,
+    reload: () => load(target),
   };
 }

@@ -1,7 +1,7 @@
 import { addDays, type TaskSpec } from '@futureflow/core';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Banner } from '@/components/banner';
 import { Button } from '@/components/button';
 import type { ApiFailure } from '@/lib/api/client';
@@ -76,6 +76,21 @@ export function AwayScreen() {
     if (from !== null) void loadTasks(from);
   }, [from, loadTasks]);
 
+  const confirmSetHome = () => {
+    if (!hasHome) {
+      void setHome();
+      return;
+    }
+    Alert.alert(
+      'Move home here?',
+      'Do this only at home. Away days are measured from home, so a wrong home can cancel one.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Move home', onPress: () => void setHome() },
+      ],
+    );
+  };
+
   const setHome = async () => {
     setMessage(null);
     const here = await services.locator.coarse();
@@ -132,7 +147,8 @@ export function AwayScreen() {
       </Text>
       <Text style={[styles.muted, { color: c.muted }]}>
         Tasks you don&apos;t keep are excused. On away days the phone checks how far you are from
-        home; only the distance, rounded to 10 km, leaves the phone.
+        home; only the distance, rounded to 10 km, leaves the phone. If it finds you at home on a
+        declared day, that day turns back into a normal day.
       </Text>
       {message !== null && <Banner tone="warning" message={message} />}
 
@@ -150,7 +166,7 @@ export function AwayScreen() {
           testID="set-home"
           label={hasHome ? 'Move home to here' : 'Set home to here'}
           variant="secondary"
-          onPress={() => void setHome()}
+          onPress={confirmSetHome}
         />
       </View>
 
@@ -214,7 +230,15 @@ export function AwayScreen() {
 
       {tasks.length > 0 && (
         <View style={styles.section}>
-          <Text style={[styles.label, { color: c.text }]}>Keep these tasks</Text>
+          <Text style={[styles.label, { color: c.text }]}>
+            Keep these tasks on{' '}
+            {today === null ? '' : startLabel(startIndex, addDays(today, startIndex))}
+          </Text>
+          {days > 1 && (
+            <Text style={[styles.muted, { color: c.muted }]}>
+              On the other days every task is excused.
+            </Text>
+          )}
           {tasks.map((task, i) => (
             <Pressable
               key={task.id}

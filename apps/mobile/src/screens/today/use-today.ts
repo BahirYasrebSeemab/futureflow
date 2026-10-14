@@ -72,16 +72,19 @@ export function useToday() {
   const refresh = useCallback(async () => {
     setView((v) => ({ ...v, syncing: true }));
     try {
-      // On an away day, measure first (on the phone) so this sync brings back the result.
-      const saved = await services.store.savedToday();
-      if (saved !== null) await checkAway(services, saved.today);
-    } catch (error) {
-      logFailure('away_check_failed', error);
-    }
-    try {
       await services.syncer.sync();
     } catch (error) {
       logFailure('sync_failed', error);
+    }
+    try {
+      // On an away day, measure with the fresh day from this sync; a sent verdict changes the day,
+      // so sync once more to show it (the check runs at most hourly).
+      const saved = await services.store.savedToday();
+      if (saved !== null && (await checkAway(services, saved.today)) === 'sent') {
+        await services.syncer.sync();
+      }
+    } catch (error) {
+      logFailure('away_check_failed', error);
     }
     try {
       await reload();

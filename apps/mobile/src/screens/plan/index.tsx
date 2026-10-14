@@ -56,7 +56,14 @@ export function PlanScreen() {
 
       {plan.loading ? (
         <ActivityIndicator color={c.accent} />
-      ) : day === null ? null : saved === null && tasks.length === 0 ? (
+      ) : day === null ? null : plan.loadFailed ? (
+        <Button
+          testID="reload-plan"
+          label="Try again"
+          variant="secondary"
+          onPress={() => void plan.reload()}
+        />
+      ) : saved === null && tasks.length === 0 ? (
         <View style={styles.empty}>
           <Text style={[styles.emptyTitle, { color: c.text }]}>No plan yet</Text>
           <Text style={[styles.muted, { color: c.muted }]}>
