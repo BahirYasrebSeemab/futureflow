@@ -76,7 +76,9 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      - name: Install Maestro
+      - name: Install Maestro (pinned)
+        env:
+          MAESTRO_VERSION: '2.11.0'
         run: curl -fsSL https://get.maestro.mobile.dev | bash
 
       - name: Run Maestro on an emulator

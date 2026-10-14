@@ -204,6 +204,7 @@ test('a sync that crashes keeps the saved day and logs only the error name', asy
   const services: AppServices = {
     ...base,
     syncer: {
+      idle: async () => undefined,
       sync: async () => {
         throw new TypeError('private detail');
       },
@@ -225,6 +226,7 @@ test('a sync that crashes on first launch ends in Retry, not an endless spinner'
   const services: AppServices = {
     ...base,
     syncer: {
+      idle: async () => undefined,
       sync: async () => {
         throw new TypeError('boom');
       },
@@ -233,4 +235,56 @@ test('a sync that crashes on first launch ends in Retry, not an endless spinner'
   jest.spyOn(console, 'error').mockImplementation(() => undefined);
   mount(ready(services));
   expect(await screen.findByText("Can't load today")).toBeTruthy();
+});
+
+test('a storage failure while pairing shows an error and frees the button', async () => {
+  const services = await testServices({
+    pair: async () => ({ ok: true, data: { deviceId: PAIRED.device_id } }),
+  });
+  const broken: AppServices = {
+    ...services,
+    secrets: {
+      ...services.secrets,
+      set: async () => {
+        throw new Error('keystore');
+      },
+    },
+  };
+  mount(ready(broken));
+  fireEvent.changeText(await screen.findByTestId('setup-code'), 'setup-code-0123456789');
+  fireEvent.press(screen.getByTestId('pair-button'));
+  expect(
+    await screen.findByText('Could not save the pairing on this phone. Try again.'),
+  ).toBeTruthy();
+  expect(screen.getByTestId('pair-button')).toBeEnabled();
+});
+
+test('an answer the app does not understand says to update the app', async () => {
+  const services = await testServices(
+    { today: async () => ({ ok: false, error: { kind: 'invalid_response' } }) },
+    PAIRED,
+  );
+  mount(ready(services));
+  expect(await screen.findByText(/Update the app/)).toBeTruthy();
+});
+
+test('Diagnostics frees its button when loading fails after a sync', async () => {
+  const services = await testServices({}, PAIRED);
+  let calls = 0;
+  const flaky: AppServices = {
+    ...services,
+    store: {
+      ...services.store,
+      counts: async () => {
+        calls++;
+        if (calls > 1) throw new Error('disk');
+        return services.store.counts();
+      },
+    },
+  };
+  jest.spyOn(console, 'error').mockImplementation(() => undefined);
+  mount(ready(flaky), '/diagnostics');
+  fireEvent.press(await screen.findByTestId('sync-now'));
+  await waitFor(() => expect(screen.getByText('Sync now')).toBeTruthy());
+  expect(screen.getByTestId('sync-now')).toBeEnabled();
 });

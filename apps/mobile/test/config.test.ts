@@ -7,7 +7,7 @@ test.each([
   ['http://10.0.2.2:8787', 'http://10.0.2.2:8787'],
   ['http://localhost:8787', 'http://localhost:8787'],
 ])('accepts %s', (raw, expected) => {
-  expect(parseApiUrl(raw)).toBe(expected);
+  expect(parseApiUrl(raw, { allowHttp: true })).toBe(expected);
 });
 
 test.each([
@@ -18,6 +18,13 @@ test.each([
   ['http://api.example.com', 'must use https'],
   ['https://api.example.com?x=1', 'not a valid URL'],
 ])('refuses %p', (raw, message) => {
-  expect(() => parseApiUrl(raw)).toThrow(StartupError);
-  expect(() => parseApiUrl(raw)).toThrow(message);
+  expect(() => parseApiUrl(raw, { allowHttp: true })).toThrow(StartupError);
+  expect(() => parseApiUrl(raw, { allowHttp: true })).toThrow(message);
+});
+
+test('plain http is refused when the build cannot use it, even for local hosts', () => {
+  expect(() => parseApiUrl('http://10.0.2.2:8787', { allowHttp: false })).toThrow('must use https');
+  expect(parseApiUrl('https://api.example.com', { allowHttp: false })).toBe(
+    'https://api.example.com',
+  );
 });

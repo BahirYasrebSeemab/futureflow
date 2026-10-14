@@ -107,3 +107,15 @@ test('clearServerCopy keeps unsent and refused events and drops the server copy'
     await store.ledgerComplete(),
   ]).toEqual([{ pending: 1, dead: 1 }, [ledgerEvent(1)], [], 0, null, false]);
 });
+
+test('concurrent writes never nest transactions', async () => {
+  const { store } = await open();
+  await store.enqueue([ledgerEvent(1), ledgerEvent(2)]);
+  await Promise.all([
+    store.applyPage([ledgerEvent(3)], 1, true),
+    store.clearServerCopy(),
+    store.bury([ledgerEvent(2).id], 'future_timestamp', NOW),
+    store.settle([ledgerEvent(1).id], []),
+  ]);
+  expect(await store.counts()).toEqual({ pending: 0, dead: 1 });
+});

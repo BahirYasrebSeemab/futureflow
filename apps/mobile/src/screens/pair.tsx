@@ -19,18 +19,23 @@ export function PairScreen() {
     if (busy) return;
     setBusy(true);
     setError(null);
-    const outcome = await pairDevice(
-      {
-        api: services.api,
-        secrets: services.secrets,
-        newToken: services.ids.newDeviceToken,
-        utcOffsetMinutes: () => localOffsetMinutes(services.now()),
-      },
-      { code, deviceName: name },
-    );
-    setBusy(false);
-    if (outcome.ok) setPaired(outcome.deviceId);
-    else setError(outcome.message);
+    try {
+      const outcome = await pairDevice(
+        {
+          api: services.api,
+          secrets: services.secrets,
+          newToken: services.ids.newDeviceToken,
+          utcOffsetMinutes: () => localOffsetMinutes(services.now()),
+        },
+        { code, deviceName: name },
+      );
+      if (outcome.ok) setPaired(outcome.deviceId);
+      else setError(outcome.message);
+    } catch {
+      setError('Could not save the pairing on this phone. Try again.');
+    } finally {
+      setBusy(false);
+    }
   };
 
   const input = [

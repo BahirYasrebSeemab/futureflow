@@ -226,3 +226,23 @@ test('the ledger is complete after a short page, and not after a cut-off pull', 
   expect(endless.calls.pull).toHaveLength(20);
   expect(await endless.store.ledgerComplete()).toBe(false);
 });
+
+test('a full page that does not move the cursor stops the pull', async () => {
+  const { deps, calls } = await setup({
+    pull: () => ({ ok: true, data: { events: many(500), next: 0 } }),
+  });
+  expect((await syncOnce(deps)).status).toBe('invalid_response');
+  expect(calls.pull).toEqual([0]);
+});
+
+test('idle waits for a running sync and resolves at once otherwise', async () => {
+  const { deps } = await setup();
+  const syncer = createSyncer(deps);
+  await syncer.idle();
+  let done = false;
+  void syncer.sync().then(() => {
+    done = true;
+  });
+  await syncer.idle();
+  expect(done).toBe(true);
+});

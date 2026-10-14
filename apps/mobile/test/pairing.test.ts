@@ -100,7 +100,12 @@ test('server refusals show the server message and keep the token for the next tr
 });
 
 test.each([
-  ['short code', { code: 'short', deviceName: 'P' }, 'The setup code is at least 16 characters.'],
+  ['short code', { code: 'short', deviceName: 'P' }, 'The setup code is 16 to 128 characters.'],
+  [
+    'long code',
+    { code: 'x'.repeat(129), deviceName: 'P' },
+    'The setup code is 16 to 128 characters.',
+  ],
   ['nameless', { code: CODE, deviceName: '   ' }, 'Give this phone a name of up to 64 characters.'],
   [
     'long name',

@@ -21,6 +21,7 @@ const config: ExpoConfig = {
     },
     predictiveBackGestureEnabled: false,
   },
+  extra: { allowCleartext: isE2E },
   plugins: [
     'expo-router',
     'expo-sqlite',

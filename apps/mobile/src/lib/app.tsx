@@ -79,6 +79,7 @@ export function AppProvider({
   const services = state.phase === 'ready' ? state.services : null;
   const forget = useCallback(async () => {
     if (services === null) return;
+    await services.syncer.idle(); // a running sync must not write after the wipe
     await forgetPairing(services.secrets, services.store);
     setState((s) => (s.phase === 'ready' ? { ...s, session: { status: 'unpaired' } } : s));
   }, [services]);

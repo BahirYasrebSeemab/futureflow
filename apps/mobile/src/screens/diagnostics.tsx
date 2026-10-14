@@ -32,9 +32,15 @@ export function DiagnosticsScreen() {
 
   const syncNow = async () => {
     setBusy(true);
-    await services.syncer.sync().catch(() => undefined);
-    await load();
-    setBusy(false);
+    try {
+      await services.syncer.sync();
+      await load();
+    } catch (error) {
+      const name = error instanceof Error ? error.name : 'unknown';
+      console.error(JSON.stringify({ event: 'diagnostics_failed', name }));
+    } finally {
+      setBusy(false);
+    }
   };
 
   const last = facts?.lastSync;

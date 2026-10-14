@@ -21,7 +21,7 @@ export type PairDeps = Readonly<{
 export type PairOutcome = { ok: true; deviceId: string } | { ok: false; message: string };
 
 const MESSAGES = {
-  shortCode: `The setup code is at least ${MIN_CODE} characters.`,
+  codeLength: `The setup code is ${MIN_CODE} to ${MAX_CODE} characters.`,
   badName: `Give this phone a name of up to ${MAX_NAME} characters.`,
   offline: "Can't reach the server. Check the connection and try again.",
   invalid: 'The server sent an answer this app does not understand. Update the app.',
@@ -45,7 +45,7 @@ export async function pairDevice(
   const code = input.code.trim();
   const deviceName = input.deviceName.trim();
   if (code.length < MIN_CODE || code.length > MAX_CODE) {
-    return { ok: false, message: MESSAGES.shortCode };
+    return { ok: false, message: MESSAGES.codeLength };
   }
   if (deviceName.length === 0 || deviceName.length > MAX_NAME) {
     return { ok: false, message: MESSAGES.badName };

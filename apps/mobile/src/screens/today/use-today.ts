@@ -26,6 +26,11 @@ const INITIAL: TodayView = {
   lastSync: null,
 };
 
+const logFailure = (event: string, error: unknown) => {
+  const name = error instanceof Error ? error.name : 'unknown';
+  console.error(JSON.stringify({ event, name }));
+};
+
 /** Shows what is saved at once, then syncs on open, on return to the app and on demand. */
 export function useToday() {
   const { services } = useApp();
@@ -51,11 +56,15 @@ export function useToday() {
     try {
       await services.syncer.sync();
     } catch (error) {
-      const name = error instanceof Error ? error.name : 'unknown';
-      console.error(JSON.stringify({ event: 'sync_failed', name }));
+      logFailure('sync_failed', error);
     }
-    await reload();
-    if (live.current) setView((v) => ({ ...v, syncing: false, tried: true }));
+    try {
+      await reload();
+    } catch (error) {
+      logFailure('reload_failed', error);
+    } finally {
+      if (live.current) setView((v) => ({ ...v, syncing: false, tried: true }));
+    }
   }, [services, reload]);
 
   useEffect(() => {

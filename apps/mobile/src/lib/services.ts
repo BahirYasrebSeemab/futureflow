@@ -1,3 +1,4 @@
+import Constants from 'expo-constants';
 import { getRandomBytes } from 'expo-crypto';
 import { openDatabaseAsync } from 'expo-sqlite';
 import type { AppServices } from './app';
@@ -13,7 +14,8 @@ import { createSyncer } from './sync';
 /** Production wiring. Native modules only, so it is covered by the emulator run, not Jest. */
 export async function createServices(): Promise<AppServices> {
   // Expo inlines only this exact expression at build time.
-  const apiUrl = parseApiUrl(process.env.EXPO_PUBLIC_API_URL);
+  const allowHttp = __DEV__ || Constants.expoConfig?.extra?.allowCleartext === true;
+  const apiUrl = parseApiUrl(process.env.EXPO_PUBLIC_API_URL, { allowHttp });
   const db = await openDatabaseAsync('futureflow.db');
   await db.execAsync('PRAGMA journal_mode = WAL');
   await migrate(db);

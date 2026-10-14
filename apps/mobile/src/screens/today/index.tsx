@@ -21,7 +21,12 @@ const DAY_KIND: Readonly<Record<string, string>> = { bad: 'Bad day', away: 'Away
 /** Null when the last sync worked; otherwise why the screen shows saved data. */
 function staleNotice(report: SyncReport | null, savedAt: number): string | null {
   if (report === null || report.status === 'ok' || report.status === 'unauthorized') return null;
-  const reason = report.status === 'offline' ? 'Offline.' : 'The server had a problem.';
+  const reason =
+    report.status === 'offline'
+      ? 'Offline.'
+      : report.status === 'invalid_response'
+        ? 'This app is out of date for the server. Update the app.'
+        : 'The server had a problem.';
   return `${reason} Showing what was saved at ${formatTime(savedAt, localOffsetMinutes(savedAt))}.`;
 }
 
@@ -60,7 +65,9 @@ export function TodayScreen() {
           Can&apos;t load today
         </Text>
         <Text style={[styles.muted, { color: c.muted }]}>
-          Check the connection, then try again.
+          {lastSync?.status === 'invalid_response'
+            ? 'Update the app, then try again.'
+            : 'Check the connection, then try again.'}
         </Text>
         <Button testID="retry" label="Retry" onPress={() => void refresh()} />
       </View>
