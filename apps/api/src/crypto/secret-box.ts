@@ -4,7 +4,7 @@ const VERSION = 'v1';
 
 const toBase64 = (bytes: Uint8Array): string => btoa(String.fromCharCode(...bytes));
 
-function fromBase64(text: string): Uint8Array | null {
+function fromBase64(text: string): Uint8Array<ArrayBuffer> | null {
   try {
     return Uint8Array.from(atob(text), (c) => c.charCodeAt(0));
   } catch {

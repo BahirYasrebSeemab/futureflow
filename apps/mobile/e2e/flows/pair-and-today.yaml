@@ -1,0 +1,24 @@
+appId: com.bahiryasreb.futureflow
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: 'Pair this phone'
+    timeout: 30000
+- takeScreenshot: 01-pair
+- tapOn:
+    id: 'setup-code'
+- inputText: 'e2e-setup-code-0123456789'
+- hideKeyboard
+- tapOn:
+    id: 'pair-button'
+- extendedWaitUntil:
+    visible:
+      id: 'balance'
+    timeout: 30000
+- assertVisible: 'Time left'
+- takeScreenshot: 02-today
+- tapOn:
+    id: 'diagnostics-link'
+- assertVisible: 'Waiting to send'
+- takeScreenshot: 03-diagnostics

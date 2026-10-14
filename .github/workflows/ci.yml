@@ -21,3 +21,23 @@ jobs:
       - run: bun run lint
       - run: bun run typecheck
       - run: bun run coverage
+
+  android-bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - run: bun install --frozen-lockfile
+      - name: Bundle for Android (Metro + Hermes)
+        working-directory: apps/mobile
+        env:
+          EXPO_PUBLIC_API_URL: https://example.invalid
+        run: |
+          bun x expo export --platform android --output-dir dist-android
+          find dist-android -name '*.hbc' -printf '%s bytes %p\n'
+          test -n "$(find dist-android -name '*.hbc')"

@@ -32,3 +32,6 @@ learning/
 .vscode/*
 !.vscode/extensions.json
 .idea/
+
+# claude code runtime
+.claude/*.lock

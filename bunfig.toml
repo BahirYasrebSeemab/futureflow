@@ -1,0 +1,4 @@
+[install]
+# React Native tooling (jest-expo transforms, Metro, Gradle autolinking) expects a hoisted
+# node_modules; Bun's isolated layout hides packages under node_modules/.bun.
+linker = "hoisted"
