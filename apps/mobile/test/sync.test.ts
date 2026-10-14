@@ -179,3 +179,50 @@ test('concurrent sync calls share one run', async () => {
   await syncer.sync();
   expect(calls.today).toBe(2);
 });
+
+test('a refused batch is split until only the bad event is buried', async () => {
+  const events = many(5);
+  const bad = events[2]!.id;
+  const { deps, store } = await setup({
+    push: (batch) =>
+      batch.some((e) => e.id === bad)
+        ? failure({ kind: 'rejected', status: 400, code: 'invalid_request', message: 'x' })
+        : takeAll(batch),
+  });
+  await store.enqueue(events);
+  expect(await syncOnce(deps)).toMatchObject({ status: 'ok', pushed: 4, buried: 1 });
+  expect(await store.counts()).toEqual({ pending: 0, dead: 1 });
+});
+
+test('an unexpected refusal (404 from a wrong address) buries nothing', async () => {
+  const { deps, store } = await setup({
+    push: () => failure({ kind: 'rejected', status: 404, code: 'not_found', message: 'x' }),
+  });
+  await store.enqueue(many(2));
+  expect((await syncOnce(deps)).status).toBe('invalid_response');
+  expect(await store.counts()).toEqual({ pending: 2, dead: 0 });
+});
+
+test('an accepted event stays in the balance when the rest of the sync fails', async () => {
+  const { deps, store } = await setup({ today: () => failure({ kind: 'network' }) });
+  await store.enqueue([ledgerEvent(1)]);
+  expect((await syncOnce(deps)).status).toBe('offline');
+  expect([await store.pending(), await store.confirmed()]).toEqual([[], [ledgerEvent(1)]]);
+});
+
+test('the ledger is complete after a short page, and not after a cut-off pull', async () => {
+  const done = await setup();
+  await syncOnce(done.deps);
+  expect(await done.store.ledgerComplete()).toBe(true);
+
+  let next = 0;
+  const endless = await setup({
+    pull: () => {
+      next += 500;
+      return { ok: true, data: { events: many(500), next } };
+    },
+  });
+  await syncOnce(endless.deps);
+  expect(endless.calls.pull).toHaveLength(20);
+  expect(await endless.store.ledgerComplete()).toBe(false);
+});

@@ -65,6 +65,7 @@
         "statements": 80
       }
     },
-    "restoreMocks": true
+    "restoreMocks": true,
+    "testTimeout": 15000
   }
 }

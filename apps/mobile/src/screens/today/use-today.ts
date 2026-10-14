@@ -7,7 +7,11 @@ import type { SavedToday, SyncReport } from '@/lib/store/types';
 export type TodayView = Readonly<{
   loaded: boolean;
   syncing: boolean;
+  /** A sync attempt finished in this session (it may have failed or thrown). */
+  tried: boolean;
   saved: SavedToday | null;
+  /** False until a pull has reached the end of the ledger: before that the balance is unknown. */
+  ledgerComplete: boolean;
   balanceSeconds: number;
   lastSync: SyncReport | null;
 }>;
@@ -15,7 +19,9 @@ export type TodayView = Readonly<{
 const INITIAL: TodayView = {
   loaded: false,
   syncing: false,
+  tried: false,
   saved: null,
+  ledgerComplete: false,
   balanceSeconds: 0,
   lastSync: null,
 };
@@ -28,15 +34,16 @@ export function useToday() {
 
   const reload = useCallback(async () => {
     const { store } = services;
-    const [saved, confirmed, pending, lastSync] = await Promise.all([
+    const [saved, ledgerComplete, confirmed, pending, lastSync] = await Promise.all([
       store.savedToday(),
+      store.ledgerComplete(),
       store.confirmed(),
       store.pending(),
       store.lastSync(),
     ]);
     if (!live.current) return;
     const balanceSeconds = projectBalance(confirmed, pending);
-    setView((v) => ({ ...v, loaded: true, saved, balanceSeconds, lastSync }));
+    setView((v) => ({ ...v, loaded: true, saved, ledgerComplete, balanceSeconds, lastSync }));
   }, [services]);
 
   const refresh = useCallback(async () => {
@@ -48,7 +55,7 @@ export function useToday() {
       console.error(JSON.stringify({ event: 'sync_failed', name }));
     }
     await reload();
-    if (live.current) setView((v) => ({ ...v, syncing: false }));
+    if (live.current) setView((v) => ({ ...v, syncing: false, tried: true }));
   }, [services, reload]);
 
   useEffect(() => {

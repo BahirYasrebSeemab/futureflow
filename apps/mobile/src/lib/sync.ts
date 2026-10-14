@@ -1,4 +1,5 @@
 import { MAX_EVENTS_PER_BATCH } from '@futureflow/contracts';
+import type { LedgerEvent } from '@futureflow/core';
 import type { Api, ApiFailure } from './api/client';
 import type { LocalStore, SyncReport, SyncStatus } from './store/types';
 
@@ -13,12 +14,14 @@ type Stop = Exclude<SyncStatus, 'ok'>;
 type Pushed = { stop: Stop | null; pushed: number; buried: number };
 type Pulled = { stop: Stop | null; pulled: number };
 
-type Refusal = Extract<ApiFailure, { kind: 'rejected' }>;
-const RETRYABLE_REFUSALS: ReadonlySet<string> = new Set(['unauthorized', 'rate_limited']);
-
-/** A refusal that will repeat forever: our own data fails the contract. */
-const isFinalRefusal = (error: ApiFailure): error is Refusal =>
-  error.kind === 'rejected' && !RETRYABLE_REFUSALS.has(error.code);
+/**
+ * Refusals that mean "this data breaks the contract": the batch is split in halves until only the
+ * offending events are left, and those are set aside. Any other refusal (a wrong address, an unknown
+ * route) is a setup problem, so it stops the sync and buries nothing.
+ */
+const SPLITTABLE: ReadonlySet<string> = new Set(['invalid_request', 'payload_too_large']);
+const isBadData = (error: ApiFailure): boolean =>
+  error.kind === 'rejected' && SPLITTABLE.has(error.code);
 
 function stopFor(error: ApiFailure): Stop {
   switch (error.kind) {
@@ -34,28 +37,45 @@ function stopFor(error: ApiFailure): Stop {
   }
 }
 
+async function sendBatch(deps: SyncDeps, batch: readonly LedgerEvent[]): Promise<Pushed> {
+  const result = await deps.api.pushEvents(batch);
+  if (!result.ok) {
+    if (!isBadData(result.error)) return { stop: stopFor(result.error), pushed: 0, buried: 0 };
+    if (batch.length === 1) {
+      const reason = result.error.kind === 'rejected' ? result.error.code : 'refused';
+      await deps.store.bury([batch[0]!.id], `refused:${reason}`, deps.now());
+      return { stop: null, pushed: 0, buried: 1 };
+    }
+    const middle = Math.ceil(batch.length / 2);
+    const first = await sendBatch(deps, batch.slice(0, middle));
+    if (first.stop !== null) return first;
+    const second = await sendBatch(deps, batch.slice(middle));
+    return {
+      stop: second.stop,
+      pushed: first.pushed + second.pushed,
+      buried: first.buried + second.buried,
+    };
+  }
+  const { added, ignored, rejected } = result.data;
+  const refused = rejected.map((r) => r.id);
+  if (added.length + ignored.length + refused.length === 0) {
+    return { stop: 'invalid_response', pushed: 0, buried: 0 };
+  }
+  await deps.store.settle(added, ignored);
+  if (refused.length > 0) await deps.store.bury(refused, 'future_timestamp', deps.now());
+  return { stop: null, pushed: added.length + ignored.length, buried: refused.length };
+}
+
 async function push(deps: SyncDeps): Promise<Pushed> {
   let pushed = 0;
   let buried = 0;
   for (let round = 0; round < MAX_ROUNDS; round++) {
     const batch = await deps.store.pending(PUSH_BATCH);
     if (batch.length === 0) break;
-    const result = await deps.api.pushEvents(batch);
-    if (!result.ok) {
-      if (!isFinalRefusal(result.error)) return { stop: stopFor(result.error), pushed, buried };
-      // Retrying can never succeed, so keep the events aside instead of blocking the queue.
-      const ids = batch.map((e) => e.id);
-      await deps.store.bury(ids, `refused:${result.error.code}`, deps.now());
-      buried += ids.length;
-      continue;
-    }
-    const sent = [...result.data.added, ...result.data.ignored];
-    const refused = result.data.rejected.map((r) => r.id);
-    if (sent.length + refused.length === 0) return { stop: 'invalid_response', pushed, buried };
-    await deps.store.settle(sent);
-    if (refused.length > 0) await deps.store.bury(refused, 'future_timestamp', deps.now());
-    pushed += sent.length;
-    buried += refused.length;
+    const sent = await sendBatch(deps, batch);
+    pushed += sent.pushed;
+    buried += sent.buried;
+    if (sent.stop !== null) return { stop: sent.stop, pushed, buried };
   }
   return { stop: null, pushed, buried };
 }
@@ -72,9 +92,10 @@ async function pull(deps: SyncDeps): Promise<Pulled> {
   for (let round = 0; round < MAX_ROUNDS; round++) {
     const result = await deps.api.pullLedger(await deps.store.cursor(), PULL_PAGE);
     if (!result.ok) return { stop: stopFor(result.error), pulled };
-    await deps.store.applyPage(result.data.events, result.data.next);
+    const complete = result.data.events.length < PULL_PAGE;
+    await deps.store.applyPage(result.data.events, result.data.next, complete);
     pulled += result.data.events.length;
-    if (result.data.events.length < PULL_PAGE) break;
+    if (complete) break;
   }
   return { stop: null, pulled };
 }

@@ -77,9 +77,12 @@ export async function pairDevice(
   }
 }
 
-/** After the server forgets this phone: drop the credentials and every local copy. */
+/**
+ * After the server forgets this phone: drop the credentials and the server's copy. Unsent events
+ * stay: the ledger belongs to the one owner, so they are still owed after pairing again.
+ */
 export async function forgetPairing(secrets: SecretStore, store: LocalStore): Promise<void> {
+  await store.clearServerCopy();
   await secrets.remove(DEVICE_ID_KEY);
   await secrets.remove(TOKEN_KEY);
-  await store.reset();
 }

@@ -13,8 +13,12 @@ const SyncReportSchema = z.object({
   at: z.number().int(),
 });
 
-const KEY = { cursor: 'ledger_cursor', today: 'today', lastSync: 'last_sync' } as const;
-const TABLES = ['outbox', 'dead_letters', 'ledger', 'kv'] as const;
+const KEY = {
+  cursor: 'ledger_cursor',
+  complete: 'ledger_complete',
+  today: 'today',
+  lastSync: 'last_sync',
+} as const;
 
 const toEvents = (rows: readonly { event: string }[]): LedgerEvent[] =>
   rows.map((row) => JSON.parse(row.event) as LedgerEvent);
@@ -48,22 +52,30 @@ export function sqliteStore(db: SqlDb): LocalStore {
       const valid = events.map((event) => LedgerEventSchema.parse(event));
       await db.runAsync(
         `INSERT OR IGNORE INTO outbox (id, at, event)
-         SELECT value ->> '$.id', value ->> '$.at', value FROM json_each(?)`,
+         SELECT value ->> '$.id', value ->> '$.at', value FROM json_each(?) ORDER BY key`,
         JSON.stringify(valid),
       );
     },
     pending: async (limit = -1) =>
       toEvents(
         await db.getAllAsync<{ event: string }>(
-          'SELECT event FROM outbox ORDER BY at, id LIMIT ?',
+          // rowid, not id: UUIDv7 ids made in the same millisecond are in random order.
+          'SELECT event FROM outbox ORDER BY at, rowid LIMIT ?',
           limit,
         ),
       ),
-    async settle(ids) {
-      await db.runAsync(
-        'DELETE FROM outbox WHERE id IN (SELECT value FROM json_each(?))',
-        inList(ids),
-      );
+    async settle(added, ignored) {
+      await db.withTransactionAsync(async () => {
+        await db.runAsync(
+          `INSERT OR IGNORE INTO ledger (id, at, event)
+           SELECT id, at, event FROM outbox WHERE id IN (SELECT value FROM json_each(?))`,
+          inList(added),
+        );
+        await db.runAsync(
+          'DELETE FROM outbox WHERE id IN (SELECT value FROM json_each(?))',
+          inList([...added, ...ignored]),
+        );
+      });
     },
     async bury(ids, reason, at) {
       await db.withTransactionAsync(async () => {
@@ -86,7 +98,7 @@ export function sqliteStore(db: SqlDb): LocalStore {
       );
       return { pending: row?.pending ?? 0, dead: row?.dead ?? 0 };
     },
-    async applyPage(events, next) {
+    async applyPage(events, next, complete) {
       await db.withTransactionAsync(async () => {
         await db.runAsync(
           `INSERT OR IGNORE INTO ledger (id, at, event)
@@ -94,8 +106,10 @@ export function sqliteStore(db: SqlDb): LocalStore {
           JSON.stringify(events),
         );
         await setKv(KEY.cursor, String(next));
+        await setKv(KEY.complete, complete ? '1' : '0');
       });
     },
+    ledgerComplete: async () => (await getKv(KEY.complete)) === '1',
     cursor: async () => Number((await getKv(KEY.cursor)) ?? 0),
     confirmed: async () =>
       toEvents(await db.getAllAsync<{ event: string }>('SELECT event FROM ledger ORDER BY at, id')),
@@ -107,9 +121,10 @@ export function sqliteStore(db: SqlDb): LocalStore {
       await setKv(KEY.lastSync, JSON.stringify(report));
     },
     lastSync: () => readJson(KEY.lastSync, SyncReportSchema),
-    async reset() {
+    async clearServerCopy() {
       await db.withTransactionAsync(async () => {
-        for (const table of TABLES) await db.execAsync(`DELETE FROM ${table}`);
+        await db.execAsync('DELETE FROM ledger');
+        await db.execAsync('DELETE FROM kv');
       });
     },
   };

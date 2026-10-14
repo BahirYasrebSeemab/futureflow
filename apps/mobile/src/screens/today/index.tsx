@@ -28,7 +28,8 @@ function staleNotice(report: SyncReport | null, savedAt: number): string | null 
 export function TodayScreen() {
   const c = usePalette();
   const { forgetPairing } = useApp();
-  const { loaded, syncing, saved, balanceSeconds, lastSync, refresh } = useToday();
+  const { loaded, syncing, tried, saved, ledgerComplete, balanceSeconds, lastSync, refresh } =
+    useToday();
   const center = [styles.center, { backgroundColor: c.background }];
 
   if (lastSync?.status === 'unauthorized') {
@@ -36,15 +37,16 @@ export function TodayScreen() {
       <View style={center}>
         <Banner
           tone="danger"
-          message="The server no longer knows this phone. Pair it again to keep syncing."
+          message="The server no longer knows this phone. Pair it again with a new setup code; time records not yet sent are kept."
           action={{ label: 'Pair again', onPress: () => void forgetPairing() }}
         />
       </View>
     );
   }
 
-  if (saved === null) {
-    if (!loaded || syncing || lastSync === null) {
+  // A balance is shown only once the whole ledger has arrived, never a partial one.
+  if (saved === null || !ledgerComplete) {
+    if (!loaded || syncing || !tried) {
       return (
         <View style={center}>
           <ActivityIndicator color={c.accent} />

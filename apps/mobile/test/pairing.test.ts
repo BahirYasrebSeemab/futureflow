@@ -119,12 +119,17 @@ test('a device id without a token is not a session', async () => {
   });
 });
 
-test('forgetPairing removes the secrets and wipes local data', async () => {
+test('forgetPairing removes the secrets and the server copy but keeps unsent events', async () => {
   const secrets = memorySecrets({ [TOKEN_KEY]: TOKEN_A, [DEVICE_ID_KEY]: DEVICE });
   const db = nodeSqlDb();
   await migrate(db);
   const store = sqliteStore(db);
   await store.enqueue([ledgerEvent(1)]);
+  await store.applyPage([ledgerEvent(2)], 1, true);
   await forgetPairing(secrets, store);
-  expect([secrets.snapshot(), await store.counts()]).toEqual([{}, { pending: 0, dead: 0 }]);
+  expect([secrets.snapshot(), await store.pending(), await store.confirmed()]).toEqual([
+    {},
+    [ledgerEvent(1)],
+    [],
+  ]);
 });

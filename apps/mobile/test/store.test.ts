@@ -27,6 +27,15 @@ test('the outbox returns pending events oldest first and ignores a repeated id',
   expect(await store.pending(1)).toEqual([ledgerEvent(1)]);
 });
 
+test('events made in the same millisecond keep the order they were enqueued in', async () => {
+  const { store } = await open();
+  const at = NOW - 1000;
+  const reward = ledgerEvent(9, { at, kind: 'task_reward', seconds: 600, refId: 't1' });
+  const repay = ledgerEvent(1, { at, kind: 'borrow_repay', seconds: -300, refId: reward.id });
+  await store.enqueue([reward, repay]);
+  expect(await store.pending()).toEqual([reward, repay]);
+});
+
 test('enqueue validates every event and writes nothing when one is invalid', async () => {
   const { store } = await open();
   await expect(store.enqueue([ledgerEvent(1), ledgerEvent(2, { seconds: 60 })])).rejects.toThrow();
@@ -36,17 +45,35 @@ test('enqueue validates every event and writes nothing when one is invalid', asy
 test('settle removes sent events; bury moves refused ones to dead letters', async () => {
   const { store } = await open();
   await store.enqueue([ledgerEvent(1), ledgerEvent(2), ledgerEvent(3)]);
-  await store.settle([ledgerEvent(1).id]);
+  await store.settle([ledgerEvent(1).id], []);
   await store.bury([ledgerEvent(2).id], 'future_timestamp', NOW);
   expect(await store.pending()).toEqual([ledgerEvent(3)]);
   expect(await store.counts()).toEqual({ pending: 1, dead: 1 });
 });
 
+test('settle moves accepted events into the confirmed ledger and drops ignored ones', async () => {
+  const { store } = await open();
+  await store.enqueue([ledgerEvent(1), ledgerEvent(2)]);
+  await store.settle([ledgerEvent(1).id], [ledgerEvent(2).id]);
+  expect([await store.pending(), await store.confirmed()]).toEqual([[], [ledgerEvent(1)]]);
+});
+
+test('the ledger is complete only after a final page', async () => {
+  const { store } = await open();
+  expect(await store.ledgerComplete()).toBe(false);
+  await store.applyPage([ledgerEvent(1)], 1, false);
+  expect(await store.ledgerComplete()).toBe(false);
+  await store.applyPage([], 1, true);
+  expect(await store.ledgerComplete()).toBe(true);
+  await store.applyPage([ledgerEvent(2)], 2, false);
+  expect(await store.ledgerComplete()).toBe(false);
+});
+
 test('applyPage stores confirmed events once and advances the cursor', async () => {
   const { store } = await open();
   expect(await store.cursor()).toBe(0);
-  await store.applyPage([ledgerEvent(1), ledgerEvent(2)], 2);
-  await store.applyPage([ledgerEvent(2), ledgerEvent(3)], 3);
+  await store.applyPage([ledgerEvent(1), ledgerEvent(2)], 2, false);
+  await store.applyPage([ledgerEvent(2), ledgerEvent(3)], 3, true);
   expect(await store.confirmed()).toEqual([ledgerEvent(1), ledgerEvent(2), ledgerEvent(3)]);
   expect(await store.cursor()).toBe(3);
 });
@@ -64,16 +91,19 @@ test('the today snapshot and last sync round-trip; a corrupt snapshot reads as n
   expect([await store.savedToday(), await store.lastSync()]).toEqual([null, null]);
 });
 
-test('reset wipes every table', async () => {
+test('clearServerCopy keeps unsent and refused events and drops the server copy', async () => {
   const { store } = await open();
-  await store.enqueue([ledgerEvent(1)]);
-  await store.applyPage([ledgerEvent(2)], 1);
+  await store.enqueue([ledgerEvent(1), ledgerEvent(2)]);
+  await store.bury([ledgerEvent(2).id], 'future_timestamp', NOW);
+  await store.applyPage([ledgerEvent(3)], 1, true);
   await store.saveToday({ today: sampleToday(), savedAt: NOW });
-  await store.reset();
+  await store.clearServerCopy();
   expect([
     await store.counts(),
+    await store.pending(),
     await store.confirmed(),
     await store.cursor(),
     await store.savedToday(),
-  ]).toEqual([{ pending: 0, dead: 0 }, [], 0, null]);
+    await store.ledgerComplete(),
+  ]).toEqual([{ pending: 1, dead: 1 }, [ledgerEvent(1)], [], 0, null, false]);
 });

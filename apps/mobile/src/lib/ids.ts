@@ -1,7 +1,7 @@
 import { v7 } from 'uuid';
 
 export type Ids = Readonly<{
-  /** UUIDv7, so the server can order and de-duplicate events by id. */
+  /** UUIDv7: unique and time-ordered to the millisecond (not within one; see the outbox order). */
   newId: (now?: number) => string;
   /** 32 random bytes, base64url: the device token the phone invents before pairing (ADR 0006). */
   newDeviceToken: () => string;

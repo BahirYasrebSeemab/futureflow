@@ -70,7 +70,7 @@ test('a refused code shows the reason inline and keeps the draft', async () => {
 
 test('Today shows the balance, earned time, tasks and their verdicts', async () => {
   const services = await testServices({}, PAIRED);
-  await services.store.applyPage([ledgerEvent(1, { kind: 'base_grant', seconds: 3960 })], 1);
+  await services.store.applyPage([ledgerEvent(1, { kind: 'base_grant', seconds: 3960 })], 1, true);
   mount(ready(services));
   expect(await screen.findByTestId('balance')).toHaveTextContent('1 h 06 min');
   expect(await screen.findByText('Fractions practice')).toBeTruthy();
@@ -99,6 +99,13 @@ test('first load offline shows Retry, and Retry loads', async () => {
   expect(await screen.findByText('Fractions practice')).toBeTruthy();
 });
 
+test('a first sync that stops before the ledger is pulled shows Retry, not a balance', async () => {
+  const services = await testServices({ pullLedger: async () => offline }, PAIRED);
+  mount(ready(services));
+  expect(await screen.findByText("Can't load today")).toBeTruthy();
+  expect(screen.queryByTestId('balance')).toBeNull();
+});
+
 test('offline after a good sync keeps the saved day with a banner', async () => {
   let reply: ApiResult<Today> = { ok: true, data: sampleToday() };
   const services = await testServices({ today: async () => reply }, PAIRED);
@@ -109,16 +116,17 @@ test('offline after a good sync keeps the saved day with a banner', async () => 
   expect(screen.getByText('Fractions practice')).toBeTruthy();
 });
 
-test('a forgotten phone (401) offers Pair again, which wipes local data', async () => {
+test('a forgotten phone (401) offers Pair again, keeping unsent events', async () => {
   const services = await testServices(
     { pushEvents: async () => unauthorized, today: async () => unauthorized },
     PAIRED,
   );
   await services.store.enqueue([ledgerEvent(1)]);
   mount(ready(services));
-  fireEvent.press(await screen.findByText('Pair again'));
+  expect(await screen.findByText(/new setup code/)).toBeTruthy();
+  fireEvent.press(screen.getByText('Pair again'));
   expect(await screen.findByText('Pair this phone')).toBeTruthy();
-  expect(await services.store.counts()).toEqual({ pending: 0, dead: 0 });
+  expect(await services.store.counts()).toEqual({ pending: 1, dead: 0 });
   expect(await services.secrets.get('device_token')).toBeNull();
 });
 
@@ -192,6 +200,7 @@ test('returning to the app syncs again', async () => {
 test('a sync that crashes keeps the saved day and logs only the error name', async () => {
   const base = await testServices({}, PAIRED);
   await base.store.saveToday({ today: sampleToday(), savedAt: base.now() });
+  await base.store.applyPage([], 0, true);
   const services: AppServices = {
     ...base,
     syncer: {
@@ -209,4 +218,19 @@ test('a sync that crashes keeps the saved day and logs only the error name', asy
     ),
   );
   expect(JSON.stringify(errors.mock.calls)).not.toContain('private detail');
+});
+
+test('a sync that crashes on first launch ends in Retry, not an endless spinner', async () => {
+  const base = await testServices({}, PAIRED);
+  const services: AppServices = {
+    ...base,
+    syncer: {
+      sync: async () => {
+        throw new TypeError('boom');
+      },
+    },
+  };
+  jest.spyOn(console, 'error').mockImplementation(() => undefined);
+  mount(ready(services));
+  expect(await screen.findByText("Can't load today")).toBeTruthy();
 });
