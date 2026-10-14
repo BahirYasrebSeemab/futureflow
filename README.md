@@ -74,5 +74,6 @@ Coach chat: `POST /v1/coach/messages`. See `docs/adr/0009-coach-and-upkeep.md`.
 
 The upkeep cron turns exercises from topics you practised into real-world word problems: math-engine
 makes the exercise and its answer, the AI only writes the story, and strict checks (same numbers, no
-number words, a judge at ≥ 0.9) decide. The phone syncs them with `GET /v1/math/bank`. See
+number words, the same units, rounding instructions kept word for word, and a judge that sees the
+answer at ≥ 0.9) decide. Stories stay pending until judge decisions are enabled. The phone syncs them with `GET /v1/math/bank`. See
 `docs/adr/0010-word-problems.md`.

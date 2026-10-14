@@ -15,14 +15,26 @@ from ("I don't want to learn on wrong teachings").
 
 - **Answers come from math-engine**, whose generators are proven by independent oracles (P2). The AI
   only rewrites the exercise as a story.
-- **A story is accepted only if** it uses exactly the same numbers (digits; formatting tolerated), no
-  number words, ends with a question, and a judge says "same calculation, same answer" with
-  probability ≥ 0.9. Rejections are stored with their reasons for review; only accepted stories sync.
+- **Only exercises with a positive number answer become stories.** A negative answer invites "how
+  much less" phrasing that flips the sign the checker expects; a zero answer is degenerate.
+  Expression, point and set answers stay plain exercises.
+- **Rounding and form instructions are never paraphrased.** "to one decimal place", "Round to the
+  nearest cent" and "in terms of π" decide which answer is right, so they are taken out of the
+  exercise and appended to the AI's story word for word.
+- **A story passes only if** it uses exactly the same numbers (digits; formatting tolerated) and
+  exactly the same units and symbols ($, %, °, cm, m, cm², …), has no number words (including
+  inflections such as "doubled", "dozens", "once", ordinals), ends with a question, and a judge that
+  is **shown the expected answer** says the story's exact answer is that value, in the same units,
+  rounding and sign, with probability ≥ 0.9. Rejections are stored with their reasons.
+- **Passing stories stay `pending` (not synced) until judge decisions are enabled**
+  (`JUDGE_AUTO_DECIDE=on`, spec §14), exactly like verification: Gemini's confidence is self-reported,
+  so the word-problem pairs (including unit, rounding and sign changes) belong in the judge eval set
+  that gates that switch.
 - **The Worker imports `@mflow/math-engine/generators` only**; ESLint forbids the package root in
   `apps/api`. The phone checks answers with the CAS offline (spec §16.6).
-- **Bank size:** topics practised in the last 14 days (word-friendly allowlist), ≤ 3 accepted per
-  topic and ≤ 12 per week, ≤ 24 attempts per week; one problem per upkeep tick, never in the nightly
-  window. Seeds are deterministic (FNV-1a of week, topic, index), so problems can be audited.
+- **Bank size:** topics practised in the last 14 days (word-friendly allowlist), ≤ 3 kept (accepted
+  or pending) per topic and ≤ 12 per week, ≤ 6 attempts per topic and ≤ 24 per week (so one hard
+  topic cannot use the week up); one problem per upkeep tick, never between 21:00 and 03:59. Seeds are deterministic (FNV-1a of week, topic, index), so problems can be audited.
 
 ## Consequences
 
