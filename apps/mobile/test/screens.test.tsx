@@ -349,7 +349,7 @@ test('a confirmed bad day shrinks the tasks to their 2-minute versions', async (
   );
   mount(ready(services));
   fireEvent.press(await screen.findByTestId('bad-day'));
-  answerAlert('Bad day');
+  answerAlert('Yes, bad day');
   expect(await screen.findByText('Bad day: 2-minute versions count')).toBeTruthy();
   expect(screen.getAllByText('One problem')).toHaveLength(2);
   expect(screen.getAllByText('2-minute version')).toHaveLength(2);
@@ -373,7 +373,7 @@ test('cancelling the bad day sends nothing; a used week says so', async () => {
   answerAlert('Cancel');
   expect(declareBadDay).not.toHaveBeenCalled();
   fireEvent.press(screen.getByTestId('bad-day'));
-  answerAlert('Bad day');
+  answerAlert('Yes, bad day');
   expect(await screen.findByText("This week's bad day is already used.")).toBeTruthy();
 });
 
@@ -381,7 +381,7 @@ test('declaring a bad day offline says it needs a connection', async () => {
   const services = await testServices({}, PAIRED);
   mount(ready(services));
   fireEvent.press(await screen.findByTestId('bad-day'));
-  answerAlert('Bad day');
+  answerAlert('Yes, bad day');
   expect(await screen.findByText('Declaring a day needs a connection.')).toBeTruthy();
 });
 

@@ -22,3 +22,32 @@ appId: com.bahiryasreb.futureflow
     id: 'diagnostics-link'
 - assertVisible: 'Waiting to send'
 - takeScreenshot: 03-diagnostics
+- back
+- tapOn:
+    id: 'open-plan'
+- tapOn:
+    id: 'plan-tomorrow'
+- tapOn:
+    id: 'propose'
+- extendedWaitUntil:
+    visible: 'From your roadmap'
+    timeout: 20000
+- takeScreenshot: 04-plan-draft
+- scrollUntilVisible:
+    element:
+      id: 'lock-plan'
+- tapOn:
+    id: 'lock-plan'
+- tapOn: '(?i)^lock$'
+- extendedWaitUntil:
+    visible: 'Locked at.*'
+    timeout: 20000
+- takeScreenshot: 05-plan-locked
+- back
+- tapOn:
+    id: 'bad-day'
+- tapOn: '(?i)^yes, bad day$'
+- extendedWaitUntil:
+    visible: 'Bad day: 2-minute versions count'
+    timeout: 20000
+- takeScreenshot: 06-bad-day

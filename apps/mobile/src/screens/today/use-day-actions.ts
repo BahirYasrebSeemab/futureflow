@@ -62,7 +62,7 @@ export function useDayActions(day: string, refresh: () => Promise<void>) {
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Bad day',
+          text: 'Yes, bad day',
           onPress: () => void run(() => services.api.declareBadDay(day), BAD_DAY),
         },
       ],

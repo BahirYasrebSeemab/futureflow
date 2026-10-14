@@ -47,6 +47,7 @@ jobs:
         run: |
           printf 'SETUP_CODE=e2e-setup-code-0123456789\n' > .dev.vars
           bun run migrate:local
+          bun x wrangler d1 execute futureflow --local --file ../mobile/e2e/seed-roadmap.sql
           nohup bun x wrangler dev --port 8787 > ../../wrangler.log 2>&1 &
           for i in $(seq 1 60); do
             code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8787/v1/today || true)
