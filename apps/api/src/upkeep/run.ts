@@ -1,4 +1,5 @@
 import type { Deps } from '../env';
+import { runBankStep } from '../math/bank-step';
 import { analyzeGuard } from './guard';
 import { ownerContext } from './owner';
 import { runNightly, type NightlyReview } from './nightly';
@@ -11,6 +12,7 @@ export type UpkeepRun = Readonly<{
   nightly: NightlyReview | null;
   summarized: string | null;
   deleted: number;
+  wordProblem: 'accepted' | 'rejected' | 'unavailable' | null;
 }>;
 
 /** Runs one step; a failure is logged by step name (never data) and the next steps still run. */
@@ -36,11 +38,15 @@ export async function upkeep(deps: Deps): Promise<UpkeepRun> {
     summarized: null,
     deleted: 0,
   });
+  // Outside the nightly window only: the busy 21:30 tick keeps its D1 budget.
+  const wordProblem =
+    nightly === null ? await step('bank', () => runBankStep(deps, owner), null) : null;
   return {
     rolledOver: rolled !== null && (rolled.granted || rolled.expiredSeconds > 0),
     gaps,
     nightly: nightly?.review ?? null,
     summarized: weekly.summarized,
     deleted: weekly.deleted,
+    wordProblem,
   };
 }
