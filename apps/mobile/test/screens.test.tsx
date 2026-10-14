@@ -12,6 +12,7 @@ import { AppProvider, type AppServices } from '@/lib/app';
 import { StartupError } from '@/lib/config';
 import { DiagnosticsScreen } from '@/screens/diagnostics';
 import { PairScreen } from '@/screens/pair';
+import { PlanScreen } from '@/screens/plan';
 import { RootStack } from '@/screens/root-stack';
 import { TodayScreen } from '@/screens/today';
 import { ledgerEvent, PAIRED, sampleToday, testServices } from './support/fakes';
@@ -27,6 +28,7 @@ function mount(load: () => Promise<AppServices>, initialUrl = '/') {
       index: TodayScreen,
       pair: PairScreen,
       diagnostics: DiagnosticsScreen,
+      plan: PlanScreen,
     },
     { initialUrl },
   );
@@ -314,4 +316,11 @@ test('coming back to Today from another screen syncs again', async () => {
   expect(await screen.findByText('Waiting to send')).toBeTruthy();
   act(() => testRouter.back());
   await waitFor(() => expect(syncs).toBe(2));
+});
+
+test("Today's Plan button opens the Plan screen", async () => {
+  const services = await testServices({}, PAIRED);
+  mount(ready(services));
+  fireEvent.press(await screen.findByTestId('open-plan'));
+  expect(await screen.findByText('Plan today')).toBeTruthy();
 });

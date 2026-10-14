@@ -1,4 +1,4 @@
-import { Link } from 'expo-router';
+import { Link, router } from 'expo-router';
 import {
   ActivityIndicator,
   RefreshControl,
@@ -97,6 +97,16 @@ export function TodayScreen() {
           Daily allowance {formatDuration(view.allowanceSeconds)}
         </Text>
       </View>
+      <View style={styles.actions}>
+        <View style={styles.action}>
+          <Button
+            testID="open-plan"
+            label="Plan"
+            variant="secondary"
+            onPress={() => router.push('/plan')}
+          />
+        </View>
+      </View>
       <View style={styles.dayRow}>
         <Text accessibilityRole="header" style={[styles.heading, { color: c.text }]}>
           {formatDayLabel(today.day)}
@@ -158,6 +168,8 @@ const styles = StyleSheet.create({
     gap: space.sm,
   },
   heading: { fontSize: 20, fontWeight: '600' },
+  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
+  action: { flexGrow: 1, flexBasis: 100 },
   empty: { gap: space.xs },
   emptyTitle: { fontSize: 17, fontWeight: '600' },
   list: { gap: space.sm },
