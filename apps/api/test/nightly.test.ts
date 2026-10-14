@@ -1,5 +1,5 @@
-import type { FetchLike } from '@mflow/ai';
-import type { Plan } from '@mflow/core';
+import type { FetchLike } from '@futureflow/ai';
+import type { Plan } from '@futureflow/core';
 import { env } from 'cloudflare:test';
 import { describe, expect, it } from 'vitest';
 import { makeDeps } from '../src/app';

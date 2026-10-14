@@ -1,4 +1,4 @@
-import type { LedgerEvent, Plan } from '@mflow/core';
+import type { LedgerEvent, Plan } from '@futureflow/core';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import {

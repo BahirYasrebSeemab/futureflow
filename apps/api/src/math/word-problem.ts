@@ -1,7 +1,7 @@
-import type { Questions } from '@mflow/ai';
-import { DEFAULT_REGISTRY } from '@mflow/math-engine/generators';
-import { toText } from '@mflow/math-engine/rational';
-import type { Difficulty, Problem } from '@mflow/math-engine/types';
+import type { Questions } from '@futureflow/ai';
+import { DEFAULT_REGISTRY } from '@futureflow/math-engine/generators';
+import { toText } from '@futureflow/math-engine/rational';
+import type { Difficulty, Problem } from '@futureflow/math-engine/types';
 import { z } from 'zod';
 import type { Deps } from '../env';
 import { extractNumbers, isStoryable, splitInstructions, storyProblems } from './word-check';

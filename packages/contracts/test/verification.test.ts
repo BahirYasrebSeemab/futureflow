@@ -6,14 +6,15 @@ describe('GithubLinkRequestSchema', () => {
 
   it('accepts owner/name repositories', () => {
     expect(
-      GithubLinkRequestSchema.safeParse({ token, repos: ['bahir/mflow', 'a.b/c-d_e'] }).success,
+      GithubLinkRequestSchema.safeParse({ token, repos: ['bahir/futureflow', 'a.b/c-d_e'] })
+        .success,
     ).toBe(true);
   });
 
   it.each([
     ['a short token', { token: 'short', repos: ['a/b'] }],
     ['no repository', { token, repos: [] }],
-    ['a repository without an owner', { token, repos: ['mflow'] }],
+    ['a repository without an owner', { token, repos: ['futureflow'] }],
     ['a URL instead of a name', { token, repos: ['https://github.com/a/b'] }],
     ['a repeated repository', { token, repos: ['a/b', 'a/b'] }],
     ['a dot-dot path segment', { token, repos: ['../user'] }],

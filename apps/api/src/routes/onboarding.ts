@@ -1,4 +1,4 @@
-import { RoadmapSchema } from '@mflow/contracts';
+import { RoadmapSchema } from '@futureflow/contracts';
 import { Hono } from 'hono';
 import type { AppEnv } from '../env';
 import { ok } from '../http/envelope';

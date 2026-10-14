@@ -1,4 +1,9 @@
-import { LEDGER_EVENT_KINDS, parseDayKey, VERIFIER_KINDS, type LedgerEventKind } from '@mflow/core';
+import {
+  LEDGER_EVENT_KINDS,
+  parseDayKey,
+  VERIFIER_KINDS,
+  type LedgerEventKind,
+} from '@futureflow/core';
 import { z } from 'zod';
 
 export const MAX_EVENTS_PER_BATCH = 500;

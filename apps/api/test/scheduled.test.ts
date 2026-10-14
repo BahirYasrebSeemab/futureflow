@@ -1,4 +1,4 @@
-import type { FetchLike } from '@mflow/ai';
+import type { FetchLike } from '@futureflow/ai';
 import { env } from 'cloudflare:test';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { runScheduled } from '../src/scheduled';
@@ -20,7 +20,7 @@ describe('hourly cron', () => {
     const { token } = await pairDevice(app);
     await call(app, 'PUT', '/v1/github/link', {
       token,
-      body: { token: 'github_pat_' + 'x'.repeat(40), repos: ['bahir/mflow'] },
+      body: { token: 'github_pat_' + 'x'.repeat(40), repos: ['bahir/futureflow'] },
     });
     const tasks = [
       taskSpec('Private task title'),

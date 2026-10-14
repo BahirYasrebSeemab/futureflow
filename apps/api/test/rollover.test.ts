@@ -1,4 +1,4 @@
-import type { LedgerEvent } from '@mflow/core';
+import type { LedgerEvent } from '@futureflow/core';
 import { env } from 'cloudflare:test';
 import { describe, expect, it } from 'vitest';
 import { makeDeps } from '../src/app';

@@ -1,5 +1,5 @@
-import type { FetchLike } from '@mflow/ai';
-import { DEFAULT_REGISTRY } from '@mflow/math-engine/generators';
+import type { FetchLike } from '@futureflow/ai';
+import { DEFAULT_REGISTRY } from '@futureflow/math-engine/generators';
 import { env } from 'cloudflare:test';
 import { describe, expect, it } from 'vitest';
 import { d1Repos } from '../src/adapters/d1';

@@ -1,4 +1,4 @@
-import { parseDayKey } from '@mflow/core';
+import { parseDayKey } from '@futureflow/core';
 import { z } from 'zod';
 import { DayKeySchema, LedgerEventSchema, MAX_EVENTS_PER_BATCH, PlanSchema } from './schemas';
 import { VerdictSchema } from './verification';

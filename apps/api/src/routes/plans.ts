@@ -1,5 +1,5 @@
-import { DayKeySchema, PlanPutSchema } from '@mflow/contracts';
-import { createDraft, DEFAULT_RULES, editDraft, lockPlan } from '@mflow/core';
+import { DayKeySchema, PlanPutSchema } from '@futureflow/contracts';
+import { createDraft, DEFAULT_RULES, editDraft, lockPlan } from '@futureflow/core';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import type { AppEnv } from '../env';

@@ -1,5 +1,5 @@
-import type { Plan } from '@mflow/core';
-import { PlanSchema } from '@mflow/contracts';
+import type { Plan } from '@futureflow/core';
+import { PlanSchema } from '@futureflow/contracts';
 import type { PlanRepo } from '../../ports';
 
 type PlanRow = {

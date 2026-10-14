@@ -1,4 +1,4 @@
-import type { FetchLike } from '@mflow/ai';
+import type { FetchLike } from '@futureflow/ai';
 import { env } from 'cloudflare:test';
 import { describe, expect, it } from 'vitest';
 import { runScheduled } from '../src/scheduled';

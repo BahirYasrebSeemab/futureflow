@@ -1,4 +1,4 @@
-import type { Roadmap } from '@mflow/contracts';
+import type { Roadmap } from '@futureflow/contracts';
 import type { RoadmapRepo } from '../../ports';
 
 type IdentityRow = { id: string; title: string; why: string; deadline: string | null };

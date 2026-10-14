@@ -1,4 +1,4 @@
-import type { DayKey } from '@mflow/core';
+import type { DayKey } from '@futureflow/core';
 import { PLACED_RATING } from './elo';
 import type { KnowledgeGraph } from './graph';
 import { newProgress, type TopicProgress } from './mastery';

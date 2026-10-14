@@ -1,4 +1,4 @@
-import type { Plan, TaskSpec } from '@mflow/core';
+import type { Plan, TaskSpec } from '@futureflow/core';
 import { describe, expect, it } from 'vitest';
 import { call, makeApp, pairDevice, T0, taskSpec, type App, type Clock } from './helpers';
 

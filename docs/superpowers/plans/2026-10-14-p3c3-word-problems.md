@@ -1,4 +1,4 @@
-# mflow P3c-3: AI word problems and the problem bank Implementation Plan
+# Future Flow P3c-3: AI word problems and the problem bank Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -13,11 +13,11 @@ Rejected stories are stored with their reason and never shown.
 
 - `apps/api/src/math/*` holds pure checks (number extraction, number words, seeds, the topic allowlist) and the generator step.
 - An upkeep step makes **one problem per tick**, and only outside the nightly window, so the busy 21:30 tick keeps its budget.
-- The Worker imports **only** `@mflow/math-engine/generators`, never the package root, because the root pulls in the CAS.
+- The Worker imports **only** `@futureflow/math-engine/generators`, never the package root, because the root pulls in the CAS.
 
-**Tech Stack:** `@mflow/math-engine` generators, `@mflow/ai` (`talkJson` and `judge`), Hono, D1, Vitest 5.
+**Tech Stack:** `@futureflow/math-engine` generators, `@futureflow/ai` (`talkJson` and `judge`), Hono, D1, Vitest 5.
 
-**Spec:** `docs/superpowers/specs/2026-10-08-mflow-v1-design.md` §10.8 ("the CAS re-solves every one"), §10.2, §4.3 rule 7, §2.3, and spec §16 decision 6 ("math checked on the phone").
+**Spec:** `docs/superpowers/specs/2026-10-08-futureflow-v1-design.md` §10.8 ("the CAS re-solves every one"), §10.2, §4.3 rule 7, §2.3, and spec §16 decision 6 ("math checked on the phone").
 
 ## Spike results (2026-10-14), which shape this plan
 
@@ -29,7 +29,7 @@ Rejected stories are stored with their reason and never shown.
 ## Global Constraints
 
 - Bun (`bun x`, never `bunx`/`npx`/pnpm), TypeScript `^6`, Vitest `^5.0.3`, ESM, strict.
-- `apps/api` must import `@mflow/math-engine/generators` (and `/types` for types) only. An ESLint `no-restricted-imports` rule forbids the root import in `apps/api`.
+- `apps/api` must import `@futureflow/math-engine/generators` (and `/types` for types) only. An ESLint `no-restricted-imports` rule forbids the root import in `apps/api`.
 - **Word topics** (allowlist):
   - `whole-number-operations`, `integers`, `fractions`, `decimals`, `percents`, `ratios-and-rates`
   - `linear-equations`, `financial-literacy`, `measurement-and-geometry`, `data-and-statistics`
@@ -246,7 +246,7 @@ git commit -m "feat(api): mechanical checks for AI word problems"
 
 **Files:**
 
-- Modify: `packages/math-engine/package.json` (add `exports` `./generators` and `./types`), `apps/api/package.json` (depend on `@mflow/math-engine`), `eslint.config.js` (restrict the root import in `apps/api`), `packages/contracts/src/index.ts`, `apps/api/src/ports.ts`, `apps/api/src/adapters/d1/index.ts`, `apps/api/src/adapters/d1/telemetry.ts` (`recentTopics`), `apps/api/src/app.ts`
+- Modify: `packages/math-engine/package.json` (add `exports` `./generators` and `./types`), `apps/api/package.json` (depend on `@futureflow/math-engine`), `eslint.config.js` (restrict the root import in `apps/api`), `packages/contracts/src/index.ts`, `apps/api/src/ports.ts`, `apps/api/src/adapters/d1/index.ts`, `apps/api/src/adapters/d1/telemetry.ts` (`recentTopics`), `apps/api/src/app.ts`
 - Create: `packages/contracts/src/bank.ts`, `apps/api/migrations/0005_problem_bank.sql`, `apps/api/src/adapters/d1/bank.ts`, `apps/api/src/routes/bank.ts`, `apps/api/test/bank.test.ts`
 
 **Interfaces:**
@@ -362,7 +362,7 @@ In `packages/math-engine/package.json`, set:
   },
 ```
 
-Add `"@mflow/math-engine": "workspace:*"` to the `dependencies` in `apps/api/package.json`, then run `bun install`.
+Add `"@futureflow/math-engine": "workspace:*"` to the `dependencies` in `apps/api/package.json`, then run `bun install`.
 
 In `eslint.config.js`, add a block after `tseslint.configs.recommended`:
 
@@ -375,9 +375,9 @@ In `eslint.config.js`, add a block after `tseslint.configs.recommended`:
         {
           paths: [
             {
-              name: '@mflow/math-engine',
+              name: '@futureflow/math-engine',
               message:
-                'Import @mflow/math-engine/generators: the package root pulls in the CAS (1.2 MB gzipped, ~700 ms first call), far beyond the free Worker CPU limit.',
+                'Import @futureflow/math-engine/generators: the package root pulls in the CAS (1.2 MB gzipped, ~700 ms first call), far beyond the free Worker CPU limit.',
             },
           ],
         },
@@ -440,7 +440,7 @@ CREATE TABLE problem_bank (
 CREATE INDEX problem_bank_week ON problem_bank (week, status);
 ```
 
-In `apps/api/src/ports.ts`, add (with `BankProblem` from `@mflow/contracts`), and `bank: BankRepo;` to `Repos`:
+In `apps/api/src/ports.ts`, add (with `BankProblem` from `@futureflow/contracts`), and `bank: BankRepo;` to `Repos`:
 
 ```ts
 export type BankEntry = BankProblem;
@@ -576,7 +576,7 @@ Add `bank: d1Bank(db)` to `d1Repos`.
 `apps/api/src/routes/bank.ts`:
 
 ```ts
-import { BankQuerySchema } from '@mflow/contracts';
+import { BankQuerySchema } from '@futureflow/contracts';
 import { Hono } from 'hono';
 import type { AppEnv } from '../env';
 import { ok } from '../http/envelope';
@@ -597,7 +597,7 @@ Register `authed.route('/', bankRoutes);` in `app.ts`.
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `bun run --cwd apps/api test && bun run typecheck && bun run lint`
-Expected: PASS. Confirm the lint rule works by temporarily adding `import '@mflow/math-engine';` to `apps/api/src/routes/bank.ts`: `bun run lint` must fail with the message. Then remove the line.
+Expected: PASS. Confirm the lint rule works by temporarily adding `import '@futureflow/math-engine';` to `apps/api/src/routes/bank.ts`: `bun run lint` must fail with the message. Then remove the line.
 
 - [ ] **Step 5: Commit**
 
@@ -617,7 +617,7 @@ git commit -m "feat(api): problem bank storage and sync, generators-only math im
 
 **Interfaces:**
 
-- Consumes: `DEFAULT_REGISTRY` (`@mflow/math-engine/generators`); `Difficulty` (`@mflow/math-engine/types`); `storyProblems`, `extractNumbers` (Task 1); `BankRepo.add` (Task 2); `Ai.talkJson`, `Ai.judge` (P3b).
+- Consumes: `DEFAULT_REGISTRY` (`@futureflow/math-engine/generators`); `Difficulty` (`@futureflow/math-engine/types`); `storyProblems`, `extractNumbers` (Task 1); `BankRepo.add` (Task 2); `Ai.talkJson`, `Ai.judge` (P3b).
 - Produces: `JUDGE_STRICT = 0.9`, `StorySchema`, and `makeWordProblem(deps, { week, topicId, difficulty, seed }): Promise<'accepted' | 'rejected' | 'unavailable'>`.
 - Rules:
   - If the AI is unavailable (for the story or the judge), nothing is stored.
@@ -629,8 +629,8 @@ git commit -m "feat(api): problem bank storage and sync, generators-only math im
 `apps/api/test/word-problem.test.ts`:
 
 ```ts
-import type { FetchLike } from '@mflow/ai';
-import { DEFAULT_REGISTRY } from '@mflow/math-engine/generators';
+import type { FetchLike } from '@futureflow/ai';
+import { DEFAULT_REGISTRY } from '@futureflow/math-engine/generators';
 import { env } from 'cloudflare:test';
 import { describe, expect, it } from 'vitest';
 import { d1Repos } from '../src/adapters/d1';
@@ -715,9 +715,9 @@ Expected: FAIL. `../src/math/word-problem` can't be resolved.
 `apps/api/src/math/word-problem.ts`:
 
 ```ts
-import type { Questions } from '@mflow/ai';
-import { DEFAULT_REGISTRY } from '@mflow/math-engine/generators';
-import type { Difficulty } from '@mflow/math-engine/types';
+import type { Questions } from '@futureflow/ai';
+import { DEFAULT_REGISTRY } from '@futureflow/math-engine/generators';
+import type { Difficulty } from '@futureflow/math-engine/types';
 import { z } from 'zod';
 import type { Deps } from '../env';
 import { extractNumbers, storyProblems } from './word-check';
@@ -837,7 +837,7 @@ git commit -m "feat(api): word problems from math-engine answers with AI stories
 `apps/api/test/bank-step.test.ts`:
 
 ```ts
-import type { FetchLike } from '@mflow/ai';
+import type { FetchLike } from '@futureflow/ai';
 import { env } from 'cloudflare:test';
 import { v7 as uuidv7 } from 'uuid';
 import { describe, expect, it } from 'vitest';
@@ -925,8 +925,8 @@ Expected: FAIL. `../src/math/bank-step` can't be resolved.
 `apps/api/src/math/bank-step.ts`:
 
 ```ts
-import { addDays, isoWeekKey } from '@mflow/core';
-import type { Difficulty } from '@mflow/math-engine/types';
+import { addDays, isoWeekKey } from '@futureflow/core';
+import type { Difficulty } from '@futureflow/math-engine/types';
 import type { Deps } from '../env';
 import type { Owner } from '../upkeep/owner';
 import { seedFor, WORD_TOPICS } from './word-check';
@@ -1034,7 +1034,7 @@ from ("I don't want to learn on wrong teachings").
 - **A story is accepted only if** it uses exactly the same numbers (digits; formatting tolerated), no
   number words, ends with a question, and a judge says "same calculation, same answer" with
   probability ≥ 0.9. Rejections are stored with their reasons for review; only accepted stories sync.
-- **The Worker imports `@mflow/math-engine/generators` only**; ESLint forbids the package root in
+- **The Worker imports `@futureflow/math-engine/generators` only**; ESLint forbids the package root in
   `apps/api`. The phone checks answers with the CAS offline (spec §16.6).
 - **Bank size:** topics practised in the last 14 days (word-friendly allowlist), ≤ 3 accepted per
   topic and ≤ 12 per week, ≤ 24 attempts per week; one problem per upkeep tick, never in the nightly

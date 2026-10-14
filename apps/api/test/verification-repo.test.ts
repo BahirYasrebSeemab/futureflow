@@ -10,7 +10,7 @@ const commit = (
   committedAt = '2026-10-09T10:00:00Z',
 ): CommitEvidence => ({
   sha,
-  repo: 'bahir/mflow',
+  repo: 'bahir/futureflow',
   day,
   committedAt,
   message: 'fix: login bug',
@@ -35,7 +35,7 @@ describe('verification repository', () => {
       {
         login: 'bahir',
         tokenSealed: 'v1.x.y',
-        repos: ['bahir/mflow'],
+        repos: ['bahir/futureflow'],
         status: 'ok',
         unreadableRepos: [],
       },
@@ -46,16 +46,16 @@ describe('verification repository', () => {
     expect(await repo.link()).toEqual({
       login: 'bahir',
       tokenSealed: 'v1.x.y',
-      repos: ['bahir/mflow'],
+      repos: ['bahir/futureflow'],
       status: 'ok',
       unreadableRepos: [],
     });
-    expect(await repo.cursor('bahir/mflow')).toBe('2026-10-08T12:00:00.000Z');
+    expect(await repo.cursor('bahir/futureflow')).toBe('2026-10-08T12:00:00.000Z');
     await repo.setLinkStatus('invalid', T0);
     expect((await repo.link())?.status).toBe('invalid');
 
     await repo.deleteLink();
-    expect([await repo.link(), await repo.cursor('bahir/mflow')]).toEqual([null, null]);
+    expect([await repo.link(), await repo.cursor('bahir/futureflow')]).toEqual([null, null]);
   });
 
   it('stores commits once, knows their SHAs, and lists a day newest first', async () => {

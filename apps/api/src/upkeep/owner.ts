@@ -1,5 +1,5 @@
-import type { Roadmap } from '@mflow/contracts';
-import { dayKeyFor, DEFAULT_RULES } from '@mflow/core';
+import type { Roadmap } from '@futureflow/contracts';
+import { dayKeyFor, DEFAULT_RULES } from '@futureflow/core';
 import type { Deps } from '../env';
 
 /** What every upkeep step needs about the owner, looked up once per tick (D1 budget). */

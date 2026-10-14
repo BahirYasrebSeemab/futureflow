@@ -1,4 +1,4 @@
-import { err, ok, type Result } from '@mflow/core';
+import { err, ok, type Result } from '@futureflow/core';
 import type { Topic } from './types';
 
 /** Topics in teaching order; every prerequisite appears earlier (so the graph is acyclic). */

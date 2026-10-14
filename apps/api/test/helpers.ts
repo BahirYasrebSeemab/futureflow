@@ -1,4 +1,4 @@
-import type { LedgerEvent, TaskSpec } from '@mflow/core';
+import type { LedgerEvent, TaskSpec } from '@futureflow/core';
 import { env } from 'cloudflare:test';
 import { v7 as uuidv7 } from 'uuid';
 import { createApp, type AppOptions } from '../src/app';

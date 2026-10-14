@@ -12,7 +12,7 @@ import {
   type Plan,
   type RequiredTask,
   type Verdict,
-} from '@mflow/core';
+} from '@futureflow/core';
 import type { Deps } from '../env';
 import { appendEvents } from '../ledger/append';
 import type { StoredVerdict } from '../ports';

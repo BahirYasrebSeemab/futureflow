@@ -1,4 +1,4 @@
-import { addDays, createDraft, DEFAULT_RULES, editDraft } from '@mflow/core';
+import { addDays, createDraft, DEFAULT_RULES, editDraft } from '@futureflow/core';
 import { coachSystem, todayFacts, type CoachFacts } from '../coach/persona';
 import type { Deps } from '../env';
 import { activeSkills, aiTasks, templateTasks } from '../planning/propose';

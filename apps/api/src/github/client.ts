@@ -1,5 +1,5 @@
-import type { FetchLike } from '@mflow/ai';
-import { err, ok, type Result } from '@mflow/core';
+import type { FetchLike } from '@futureflow/ai';
+import { err, ok, type Result } from '@futureflow/core';
 import { z } from 'zod';
 import type { CommitFile } from '../ports';
 
@@ -78,7 +78,7 @@ export function githubClient(token: string, fetch: FetchLike): GithubClient {
           authorization: `Bearer ${token}`,
           accept: 'application/vnd.github+json',
           'x-github-api-version': GITHUB_API_VERSION,
-          'user-agent': 'mflow',
+          'user-agent': 'futureflow',
         },
       });
     } catch {

@@ -1,4 +1,4 @@
-import type { DayRecord } from '@mflow/core';
+import type { DayRecord } from '@futureflow/core';
 import { env } from 'cloudflare:test';
 import { v7 as uuidv7 } from 'uuid';
 import { describe, expect, it } from 'vitest';

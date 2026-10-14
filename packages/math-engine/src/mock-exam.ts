@@ -1,4 +1,4 @@
-import type { DayKey } from '@mflow/core';
+import type { DayKey } from '@futureflow/core';
 import type { CheckOutcome } from './check';
 import type { GeneratorRegistry } from './generators/registry';
 import type { KnowledgeGraph } from './graph';

@@ -13,7 +13,7 @@ async function linkWith(fake: ReturnType<typeof githubFake>) {
   const { token } = await pairDevice(app);
   await call(app, 'PUT', '/v1/github/link', {
     token,
-    body: { token: TOKEN, repos: ['bahir/mflow'] },
+    body: { token: TOKEN, repos: ['bahir/futureflow'] },
   });
   fake.urls.length = 0;
   return makeDeps(env, { now: () => T0, fetch: fake.fetch });
@@ -53,7 +53,7 @@ describe('collectGithub', () => {
     await collectGithub(deps, 0);
 
     expect(fake.urls).toEqual([
-      'https://api.github.com/repos/bahir/mflow/commits?since=2026-10-09T05%3A00%3A00Z&author=bahir&per_page=100',
+      'https://api.github.com/repos/bahir/futureflow/commits?since=2026-10-09T05%3A00%3A00Z&author=bahir&per_page=100',
     ]);
   });
 
@@ -131,7 +131,7 @@ describe('repositories the token cannot read', () => {
     const link = async () => (await d1Repos(env.DB).verification.link())?.unreadableRepos;
 
     expect(await collectGithub(deps, 0)).toBe('repo_unavailable');
-    expect(await link()).toEqual(['bahir/mflow']);
+    expect(await link()).toEqual(['bahir/futureflow']);
 
     blocked = false;
     expect(await collectGithub(deps, 0)).toBe('ok');

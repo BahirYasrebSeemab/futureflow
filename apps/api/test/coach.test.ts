@@ -1,4 +1,4 @@
-import type { FetchLike } from '@mflow/ai';
+import type { FetchLike } from '@futureflow/ai';
 import { v7 as uuidv7 } from 'uuid';
 import { describe, expect, it } from 'vitest';
 import { DISTRESS_GUARDRAIL } from '../src/coach/persona';

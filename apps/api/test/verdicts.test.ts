@@ -1,5 +1,5 @@
-import type { FetchLike } from '@mflow/ai';
-import type { LedgerEvent, TaskSpec } from '@mflow/core';
+import type { FetchLike } from '@futureflow/ai';
+import type { LedgerEvent, TaskSpec } from '@futureflow/core';
 import { describe, expect, it } from 'vitest';
 import { geminiJudgeReply, githubFake } from './github-fake';
 import { call, makeApp, pairDevice, taskSpec, type App } from './helpers';
@@ -14,7 +14,7 @@ async function setup(lock = true) {
   const { token } = await pairDevice(app);
   await call(app, 'PUT', '/v1/github/link', {
     token,
-    body: { token: TOKEN, repos: ['bahir/mflow'] },
+    body: { token: TOKEN, repos: ['bahir/futureflow'] },
   });
   const tasks: TaskSpec[] = [
     taskSpec('Fix the bug'),

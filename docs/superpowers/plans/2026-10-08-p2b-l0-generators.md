@@ -1,4 +1,4 @@
-# mflow P2b: Complete L0 (Arithmetic) Generators Implementation Plan
+# Future Flow P2b: Complete L0 (Arithmetic) Generators Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -6,9 +6,9 @@
 
 **Architecture:** Six new pure generators in `packages/math-engine/src/generators/`. A shared **generator contract** test helper checks every generator for determinism, lowest-terms answers, a canonical answer that round-trips through the checker, non-empty hints and steps, and correct metadata. Each generator also gets its own **independent oracle** test: the CAS evaluating the prompt where the prompt is math, or brute-force arithmetic parsed from the prompt where it's a word question.
 
-**Tech Stack:** Bun, TypeScript 6, Vitest 5, fast-check, @cortex-js/compute-engine, @mflow/core.
+**Tech Stack:** Bun, TypeScript 6, Vitest 5, fast-check, @cortex-js/compute-engine, @futureflow/core.
 
-**Spec:** `docs/superpowers/specs/2026-10-08-mflow-v1-design.md` §10.1–10.3, §15 (P2b); ADR 0005.
+**Spec:** `docs/superpowers/specs/2026-10-08-futureflow-v1-design.md` §10.1–10.3, §15 (P2b); ADR 0005.
 
 ## Global Constraints
 

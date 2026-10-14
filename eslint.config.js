@@ -23,9 +23,9 @@ export default defineConfig([
         {
           paths: [
             {
-              name: '@mflow/math-engine',
+              name: '@futureflow/math-engine',
               message:
-                'Import @mflow/math-engine/generators: the package root pulls in the CAS (1.2 MB gzipped, ~700 ms first call), far beyond the free Worker CPU limit.',
+                'Import @futureflow/math-engine/generators: the package root pulls in the CAS (1.2 MB gzipped, ~700 ms first call), far beyond the free Worker CPU limit.',
             },
           ],
         },

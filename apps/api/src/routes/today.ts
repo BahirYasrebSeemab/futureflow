@@ -1,4 +1,4 @@
-import { earnedSeconds } from '@mflow/core';
+import { earnedSeconds } from '@futureflow/core';
 import { Hono } from 'hono';
 import type { AppEnv } from '../env';
 import { deviceToday } from '../http/day';

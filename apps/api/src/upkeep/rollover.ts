@@ -1,4 +1,10 @@
-import { addDays, DEFAULT_RULES, earn, expireFromBalances, type LedgerEvent } from '@mflow/core';
+import {
+  addDays,
+  DEFAULT_RULES,
+  earn,
+  expireFromBalances,
+  type LedgerEvent,
+} from '@futureflow/core';
 import type { Deps } from '../env';
 import { appendEvents } from '../ledger/append';
 import { ownerOf, type Owner } from './owner';

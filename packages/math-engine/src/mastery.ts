@@ -1,4 +1,4 @@
-import { addDays, type DayKey } from '@mflow/core';
+import { addDays, type DayKey } from '@futureflow/core';
 import { INITIAL_LEARNER_RATING } from './elo';
 
 export type TopicProgress = Readonly<{

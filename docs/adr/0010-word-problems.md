@@ -30,7 +30,7 @@ from ("I don't want to learn on wrong teachings").
   (`JUDGE_AUTO_DECIDE=on`, spec §14), exactly like verification: Gemini's confidence is self-reported,
   so the word-problem pairs (including unit, rounding and sign changes) belong in the judge eval set
   that gates that switch.
-- **The Worker imports `@mflow/math-engine/generators` only**; ESLint forbids the package root in
+- **The Worker imports `@futureflow/math-engine/generators` only**; ESLint forbids the package root in
   `apps/api`. The phone checks answers with the CAS offline (spec §16.6).
 - **Bank size:** topics practised in the last 14 days (word-friendly allowlist), ≤ 3 kept (accepted
   or pending) per topic and ≤ 12 per week, ≤ 6 attempts per topic and ≤ 24 per week (so one hard

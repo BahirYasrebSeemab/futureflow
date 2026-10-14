@@ -1,4 +1,4 @@
-import { VerdictRequestSchema } from '@mflow/contracts';
+import { VerdictRequestSchema } from '@futureflow/contracts';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import type { AppEnv } from '../env';

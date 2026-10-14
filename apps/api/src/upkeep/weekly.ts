@@ -1,4 +1,4 @@
-import { addDays, isoWeekKey } from '@mflow/core';
+import { addDays, isoWeekKey } from '@futureflow/core';
 import { coachSystem } from '../coach/persona';
 import type { Deps } from '../env';
 import { ownerOf, type Owner } from './owner';

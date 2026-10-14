@@ -1,4 +1,4 @@
-# mflow P3c-1: verification (GitHub link, evidence, judging, verdicts, rewards, hourly cron) Implementation Plan
+# Future Flow P3c-1: verification (GitHub link, evidence, judging, verdicts, rewards, hourly cron) Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -10,9 +10,9 @@
 - **Shared wiring:** routes and cron build the same `Deps` through `makeDeps(env, options)`.
 - **Core rules:** `requiredTasks`, `resolveDecision`, `allPassed` and `earn`. Every write is idempotent: commits by SHA, verdicts by `(day, taskId)` (a pass is final), rewards through core and the ledger's business keys.
 
-**Tech Stack:** Hono, D1, Web Crypto (AES-GCM, available in Workers and Node), GitHub REST API version `2026-03-10`, `@mflow/ai` (from P3b), Vitest 5 with `@cloudflare/vitest-plugin`.
+**Tech Stack:** Hono, D1, Web Crypto (AES-GCM, available in Workers and Node), GitHub REST API version `2026-03-10`, `@futureflow/ai` (from P3b), Vitest 5 with `@cloudflare/vitest-plugin`.
 
-**Spec:** `docs/superpowers/specs/2026-10-08-mflow-v1-design.md` (§5.2, §6.3, §8, §9.1 step 3, §11 cron, §12, §13.1–13.2, §14 judge eval).
+**Spec:** `docs/superpowers/specs/2026-10-08-futureflow-v1-design.md` (§5.2, §6.3, §8, §9.1 step 3, §11 cron, §12, §13.1–13.2, §14 judge eval).
 
 **Scope (P3c split, ruled here):**
 
@@ -261,14 +261,15 @@ describe('GithubLinkRequestSchema', () => {
 
   it('accepts owner/name repositories', () => {
     expect(
-      GithubLinkRequestSchema.safeParse({ token, repos: ['bahir/mflow', 'a.b/c-d_e'] }).success,
+      GithubLinkRequestSchema.safeParse({ token, repos: ['bahir/futureflow', 'a.b/c-d_e'] })
+        .success,
     ).toBe(true);
   });
 
   it.each([
     ['a short token', { token: 'short', repos: ['a/b'] }],
     ['no repository', { token, repos: [] }],
-    ['a repository without an owner', { token, repos: ['mflow'] }],
+    ['a repository without an owner', { token, repos: ['futureflow'] }],
     ['a URL instead of a name', { token, repos: ['https://github.com/a/b'] }],
     ['a repeated repository', { token, repos: ['a/b', 'a/b'] }],
   ])('rejects %s', (_label, value) => {
@@ -318,7 +319,7 @@ const commit = (
   committedAt = '2026-10-09T10:00:00Z',
 ): CommitEvidence => ({
   sha,
-  repo: 'bahir/mflow',
+  repo: 'bahir/futureflow',
   day,
   committedAt,
   message: 'fix: login bug',
@@ -340,7 +341,7 @@ describe('verification repository', () => {
   it('stores the link and resets cursors; deleting removes both', async () => {
     const repo = d1Repos(env.DB).verification;
     await repo.saveLink(
-      { login: 'bahir', tokenSealed: 'v1.x.y', repos: ['bahir/mflow'], status: 'ok' },
+      { login: 'bahir', tokenSealed: 'v1.x.y', repos: ['bahir/futureflow'], status: 'ok' },
       T0,
       '2026-10-08T12:00:00.000Z',
     );
@@ -348,15 +349,15 @@ describe('verification repository', () => {
     expect(await repo.link()).toEqual({
       login: 'bahir',
       tokenSealed: 'v1.x.y',
-      repos: ['bahir/mflow'],
+      repos: ['bahir/futureflow'],
       status: 'ok',
     });
-    expect(await repo.cursor('bahir/mflow')).toBe('2026-10-08T12:00:00.000Z');
+    expect(await repo.cursor('bahir/futureflow')).toBe('2026-10-08T12:00:00.000Z');
     await repo.setLinkStatus('invalid', T0);
     expect((await repo.link())?.status).toBe('invalid');
 
     await repo.deleteLink();
-    expect([await repo.link(), await repo.cursor('bahir/mflow')]).toEqual([null, null]);
+    expect([await repo.link(), await repo.cursor('bahir/futureflow')]).toEqual([null, null]);
   });
 
   it('stores commits once, knows their SHAs, and lists a day newest first', async () => {
@@ -558,8 +559,8 @@ Add to `d1Devices` in `apps/api/src/adapters/d1/devices.ts`:
 `apps/api/src/adapters/d1/verification.ts`:
 
 ```ts
-import { ReadingLogSchema } from '@mflow/contracts';
-import type { ReadingLog } from '@mflow/contracts';
+import { ReadingLogSchema } from '@futureflow/contracts';
+import type { ReadingLog } from '@futureflow/contracts';
 import { z } from 'zod';
 import type { CommitEvidence, GithubLink, StoredVerdict, VerificationRepo } from '../../ports';
 
@@ -814,7 +815,7 @@ git commit -m "feat(api): verification storage for GitHub link, commit evidence 
 `apps/api/test/github-fake.ts`:
 
 ```ts
-import type { FetchLike } from '@mflow/ai';
+import type { FetchLike } from '@futureflow/ai';
 
 export type FakeCommit = Readonly<{
   sha: string;
@@ -840,7 +841,7 @@ export function githubFake(
   }> = {},
 ) {
   const login = opts.login ?? 'bahir';
-  const repos = opts.repos ?? ['bahir/mflow'];
+  const repos = opts.repos ?? ['bahir/futureflow'];
   const urls: string[] = [];
   const headers: Record<string, string>[] = [];
   const fetch: FetchLike = async (url, init) => {
@@ -926,7 +927,7 @@ describe('githubClient', () => {
       authorization: 'Bearer tok',
       accept: 'application/vnd.github+json',
       'x-github-api-version': GITHUB_API_VERSION,
-      'user-agent': 'mflow',
+      'user-agent': 'futureflow',
     });
   });
 
@@ -939,7 +940,7 @@ describe('githubClient', () => {
       ],
     });
     const result = await githubClient('tok', fake.fetch).commitsSince(
-      'bahir/mflow',
+      'bahir/futureflow',
       '2026-10-08T00:00:00Z',
       'bahir',
     );
@@ -952,7 +953,7 @@ describe('githubClient', () => {
       ],
     });
     expect(fake.urls[0]).toBe(
-      'https://api.github.com/repos/bahir/mflow/commits?since=2026-10-08T00%3A00%3A00Z&author=bahir&per_page=100',
+      'https://api.github.com/repos/bahir/futureflow/commits?since=2026-10-08T00%3A00%3A00Z&author=bahir&per_page=100',
     );
   });
 
@@ -962,7 +963,7 @@ describe('githubClient', () => {
       commits: [{ sha: 'a1', date: '2026-10-09T08:00:00Z', message: 'fix: bug', patch: long }],
     });
 
-    const result = await githubClient('tok', fake.fetch).commit('bahir/mflow', 'a1');
+    const result = await githubClient('tok', fake.fetch).commit('bahir/futureflow', 'a1');
 
     if (!result.ok) throw new Error(result.error);
     expect(result.value).toMatchObject({
@@ -977,7 +978,7 @@ describe('githubClient', () => {
 
   it('keeps a binary file without a patch', async () => {
     const fake = githubFake({ commits: [{ sha: 'b1', date: '2026-10-09T08:00:00Z' }] });
-    const result = await githubClient('tok', fake.fetch).commit('bahir/mflow', 'b1');
+    const result = await githubClient('tok', fake.fetch).commit('bahir/futureflow', 'b1');
     expect(result.ok && result.value.files).toEqual([
       { filename: 'README', additions: 1, deletions: 1 },
     ]);
@@ -991,7 +992,10 @@ describe('githubClient', () => {
     [502, 'unavailable'],
   ] as const)('maps HTTP %i to %s', async (status, error) => {
     const fake = githubFake({ status: () => status });
-    expect(await githubClient('tok', fake.fetch).repo('bahir/mflow')).toEqual({ ok: false, error });
+    expect(await githubClient('tok', fake.fetch).repo('bahir/futureflow')).toEqual({
+      ok: false,
+      error,
+    });
   });
 
   it('maps a network failure to unavailable and an odd body to invalid_output', async () => {
@@ -1015,8 +1019,8 @@ Expected: FAIL. `../src/github/client` can't be resolved.
 `apps/api/src/github/client.ts`:
 
 ```ts
-import type { FetchLike } from '@mflow/ai';
-import { err, ok, type Result } from '@mflow/core';
+import type { FetchLike } from '@futureflow/ai';
+import { err, ok, type Result } from '@futureflow/core';
 import { z } from 'zod';
 import type { CommitFile } from '../ports';
 
@@ -1092,7 +1096,7 @@ export function githubClient(token: string, fetch: FetchLike): GithubClient {
           authorization: `Bearer ${token}`,
           accept: 'application/vnd.github+json',
           'x-github-api-version': GITHUB_API_VERSION,
-          'user-agent': 'mflow',
+          'user-agent': 'futureflow',
         },
       });
     } catch {
@@ -1203,7 +1207,7 @@ const TOKEN = 'github_pat_' + 'x'.repeat(40);
 
 async function linked(
   fake = githubFake(),
-  body: object = { token: TOKEN, repos: ['bahir/mflow'] },
+  body: object = { token: TOKEN, repos: ['bahir/futureflow'] },
 ) {
   const app: App = makeApp(undefined, { fetch: fake.fetch });
   const { token } = await pairDevice(app);
@@ -1223,7 +1227,7 @@ describe('GitHub link', () => {
   it('checks the token and repositories, seals the token and starts cursors a day back', async () => {
     const { app, token, reply } = await linked();
 
-    expect(reply.body.data).toEqual({ login: 'bahir', repos: ['bahir/mflow'], status: 'ok' });
+    expect(reply.body.data).toEqual({ login: 'bahir', repos: ['bahir/futureflow'], status: 'ok' });
     const row = await env.DB.prepare('SELECT token_sealed FROM github_link').first<{
       token_sealed: string;
     }>();
@@ -1234,7 +1238,7 @@ describe('GitHub link', () => {
     }>();
     expect(cursor?.since).toBe(new Date(T0 - 86_400_000).toISOString());
     const got = await call(app, 'GET', '/v1/github/link', { token });
-    expect(got.body.data).toEqual({ login: 'bahir', repos: ['bahir/mflow'], status: 'ok' });
+    expect(got.body.data).toEqual({ login: 'bahir', repos: ['bahir/futureflow'], status: 'ok' });
     expect(JSON.stringify(got.body)).not.toContain(TOKEN);
   });
 
@@ -1251,7 +1255,7 @@ describe('GitHub link', () => {
   it('refuses a repository the token cannot read', async () => {
     const { reply } = await linked(githubFake(), {
       token: TOKEN,
-      repos: ['bahir/mflow', 'bahir/secret'],
+      repos: ['bahir/futureflow', 'bahir/secret'],
     });
     expect([reply.status, reply.body.error?.code]).toEqual([422, 'github_repo_unavailable']);
   });
@@ -1267,7 +1271,7 @@ describe('GitHub link', () => {
     const { token } = await pairDevice(app);
     const reply = await call(app, 'PUT', '/v1/github/link', {
       token,
-      body: { token: TOKEN, repos: ['bahir/mflow'] },
+      body: { token: TOKEN, repos: ['bahir/futureflow'] },
       env: { GITHUB_TOKEN_KEY: undefined },
     });
     expect([reply.status, reply.body.error?.code]).toEqual([503, 'github_key_missing']);
@@ -1311,7 +1315,7 @@ fetch: FetchLike;
 settings: Readonly<{ githubTokenKey?: string; judgeAutoDecide: boolean }>;
 ```
 
-(with `import type { Ai, FetchLike } from '@mflow/ai';`).
+(with `import type { Ai, FetchLike } from '@futureflow/ai';`).
 
 In `apps/api/src/app.ts`, add `makeDeps` above `createApp` and use it in the middleware:
 
@@ -1353,7 +1357,7 @@ Remove the now-unused `now`/`newId` locals from `createApp` and add the imports 
 `apps/api/src/routes/github.ts`:
 
 ```ts
-import { GithubLinkRequestSchema } from '@mflow/contracts';
+import { GithubLinkRequestSchema } from '@futureflow/contracts';
 import { Hono } from 'hono';
 import { importSecretKey, seal } from '../crypto/secret-box';
 import type { AppEnv } from '../env';
@@ -1472,7 +1476,7 @@ async function linkWith(fake: ReturnType<typeof githubFake>) {
   const { token } = await pairDevice(app);
   await call(app, 'PUT', '/v1/github/link', {
     token,
-    body: { token: TOKEN, repos: ['bahir/mflow'] },
+    body: { token: TOKEN, repos: ['bahir/futureflow'] },
   });
   fake.urls.length = 0;
   return makeDeps(env, { now: () => T0, fetch: fake.fetch });
@@ -1512,7 +1516,7 @@ describe('collectGithub', () => {
     await collectGithub(deps, 0);
 
     expect(fake.urls).toEqual([
-      'https://api.github.com/repos/bahir/mflow/commits?since=2026-10-09T05%3A00%3A00Z&author=bahir&per_page=100',
+      'https://api.github.com/repos/bahir/futureflow/commits?since=2026-10-09T05%3A00%3A00Z&author=bahir&per_page=100',
     ]);
   });
 
@@ -1591,7 +1595,7 @@ Expected: FAIL. `../src/verification/github` can't be resolved.
 `apps/api/src/verification/github.ts`:
 
 ```ts
-import { dayKeyFor, DEFAULT_RULES } from '@mflow/core';
+import { dayKeyFor, DEFAULT_RULES } from '@futureflow/core';
 import { importSecretKey, open } from '../crypto/secret-box';
 import type { Deps } from '../env';
 import { githubClient } from '../github/client';
@@ -1729,8 +1733,8 @@ export const taskSpec = (
 `apps/api/test/verify.test.ts`:
 
 ```ts
-import type { FetchLike } from '@mflow/ai';
-import type { LedgerEvent, TaskSpec } from '@mflow/core';
+import type { FetchLike } from '@futureflow/ai';
+import type { LedgerEvent, TaskSpec } from '@futureflow/core';
 import { v7 as uuidv7 } from 'uuid';
 import { describe, expect, it } from 'vitest';
 import { geminiJudgeReply, githubFake, type FakeCommit } from './github-fake';
@@ -1777,7 +1781,7 @@ async function setup(
   const keys = { GEMINI_API_KEY: 'g-key', ...(opts.autoDecide ? { JUDGE_AUTO_DECIDE: 'on' } : {}) };
   await call(app, 'PUT', '/v1/github/link', {
     token,
-    body: { token: TOKEN, repos: ['bahir/mflow'] },
+    body: { token: TOKEN, repos: ['bahir/futureflow'] },
   });
   const tasks: TaskSpec[] = [
     taskSpec('Fix the login bug'),
@@ -1903,9 +1907,9 @@ Expected: FAIL. `/v1/verify` isn't a route.
 `apps/api/src/verification/judge.ts`:
 
 ```ts
-import type { Ai, Answer, Questions } from '@mflow/ai';
-import type { ReadingLog } from '@mflow/contracts';
-import type { Decision, TaskVersion } from '@mflow/core';
+import type { Ai, Answer, Questions } from '@futureflow/ai';
+import type { ReadingLog } from '@futureflow/contracts';
+import type { Decision, TaskVersion } from '@futureflow/core';
 import type { CommitEvidence } from '../ports';
 
 export const githubQuestions: Questions = {
@@ -2029,7 +2033,7 @@ import {
   type Plan,
   type RequiredTask,
   type Verdict,
-} from '@mflow/core';
+} from '@futureflow/core';
 import type { Deps } from '../env';
 import { appendEvents } from '../ledger/append';
 import type { StoredVerdict } from '../ports';
@@ -2202,8 +2206,8 @@ git commit -m "feat(api): judge GitHub and reading tasks, store verdicts and pay
 `apps/api/test/verdicts.test.ts`:
 
 ```ts
-import type { FetchLike } from '@mflow/ai';
-import type { LedgerEvent, TaskSpec } from '@mflow/core';
+import type { FetchLike } from '@futureflow/ai';
+import type { LedgerEvent, TaskSpec } from '@futureflow/core';
 import { describe, expect, it } from 'vitest';
 import { geminiJudgeReply, githubFake } from './github-fake';
 import { call, makeApp, pairDevice, taskSpec, type App } from './helpers';
@@ -2218,7 +2222,7 @@ async function setup(lock = true) {
   const { token } = await pairDevice(app);
   await call(app, 'PUT', '/v1/github/link', {
     token,
-    body: { token: TOKEN, repos: ['bahir/mflow'] },
+    body: { token: TOKEN, repos: ['bahir/futureflow'] },
   });
   const tasks: TaskSpec[] = [
     taskSpec('Fix the bug'),
@@ -2302,7 +2306,7 @@ Add to `ERRORS` in `envelope.ts`: `verdict_not_pending: [409, 'Only a pending ve
 Add to `apps/api/src/routes/verify.ts`:
 
 ```ts
-import { VerdictRequestSchema } from '@mflow/contracts';
+import { VerdictRequestSchema } from '@futureflow/contracts';
 import { z } from 'zod';
 import { deviceToday } from '../http/day';
 import { fail } from '../http/envelope';
@@ -2380,7 +2384,7 @@ git commit -m "feat(api): owner and phone verdicts, all-done bonus, verdicts in 
 `apps/api/test/scheduled.test.ts`:
 
 ```ts
-import type { FetchLike } from '@mflow/ai';
+import type { FetchLike } from '@futureflow/ai';
 import { env } from 'cloudflare:test';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { runScheduled } from '../src/scheduled';
@@ -2402,7 +2406,7 @@ describe('hourly cron', () => {
     const { token } = await pairDevice(app);
     await call(app, 'PUT', '/v1/github/link', {
       token,
-      body: { token: 'github_pat_' + 'x'.repeat(40), repos: ['bahir/mflow'] },
+      body: { token: 'github_pat_' + 'x'.repeat(40), repos: ['bahir/futureflow'] },
     });
     const tasks = [taskSpec('Private task title'), taskSpec(), taskSpec()];
     await call(app, 'PUT', '/v1/plans/2026-10-09', { token, body: { tasks } });
@@ -2503,7 +2507,7 @@ git commit -m "feat(api): hourly cron runs verification"
 
 ## Context
 
-mflow pays phone time for verified work. GitHub and reading tasks need judgment; math and phone
+Future Flow pays phone time for verified work. GitHub and reading tasks need judgment; math and phone
 usage are computed by the phone. The owner benefits from every "pass", so the judge must not be
 easy to fool, and nothing may be silently passed or failed (spec §6.3, §13.1).
 

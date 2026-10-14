@@ -1,4 +1,4 @@
-import { HeartbeatSchema, MathAttemptBatchSchema, ReadingLogSchema } from '@mflow/contracts';
+import { HeartbeatSchema, MathAttemptBatchSchema, ReadingLogSchema } from '@futureflow/contracts';
 import { Hono } from 'hono';
 import type { AppEnv } from '../env';
 import { deviceToday, isWithinDays, MAX_FUTURE_SKEW_MS } from '../http/day';

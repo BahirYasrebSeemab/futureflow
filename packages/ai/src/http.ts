@@ -1,4 +1,4 @@
-import { err, ok, type Result } from '@mflow/core';
+import { err, ok, type Result } from '@futureflow/core';
 import type { FetchLike, ProviderError } from './types';
 
 /** POST a JSON body and parse a JSON reply. Never throws: failures become `ProviderError`s. */

@@ -1,4 +1,4 @@
-import type { Result } from '@mflow/core';
+import type { Result } from '@futureflow/core';
 
 /** The slice of `fetch` the adapters use, injected so tests and runtimes supply their own. */
 export type FetchLike = (

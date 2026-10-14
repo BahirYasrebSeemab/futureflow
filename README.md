@@ -1,6 +1,6 @@
-# mflow
+# Future Flow
 
-Earn your scroll time. mflow is an Android app where an AI "future you" turns who you want to
+Earn your scroll time. Future Flow is an Android app where an AI "future you" turns who you want to
 become into skills and daily plans, verifies the work with real evidence (GitHub diffs, math
 answers checked by a CAS, reading logs), and pays out social-media time from an event-sourced
 ledger that a native guard enforces.
@@ -38,10 +38,10 @@ First deploy (owner only):
 
 ```bash
 bun x wrangler login
-bun x wrangler d1 create mflow       # put the printed id into apps/api/wrangler.jsonc
+bun x wrangler d1 create futureflow       # put the printed id into apps/api/wrangler.jsonc
 bun x wrangler secret put SETUP_CODE --cwd apps/api
 openssl rand -base64 32 | bun x wrangler secret put GITHUB_TOKEN_KEY --cwd apps/api
-bun x wrangler d1 migrations apply mflow --remote --cwd apps/api
+bun x wrangler d1 migrations apply futureflow --remote --cwd apps/api
 bun x wrangler deploy --cwd apps/api
 ```
 

@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "mflow",
+      "name": "futureflow",
       "devDependencies": {
         "@eslint/js": "^10.0.1",
         "eslint": "^10.12.0",
@@ -13,14 +13,14 @@
       },
     },
     "apps/api": {
-      "name": "@mflow/api",
+      "name": "@futureflow/api",
       "version": "0.0.0",
       "dependencies": {
+        "@futureflow/ai": "workspace:*",
+        "@futureflow/contracts": "workspace:*",
+        "@futureflow/core": "workspace:*",
+        "@futureflow/math-engine": "workspace:*",
         "@hono/zod-validator": "^0.9.1",
-        "@mflow/ai": "workspace:*",
-        "@mflow/contracts": "workspace:*",
-        "@mflow/core": "workspace:*",
-        "@mflow/math-engine": "workspace:*",
         "hono": "^4.13.13",
         "uuid": "^14.0.2",
         "zod": "^4.6.5",
@@ -34,10 +34,10 @@
       },
     },
     "packages/ai": {
-      "name": "@mflow/ai",
+      "name": "@futureflow/ai",
       "version": "0.0.0",
       "dependencies": {
-        "@mflow/core": "workspace:*",
+        "@futureflow/core": "workspace:*",
         "zod": "^4.6.5",
       },
       "devDependencies": {
@@ -47,10 +47,10 @@
       },
     },
     "packages/contracts": {
-      "name": "@mflow/contracts",
+      "name": "@futureflow/contracts",
       "version": "0.0.0",
       "dependencies": {
-        "@mflow/core": "workspace:*",
+        "@futureflow/core": "workspace:*",
         "zod": "^4.6.5",
       },
       "devDependencies": {
@@ -60,7 +60,7 @@
       },
     },
     "packages/core": {
-      "name": "@mflow/core",
+      "name": "@futureflow/core",
       "version": "0.0.0",
       "devDependencies": {
         "@vitest/coverage-v8": "^5.0.3",
@@ -69,11 +69,11 @@
       },
     },
     "packages/math-engine": {
-      "name": "@mflow/math-engine",
+      "name": "@futureflow/math-engine",
       "version": "0.0.0",
       "dependencies": {
         "@cortex-js/compute-engine": "^0.150.0",
-        "@mflow/core": "workspace:*",
+        "@futureflow/core": "workspace:*",
       },
       "devDependencies": {
         "@vitest/coverage-v8": "^5.0.3",
@@ -210,6 +210,16 @@
 
     "@eslint/plugin-kit": ["@eslint/plugin-kit@0.7.3", "", { "dependencies": { "@eslint/core": "^1.2.1", "levn": "^0.4.1" } }, "sha512-IkO+/KEUvwbVpiURZg+P7zF74z5Jxe0UgJxVni+RtoHQ6IZieXaO02kmadomap/q+l6bc/jdPGGqTjhuZnuz1Q=="],
 
+    "@futureflow/ai": ["@futureflow/ai@workspace:packages/ai"],
+
+    "@futureflow/api": ["@futureflow/api@workspace:apps/api"],
+
+    "@futureflow/contracts": ["@futureflow/contracts@workspace:packages/contracts"],
+
+    "@futureflow/core": ["@futureflow/core@workspace:packages/core"],
+
+    "@futureflow/math-engine": ["@futureflow/math-engine@workspace:packages/math-engine"],
+
     "@hono/zod-validator": ["@hono/zod-validator@0.9.1", "", { "peerDependencies": { "hono": ">=4.11.2", "zod": "^3.25.0 || ^4.0.0" } }, "sha512-iiv6w0qrIc0arfvCtUqBWsvl4fXjzaTcQcCJTTtCnkawF9HHGE+KjEl0ox3gQJ6rKZEgE3mLExlQCF72M+mNuw=="],
 
     "@humanfs/core": ["@humanfs/core@0.19.2", "", { "dependencies": { "@humanfs/types": "^0.15.0" } }, "sha512-UhXNm+CFMWcbChXywFwkmhqjs3PRCmcSa/hfBgLIb7oQ5HNb1wS0icWsGtSAUNgefHeI+eBrA8I1fxmbHsGdvA=="],
@@ -289,16 +299,6 @@
     "@keyv/bigmap": ["@keyv/bigmap@1.3.1", "", { "dependencies": { "hashery": "^1.4.0", "hookified": "^1.15.0" }, "peerDependencies": { "keyv": "^5.6.0" } }, "sha512-WbzE9sdmQtKy8vrNPa9BRnwZh5UF4s1KTmSK0KUVLo3eff5BlQNNWDnFOouNpKfPKDnms9xynJjsMYjMaT/aFQ=="],
 
     "@keyv/serialize": ["@keyv/serialize@1.1.1", "", {}, "sha512-dXn3FZhPv0US+7dtJsIi2R+c7qWYiReoEh5zUntWCf4oSpMNib8FDhSoed6m3QyZdx5hK7iLFkYk3rNxwt8vTA=="],
-
-    "@mflow/ai": ["@mflow/ai@workspace:packages/ai"],
-
-    "@mflow/api": ["@mflow/api@workspace:apps/api"],
-
-    "@mflow/contracts": ["@mflow/contracts@workspace:packages/contracts"],
-
-    "@mflow/core": ["@mflow/core@workspace:packages/core"],
-
-    "@mflow/math-engine": ["@mflow/math-engine@workspace:packages/math-engine"],
 
     "@oxc-project/types": ["@oxc-project/types@0.153.0", "", {}, "sha512-jSNrRIyvPVLL5E1z/tS5zLAprosGz/FuI1PWwEOz59j3E4TTTzSpqKb/RDGqJhhW0QHYISGXxq582wGx6T11Tw=="],
 

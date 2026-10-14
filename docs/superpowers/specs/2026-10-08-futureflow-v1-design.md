@@ -1,4 +1,4 @@
-# mflow v1 — Design Spec
+# Future Flow v1 — Design Spec
 
 - **Date:** 2026-10-08
 - **Status:** Draft, awaiting owner review
@@ -8,7 +8,7 @@
 
 ## 1. Summary
 
-mflow is an Android app that makes you **earn your social-media time with verified progress** toward the person you want to become. An AI "future self" turns your target identity into skills and a roadmap. Each night it proposes the next day's plan. During the day it verifies the work with real evidence (GitHub diffs, math answers checked by a computer algebra system, reading logs) and pays out phone time from a ledger. A native Android guard enforces that ledger on Instagram, TikTok, games and similar apps.
+Future Flow is an Android app that makes you **earn your social-media time with verified progress** toward the person you want to become. An AI "future self" turns your target identity into skills and a roadmap. Each night it proposes the next day's plan. During the day it verifies the work with real evidence (GitHub diffs, math answers checked by a computer algebra system, reading logs) and pays out phone time from a ledger. A native Android guard enforces that ledger on Instagram, TikTok, games and similar apps.
 
 The design follows the ideas in _Atomic Habits_: identity-based habits, implementation intentions, habit stacking, the Goldilocks rule, the 2-minute rule, "never miss twice", and habit tracking.
 
@@ -24,7 +24,7 @@ v1 has one user: the owner. It runs on the owner's phone (Redmi A5, about 3 GB R
 
 ### 1.3 Success criteria for v1
 
-- The owner uses mflow daily for 30 consecutive days without uninstalling it or disabling the guard for more than one day in total.
+- The owner uses Future Flow daily for 30 consecutive days without uninstalling it or disabling the guard for more than one day in total.
 - Every task that pays out time is backed by stored evidence plus a verdict.
 - Math progress is measurable: a placement result at day 0 and rating/mastery growth on the knowledge graph by day 30.
 - Running cost is **$0/month**, or at most about $2 in the worst case where free tiers disappear.
@@ -45,21 +45,21 @@ Findings (sources in §17):
 - **Grade 11–12:** up to **10 of 14** credits can be granted through either equivalency or **challenge**. **At least 4 Grade 11–12 credits must be earned by taking courses.** Grade 12 English must be completed.
 - **Equivalency credits carry no percentage grade and do not count as prerequisites** for college or university.
 - **A challenge works like a final exam:** formal tests are worth 70% and other assessment 30%. **The percentage goes on the transcript, and so does a fail** once the final test stage has started.
-- Free adult high-school programs require eligible residency status (citizen, PR, refugee). This depends on the owner's immigration status, which mflow does not handle.
+- Free adult high-school programs require eligible residency status (citizen, PR, refugee). This depends on the owner's immigration status, which Future Flow does not handle.
 - PLAR eligibility at CALC includes having a **Grade 10 English credit or equivalent**.
 
-**What this means for mflow:**
+**What this means for Future Flow:**
 
 1. Gate A, _"TDSB math placement ready"_: strong Grade 9–10 mastery (MTH1W, MPM2D) so the placement assessment and the equivalency go well.
-2. Gate B, _"Challenge-ready"_ for each Grade 11–12 course (MCR3U, then MHF4U, then MCV4U). Because fails are recorded, mflow only marks a course challenge-ready after **repeated mock exams at ≥ 80%**.
-3. University CS and engineering programs generally require graded **MHF4U and MCV4U**. Equivalency (ungraded) does not satisfy that, so the strategy is to **challenge or take** those courses with a high mark. The owner should confirm the details with a TDSB guidance counsellor. mflow's job is making the owner ready.
+2. Gate B, _"Challenge-ready"_ for each Grade 11–12 course (MCR3U, then MHF4U, then MCV4U). Because fails are recorded, Future Flow only marks a course challenge-ready after **repeated mock exams at ≥ 80%**.
+3. University CS and engineering programs generally require graded **MHF4U and MCV4U**. Equivalency (ungraded) does not satisfy that, so the strategy is to **challenge or take** those courses with a high mark. The owner should confirm the details with a TDSB guidance counsellor. Future Flow's job is making the owner ready.
 4. **English is also a gate** (placement assessment, PLAR eligibility, Grade 12 English). It is out of scope for v1 but is the **first v1.1 track** (§3.2).
 
 ### 2.2 Fastest reliable way to rebuild math from arithmetic
 
-These are evidence-based techniques, and mflow implements each one directly:
+These are evidence-based techniques, and Future Flow implements each one directly:
 
-| Technique                                    | What it means                                                           | mflow mechanism                                                                                    |
+| Technique                                    | What it means                                                           | Future Flow mechanism                                                                              |
 | -------------------------------------------- | ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
 | **Mastery learning on a prerequisite graph** | Don't move on until the prerequisites are solid                         | Knowledge graph from arithmetic to MCV4U; a topic unlocks only when its prerequisites are mastered |
 | **Worked examples, then faded examples**     | Beginners learn faster by studying solved examples before solving alone | Every topic: a worked example, then a partially solved one, then full practice                     |
@@ -69,11 +69,11 @@ These are evidence-based techniques, and mflow implements each one directly:
 | **Desirable difficulty (~85% rule)**         | Learning is fastest at a high but imperfect success rate                | Elo-based selection targets 70–85% success                                                         |
 | **Immediate feedback**                       | Know right away whether you were correct                                | CAS checks instantly; hint after a miss, full solution after the second miss                       |
 
-mflow does not promise a date. It **forecasts** an ETA for each gate from the owner's measured mastery rate.
+Future Flow does not promise a date. It **forecasts** an ETA for each gate from the owner's measured mastery rate.
 
 ### 2.3 AI and cost
 
-- **Gemini API free tier** (Flash / Flash-Lite) for anything that needs generated text: the coach, planning, word problems. Free-tier content may be used by Google to improve its products, so mflow sends only what each feature needs.
+- **Gemini API free tier** (Flash / Flash-Lite) for anything that needs generated text: the coach, planning, word problems. Free-tier content may be used by Google to improve its products, so Future Flow sends only what each feature needs.
 - **Jev** (TypeSafe AI, released September 2026) for typed decisions (Choice / Score / Noul). It costs $0.042 per million input tokens, has no free tier, and is unreliable at arithmetic and dates. Used only for judging; **never for math**.
 - **On-device LLMs are excluded.** The Redmi A5's 3 GB RAM is below the ~8 GB that Gemma-class models need, and the phone doesn't support Gemini Nano.
 - **Cloudflare Workers free plan:** 100k requests/day, 10 ms CPU per invocation (time waiting on network calls doesn't count), 5 cron triggers. **D1 free plan:** 5 GB storage, 5M row reads and 100k row writes per day.
@@ -130,7 +130,7 @@ mflow does not promise a date. It **forecasts** an ETA for each gate from the ow
 ### 4.2 Monorepo layout (Bun workspaces, TypeScript everywhere)
 
 ```
-mflow/
+futureflow/
 ├─ apps/
 │  ├─ mobile/                 Expo app (EAS)
 │  │  └─ modules/usage-guard/ Kotlin Expo module
@@ -272,7 +272,7 @@ GitHub, Math, Reading and Usage implement this interface. Future packs (LeetCode
 | Browser loophole     | Read Chrome's URL bar node through accessibility and match a domain blocklist. Known to be fragile; covered by an ADR and a manual test                                     |
 | Staying alive        | `ForegroundService` with a notification showing "N min left"; a WorkManager watchdog; the onboarding Xiaomi checklist (Autostart, No battery restrictions, lock in recents) |
 | Works without JS     | Balance and blocklist live in `SharedPreferences`, so the service and shield work even if the React Native runtime is dead                                                  |
-| Never blocked        | Dialer, SMS, emergency apps, mflow itself                                                                                                                                   |
+| Never blocked        | Dialer, SMS, emergency apps, Future Flow itself                                                                                                                             |
 
 **Module API (TS):** `setBlockedApps(pkgs)`, `setBlockedDomains(domains)`, `setBalance(minutes, asOf)`, `getUsage(from, to)`, `drainSpendEvents()`, `isGuardHealthy()`, `openXiaomiSettings(kind)`, event `onShieldAction`.
 
@@ -459,15 +459,15 @@ Location never leaves the phone. Free-tier AI calls are minimized. Personal data
 
 ## 15. Delivery phases (each gets its own implementation plan, written when the phase starts)
 
-| Phase                    | Deliverable                                                                                                                                                                                                                                                             | Why this order                                                                   |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| **P1 Foundation**        | Monorepo, tooling, CI, `contracts` skeleton, **`core`** (ledger, rules, day types, plan lifecycle) with TDD, first ADRs                                                                                                                                                 | Everything depends on the domain rules; pure TS, fastest feedback                |
-| **P2 Math engine L0–L2** | Graph, generators, checker, Elo, scheduler, diagnostic, mock exams. Split into **P2a** (engine, checker, scheduling, placement, mock exams + 5 proof generators), **P2b** (remaining L0 generators), **P2c** (L1), **P2d** (L2 + `interval` answers + irrational roots) | Math is the most urgent personal goal; pure TS                                   |
-| **P3 API**               | Hono Worker, D1 migrations, auth, ledger sync, plans, AI router, GitHub and Reading verifiers, cron                                                                                                                                                                     | Makes the domain real on a server                                                |
-| **P4 Mobile app**        | Expo app shell, sync/outbox, plan UI, math UI, reading log, coach chat, onboarding                                                                                                                                                                                      | The owner can start using mflow here (with soft blocking via notifications only) |
-| **P5 Guard**             | Kotlin module, shield, usage accounting, Chrome domains, Xiaomi survival, heartbeat, away location check                                                                                                                                                                | The hardest native part, built once the loop works                               |
-| **P6 Ship**              | Maestro E2E, judge eval, README + demo GIF, EAS release `v1.0.0`                                                                                                                                                                                                        | Portfolio-ready                                                                  |
-| **P7 Math L3–L5**        | MCR3U, MHF4U, MCV4U generators and mock exams                                                                                                                                                                                                                           | Built as the owner approaches each level                                         |
+| Phase                    | Deliverable                                                                                                                                                                                                                                                             | Why this order                                                                         |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| **P1 Foundation**        | Monorepo, tooling, CI, `contracts` skeleton, **`core`** (ledger, rules, day types, plan lifecycle) with TDD, first ADRs                                                                                                                                                 | Everything depends on the domain rules; pure TS, fastest feedback                      |
+| **P2 Math engine L0–L2** | Graph, generators, checker, Elo, scheduler, diagnostic, mock exams. Split into **P2a** (engine, checker, scheduling, placement, mock exams + 5 proof generators), **P2b** (remaining L0 generators), **P2c** (L1), **P2d** (L2 + `interval` answers + irrational roots) | Math is the most urgent personal goal; pure TS                                         |
+| **P3 API**               | Hono Worker, D1 migrations, auth, ledger sync, plans, AI router, GitHub and Reading verifiers, cron                                                                                                                                                                     | Makes the domain real on a server                                                      |
+| **P4 Mobile app**        | Expo app shell, sync/outbox, plan UI, math UI, reading log, coach chat, onboarding                                                                                                                                                                                      | The owner can start using Future Flow here (with soft blocking via notifications only) |
+| **P5 Guard**             | Kotlin module, shield, usage accounting, Chrome domains, Xiaomi survival, heartbeat, away location check                                                                                                                                                                | The hardest native part, built once the loop works                                     |
+| **P6 Ship**              | Maestro E2E, judge eval, README + demo GIF, EAS release `v1.0.0`                                                                                                                                                                                                        | Portfolio-ready                                                                        |
+| **P7 Math L3–L5**        | MCR3U, MHF4U, MCV4U generators and mock exams                                                                                                                                                                                                                           | Built as the owner approaches each level                                               |
 
 ---
 

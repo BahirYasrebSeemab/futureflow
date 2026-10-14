@@ -1,4 +1,4 @@
-import type { FetchLike } from '@mflow/ai';
+import type { FetchLike } from '@futureflow/ai';
 
 export type FakeCommit = Readonly<{
   sha: string;
@@ -24,7 +24,7 @@ export function githubFake(
   }> = {},
 ) {
   const login = opts.login ?? 'bahir';
-  const repos = opts.repos ?? ['bahir/mflow'];
+  const repos = opts.repos ?? ['bahir/futureflow'];
   const urls: string[] = [];
   const headers: Record<string, string>[] = [];
   const fetch: FetchLike = async (url, init) => {

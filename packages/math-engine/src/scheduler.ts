@@ -1,4 +1,4 @@
-import type { DayKey } from '@mflow/core';
+import type { DayKey } from '@futureflow/core';
 import { expectedScore } from './elo';
 import { frontier, isUnlocked, type KnowledgeGraph } from './graph';
 import { isReviewDue, type TopicProgress } from './mastery';

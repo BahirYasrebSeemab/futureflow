@@ -1,4 +1,4 @@
-import { VERIFIER_KINDS } from '@mflow/core';
+import { VERIFIER_KINDS } from '@futureflow/core';
 import { z } from 'zod';
 import { DayKeySchema, PlanSchema } from './schemas';
 

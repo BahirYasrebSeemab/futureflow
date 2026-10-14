@@ -1,5 +1,5 @@
-import type { FetchLike } from '@mflow/ai';
-import { DEFAULT_REGISTRY } from '@mflow/math-engine/generators';
+import type { FetchLike } from '@futureflow/ai';
+import { DEFAULT_REGISTRY } from '@futureflow/math-engine/generators';
 import { env } from 'cloudflare:test';
 import { v7 as uuidv7 } from 'uuid';
 import { afterEach, describe, expect, it, vi } from 'vitest';

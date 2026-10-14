@@ -1,4 +1,4 @@
-import { DEFAULT_RULES, earn, type LedgerEvent } from '@mflow/core';
+import { DEFAULT_RULES, earn, type LedgerEvent } from '@futureflow/core';
 import type { Deps } from '../env';
 import { appendEvents } from './append';
 

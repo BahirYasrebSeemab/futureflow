@@ -1,4 +1,4 @@
-import { err, ok, type Result } from '@mflow/core';
+import { err, ok, type Result } from '@futureflow/core';
 import { z } from 'zod';
 import type {
   Answers,

@@ -5,7 +5,7 @@
 
 ## Context
 
-mflow pays phone time for verified work. GitHub and reading tasks need judgment; math and phone
+Future Flow pays phone time for verified work. GitHub and reading tasks need judgment; math and phone
 usage are computed by the phone. The owner benefits from every "pass", so the judge must not be
 easy to fool, and nothing may be silently passed or failed (spec §6.3, §13.1).
 

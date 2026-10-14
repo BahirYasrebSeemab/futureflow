@@ -1,4 +1,4 @@
-# mflow P3b: AI router, roadmap onboarding and plan proposals Implementation Plan
+# Future Flow P3b: AI router, roadmap onboarding and plan proposals Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -12,7 +12,7 @@
 
 **Tech Stack:** TypeScript 6, zod 4 (`z.toJSONSchema` for provider schemas), Vitest 5, the Gemini `generateContent` REST API, the TypeSafe Jev REST API (`POST /v1/systemone`), Hono and D1 (from P3a).
 
-**Spec:** `docs/superpowers/specs/2026-10-08-mflow-v1-design.md` (§2.3, §6.2, §8, §9.1–9.2, §11, §12, §13.1 apply).
+**Spec:** `docs/superpowers/specs/2026-10-08-futureflow-v1-design.md` (§2.3, §6.2, §8, §9.1–9.2, §11, §12, §13.1 apply).
 
 **Scope (P3 re-split, ruled here):** proposals need the roadmap, so the identities/skills/milestones part of onboarding moves from P3c into P3b. P3c keeps the GitHub link and verifier, reading judging, coach chat and memory, `GET /math/bank` and cron.
 
@@ -37,7 +37,7 @@
 ## Global Constraints
 
 - Bun for installs and scripts (`bun x`, never `bunx`/`npx`/pnpm). TypeScript `^6`, Vitest `^5.0.3`, ESM, strict.
-- `packages/ai` imports `@mflow/core` (for `Result`) and `zod` only. No Workers or Node APIs. `fetch` is injected as `FetchLike`.
+- `packages/ai` imports `@futureflow/core` (for `Result`) and `zod` only. No Workers or Node APIs. `fetch` is injected as `FetchLike`.
 - Never throw out of a provider or the router. Every failure is a `Result` error: `'unavailable' | 'rate_limited' | 'unauthorized' | 'invalid_output'` from providers, and `'ai_unavailable'` from the router.
 - Structured output: zod schema → JSON Schema (`z.toJSONSchema`, `$schema` removed) → provider. The output is validated with the same zod schema. On failure, **one** repair retry on the same provider, then the next provider (spec §8).
 - Budget guard: daily request counters per provider (in D1 for the API). A provider at its limit is skipped. `flourish` calls stop at 80% of the limit; `essential` calls (proposals, verification) can use 100%.
@@ -103,7 +103,7 @@ docs/adr/0007-ai-router.md
 
 ```json
 {
-  "name": "@mflow/ai",
+  "name": "@futureflow/ai",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -116,7 +116,7 @@ docs/adr/0007-ai-router.md
     "coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@mflow/core": "workspace:*",
+    "@futureflow/core": "workspace:*",
     "zod": "^4.6.5"
   },
   "devDependencies": {
@@ -157,7 +157,7 @@ export default defineConfig({
 `packages/ai/src/types.ts`:
 
 ```ts
-import type { Result } from '@mflow/core';
+import type { Result } from '@futureflow/core';
 
 /** The slice of `fetch` the adapters use, injected so tests and runtimes supply their own. */
 export type FetchLike = (
@@ -262,7 +262,7 @@ export function fakeFetch(responses: readonly FakeResponse[]): { fetch: FetchLik
 - [ ] **Step 2: Install**
 
 Run: `bun install`
-Expected: installs; `@mflow/ai` joins the workspace.
+Expected: installs; `@futureflow/ai` joins the workspace.
 
 - [ ] **Step 3: Write the failing test**
 
@@ -375,7 +375,7 @@ Expected: FAIL. `../src/answers` and `../src/http` can't be resolved.
 `packages/ai/src/http.ts`:
 
 ```ts
-import { err, ok, type Result } from '@mflow/core';
+import { err, ok, type Result } from '@futureflow/core';
 import type { FetchLike, ProviderError } from './types';
 
 /** POST a JSON body and parse a JSON reply. Never throws: failures become `ProviderError`s. */
@@ -409,7 +409,7 @@ export async function postJson(
 `packages/ai/src/answers.ts`:
 
 ```ts
-import { err, ok, type Result } from '@mflow/core';
+import { err, ok, type Result } from '@futureflow/core';
 import { z } from 'zod';
 import type { Answer, Answers, Question, Questions } from './types';
 
@@ -568,7 +568,7 @@ Expected: FAIL. `../src/jev` can't be resolved.
 `packages/ai/src/jev.ts`:
 
 ```ts
-import { err, type Result } from '@mflow/core';
+import { err, type Result } from '@futureflow/core';
 import { z } from 'zod';
 import { parseAnswers } from './answers';
 import { postJson } from './http';
@@ -795,7 +795,7 @@ Expected: FAIL. `../src/gemini` can't be resolved.
 `packages/ai/src/gemini.ts`:
 
 ```ts
-import { err, ok, type Result } from '@mflow/core';
+import { err, ok, type Result } from '@futureflow/core';
 import { z } from 'zod';
 import { parseAnswers } from './answers';
 import { postJson } from './http';
@@ -1011,7 +1011,7 @@ git commit -m "feat(ai): Gemini talk adapter and a Jev-shaped Gemini judge"
 `packages/ai/test/router.test.ts`:
 
 ````ts
-import { err, ok, type Result } from '@mflow/core';
+import { err, ok, type Result } from '@futureflow/core';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { createAi, jsonSchemaOf, memoryUsage, type Limited } from '../src/router';
@@ -1207,7 +1207,7 @@ Expected: FAIL. `../src/router` can't be resolved.
 `packages/ai/src/router.ts`:
 
 ````ts
-import { err, ok, type Result } from '@mflow/core';
+import { err, ok, type Result } from '@futureflow/core';
 import { z } from 'zod';
 import type {
   Answers,
@@ -1445,7 +1445,7 @@ Expected: FAIL. `RoadmapSchema` isn't exported.
 `packages/contracts/src/onboarding.ts`:
 
 ```ts
-import { VERIFIER_KINDS } from '@mflow/core';
+import { VERIFIER_KINDS } from '@futureflow/core';
 import { z } from 'zod';
 import { DayKeySchema, PlanSchema } from './schemas';
 
@@ -1679,7 +1679,7 @@ Expected: FAIL. `/v1/onboarding/roadmap` isn't a route yet (404 envelopes).
 Append to `apps/api/src/ports.ts` (merge the import into the contracts type import), and add `roadmap: RoadmapRepo;` to `Repos`:
 
 ```ts
-import type { Roadmap } from '@mflow/contracts';
+import type { Roadmap } from '@futureflow/contracts';
 
 export interface RoadmapRepo {
   /** The stored roadmap, or empty lists before onboarding. */
@@ -1692,7 +1692,7 @@ export interface RoadmapRepo {
 `apps/api/src/adapters/d1/roadmap.ts`:
 
 ```ts
-import type { Roadmap } from '@mflow/contracts';
+import type { Roadmap } from '@futureflow/contracts';
 import type { RoadmapRepo } from '../../ports';
 
 type IdentityRow = { id: string; title: string; why: string; deadline: string | null };
@@ -1785,7 +1785,7 @@ Add `roadmap: d1Roadmap(db)` to `d1Repos` (with its import).
 `apps/api/src/routes/onboarding.ts`:
 
 ```ts
-import { RoadmapSchema } from '@mflow/contracts';
+import { RoadmapSchema } from '@futureflow/contracts';
 import { Hono } from 'hono';
 import type { AppEnv } from '../env';
 import { ok } from '../http/envelope';
@@ -1823,7 +1823,7 @@ git commit -m "feat(api): store the owner's roadmap of identities, skills and mi
 **Files:**
 
 - Create: `apps/api/src/ai.ts`, `apps/api/src/adapters/d1/ai-usage.ts`, `apps/api/test/ai-wiring.test.ts`
-- Modify: `apps/api/package.json` (depend on `@mflow/ai`), `apps/api/src/env.ts`, `apps/api/src/ports.ts`, `apps/api/src/adapters/d1/index.ts`, `apps/api/src/app.ts`, `apps/api/.dev.vars.example`, `apps/api/test/helpers.ts`
+- Modify: `apps/api/package.json` (depend on `@futureflow/ai`), `apps/api/src/env.ts`, `apps/api/src/ports.ts`, `apps/api/src/adapters/d1/index.ts`, `apps/api/src/app.ts`, `apps/api/.dev.vars.example`, `apps/api/test/helpers.ts`
 
 **Interfaces:**
 
@@ -1861,7 +1861,7 @@ import { env } from 'cloudflare:test';
 import { describe, expect, it } from 'vitest';
 import { aiFromEnv, GEMINI_MODELS } from '../src/ai';
 import { d1AiUsage } from '../src/adapters/d1/ai-usage';
-import type { FetchLike } from '@mflow/ai';
+import type { FetchLike } from '@futureflow/ai';
 import { geminiReply, T0 } from './helpers';
 
 const recording = (reply: (url: string) => ReturnType<typeof geminiReply>) => {
@@ -1948,14 +1948,14 @@ describe('aiFromEnv', () => {
 - [ ] **Step 2: Run it to verify it fails**
 
 Run: `bun install && bun run --cwd apps/api test -- test/ai-wiring.test.ts`
-Expected: FAIL. `../src/ai` can't be resolved. (First add `"@mflow/ai": "workspace:*"` to the `dependencies` in `apps/api/package.json`, then run `bun install`.)
+Expected: FAIL. `../src/ai` can't be resolved. (First add `"@futureflow/ai": "workspace:*"` to the `dependencies` in `apps/api/package.json`, then run `bun install`.)
 
 - [ ] **Step 3: Implement**
 
 `apps/api/src/adapters/d1/ai-usage.ts`:
 
 ```ts
-import type { UsageCounter } from '@mflow/ai';
+import type { UsageCounter } from '@futureflow/ai';
 
 export const d1AiUsage = (db: D1Database): UsageCounter => ({
   async used(provider, day) {
@@ -1977,10 +1977,10 @@ export const d1AiUsage = (db: D1Database): UsageCounter => ({
 });
 ```
 
-Add to `apps/api/src/ports.ts` (type import from `@mflow/ai`), and add `aiUsage: UsageCounter;` to `Repos`:
+Add to `apps/api/src/ports.ts` (type import from `@futureflow/ai`), and add `aiUsage: UsageCounter;` to `Repos`:
 
 ```ts
-import type { UsageCounter } from '@mflow/ai';
+import type { UsageCounter } from '@futureflow/ai';
 ```
 
 Add `aiUsage: d1AiUsage(db)` to `d1Repos`.
@@ -1996,7 +1996,7 @@ import {
   type Ai,
   type FetchLike,
   type UsageCounter,
-} from '@mflow/ai';
+} from '@futureflow/ai';
 import type { Bindings } from './env';
 
 /** Talk order: the cheapest free model first. Free-tier quotas are per project (see AI Studio). */
@@ -2041,11 +2041,11 @@ export function aiFromEnv(
 }
 ```
 
-In `apps/api/src/env.ts`: change `Bindings` to `Env & { SETUP_CODE?: string; GEMINI_API_KEY?: string; JEV_API_KEY?: string }`, add `import type { Ai } from '@mflow/ai';`, and add `ai: Ai;` to `Deps`.
+In `apps/api/src/env.ts`: change `Bindings` to `Env & { SETUP_CODE?: string; GEMINI_API_KEY?: string; JEV_API_KEY?: string }`, add `import type { Ai } from '@futureflow/ai';`, and add `ai: Ai;` to `Deps`.
 
 In `apps/api/src/app.ts`:
 
-- Import `aiFromEnv`, `timeoutFetch` from `./ai` and `type FetchLike` from `@mflow/ai`.
+- Import `aiFromEnv`, `timeoutFetch` from `./ai` and `type FetchLike` from `@futureflow/ai`.
 - Add `fetch?: FetchLike;` to `AppOptions`.
 - Replace the deps middleware body with:
 
@@ -2146,8 +2146,8 @@ it('sends the guide schema to the provider but parses with the main schema', asy
 Then `apps/api/test/propose.test.ts`:
 
 ```ts
-import type { FetchLike } from '@mflow/ai';
-import type { Plan } from '@mflow/core';
+import type { FetchLike } from '@futureflow/ai';
+import type { Plan } from '@futureflow/core';
 import { env } from 'cloudflare:test';
 import { describe, expect, it } from 'vitest';
 import {
@@ -2314,9 +2314,9 @@ Add to `ERRORS` in `apps/api/src/http/envelope.ts`, after `day_out_of_range`:
 `apps/api/src/planning/propose.ts`:
 
 ```ts
-import type { Ai } from '@mflow/ai';
-import type { Roadmap } from '@mflow/contracts';
-import { DEFAULT_RULES, isRestDay, weekdayOf, type DayKey, type TaskSpec } from '@mflow/core';
+import type { Ai } from '@futureflow/ai';
+import type { Roadmap } from '@futureflow/contracts';
+import { DEFAULT_RULES, isRestDay, weekdayOf, type DayKey, type TaskSpec } from '@futureflow/core';
 import { z } from 'zod';
 
 export const PROPOSAL_TASK_SECONDS = 30 * 60;
@@ -2472,8 +2472,8 @@ export async function aiTasks(
 `apps/api/src/routes/propose.ts`:
 
 ```ts
-import { DayKeySchema } from '@mflow/contracts';
-import { createDraft, editDraft } from '@mflow/core';
+import { DayKeySchema } from '@futureflow/contracts';
+import { createDraft, editDraft } from '@futureflow/core';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import type { AppEnv } from '../env';
@@ -2544,7 +2544,7 @@ git commit -m "feat(api): propose the night-before plan with AI and a determinis
 
 ## Context
 
-mflow needs generated text (coach, plans, reviews, word problems) and typed judgments (did these
+Future Flow needs generated text (coach, plans, reviews, word problems) and typed judgments (did these
 commits finish the task? is this reading summary substantial?). It must cost $0/month, never block
 the daily loop when an AI is down, and never let an AI decide arithmetic.
 

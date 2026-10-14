@@ -1,6 +1,6 @@
 import { env } from 'cloudflare:test';
-import type { FetchLike } from '@mflow/ai';
-import type { LedgerEvent, TaskSpec } from '@mflow/core';
+import type { FetchLike } from '@futureflow/ai';
+import type { LedgerEvent, TaskSpec } from '@futureflow/core';
 import { v7 as uuidv7 } from 'uuid';
 import { describe, expect, it } from 'vitest';
 import { geminiJudgeReply, githubFake, type FakeCommit } from './github-fake';
@@ -47,7 +47,7 @@ async function setup(
   const keys = { GEMINI_API_KEY: 'g-key', ...(opts.autoDecide ? { JUDGE_AUTO_DECIDE: 'on' } : {}) };
   await call(app, 'PUT', '/v1/github/link', {
     token,
-    body: { token: TOKEN, repos: ['bahir/mflow'] },
+    body: { token: TOKEN, repos: ['bahir/futureflow'] },
   });
   const tasks: TaskSpec[] = [
     taskSpec('Fix the login bug'),
@@ -172,7 +172,7 @@ describe('POST /v1/verify', () => {
     const { token } = await pairDevice(app);
     await call(app, 'PUT', '/v1/github/link', {
       token,
-      body: { token: TOKEN, repos: ['bahir/mflow'] },
+      body: { token: TOKEN, repos: ['bahir/futureflow'] },
     });
     const tasks = [taskSpec('Fix the bug'), taskSpec('Read', 'reading'), taskSpec('Math', 'math')];
     await call(app, 'PUT', '/v1/plans/2026-10-09', { token, body: { tasks } });
@@ -225,7 +225,7 @@ describe('grace window after the day boundary', () => {
     const { token } = await pairDevice(app);
     await call(app, 'PUT', '/v1/github/link', {
       token,
-      body: { token: TOKEN, repos: ['bahir/mflow'] },
+      body: { token: TOKEN, repos: ['bahir/futureflow'] },
     });
     const tasks = [taskSpec('Late fix'), taskSpec('Math', 'math'), taskSpec('Usage', 'usage')];
     await call(app, 'PUT', '/v1/plans/2026-10-08', { token, body: { tasks } });
