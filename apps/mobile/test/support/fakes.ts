@@ -1,5 +1,6 @@
 import type { LedgerEvent } from '@futureflow/core';
 import type { Today } from '@/lib/api/client';
+import type { SecretStore } from '@/lib/secrets';
 
 export const NOW = Date.UTC(2026, 9, 14, 12); // Wednesday 14 October 2026, 12:00 UTC
 
@@ -58,3 +59,18 @@ export const sampleToday = (overrides: Partial<Today> = {}): Today => ({
   ],
   ...overrides,
 });
+
+export function memorySecrets(initial: Record<string, string> = {}) {
+  const values = new Map(Object.entries(initial));
+  const store: SecretStore & { snapshot(): Record<string, string> } = {
+    get: async (key) => values.get(key) ?? null,
+    set: async (key, value) => {
+      values.set(key, value);
+    },
+    remove: async (key) => {
+      values.delete(key);
+    },
+    snapshot: () => Object.fromEntries(values),
+  };
+  return store;
+}
