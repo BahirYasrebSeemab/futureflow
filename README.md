@@ -5,7 +5,7 @@ become into skills and daily plans, verifies the work with real evidence (GitHub
 answers checked by a CAS, reading logs), and pays out social-media time from an event-sourced
 ledger that a native guard enforces.
 
-> Status: Phase 1 (foundation). See `docs/superpowers/specs/` for the design and `docs/adr/` for decisions.
+> Status: Phase 4 (phone app). See `docs/superpowers/specs/` for the design and `docs/adr/` for decisions.
 
 ## Repo layout
 
@@ -14,6 +14,9 @@ ledger that a native guard enforces.
 | `packages/core`        | Pure domain rules: time model, ledger, earning, plans, day types, verdicts                     |
 | `packages/contracts`   | zod schemas for data crossing system edges                                                     |
 | `packages/math-engine` | Ontario math knowledge graph, problem generators, CAS answer checking, Elo, mastery, placement |
+| `packages/ai`          | AI router: Gemini talk, Jev judge, structured output, budgets                                  |
+| `apps/api`             | Cloudflare Worker (Hono + D1): sync, plans, verification, coach, crons                         |
+| `apps/mobile`          | Expo app: pairing, local SQLite store, outbox sync, Today                                      |
 | `docs/adr`             | Architecture Decision Records                                                                  |
 
 ## Develop
@@ -22,6 +25,24 @@ ledger that a native guard enforces.
     bun run test        # all packages
     bun run coverage    # with coverage gates
     bun run lint && bun run typecheck
+
+## Phone app (`apps/mobile`)
+
+Expo SDK 57, Android first. Design: [ADR 0011](docs/adr/0011-mobile-local-first.md).
+
+```sh
+cp apps/mobile/.env.example apps/mobile/.env   # EXPO_PUBLIC_API_URL
+bun run --cwd apps/api dev                     # local Worker on :8787 (SETUP_CODE in .dev.vars)
+bun run --cwd apps/mobile start                # Expo dev server: Expo Go or an emulator
+bun run --cwd apps/mobile test                 # Jest, with real SQL through node:sqlite
+```
+
+- CI bundles the app for Android. The `Android e2e` workflow pairs a release build with a local Worker
+  on an emulator and saves screenshots as the `android-e2e` artifact.
+- Installable APK with EAS Build (free plan: 15 Android builds a month). In `apps/mobile`:
+  `bun x eas-cli login`, `bun x eas-cli init`, then
+  `bun x eas-cli env:create --environment preview --name EXPO_PUBLIC_API_URL --value https://<worker-url> --visibility plaintext`
+  and `bun x eas-cli build -p android --profile preview`.
 
 ## API (`apps/api`)
 
