@@ -3,3 +3,4 @@ export * from './api';
 export * from './onboarding';
 export * from './verification';
 export * from './coach';
+export * from './bank';

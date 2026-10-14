@@ -71,6 +71,7 @@ describe('upkeep cron', () => {
       nightly: 'ai',
       summarized: '2026-W41',
       deleted: 0,
+      wordProblem: null,
     });
     expect(counted.count()).toBeLessThanOrEqual(D1_BUDGET);
     const logged = JSON.stringify(log.mock.calls);
