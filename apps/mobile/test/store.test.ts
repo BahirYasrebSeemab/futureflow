@@ -119,3 +119,20 @@ test('concurrent writes never nest transactions', async () => {
   ]);
   expect(await store.counts()).toEqual({ pending: 0, dead: 1 });
 });
+
+test('away windows and check times survive clearing the server copy', async () => {
+  const { store } = await open();
+  const w = { id: '01920000-0000-7000-8000-0000000000e1', from: '2026-10-14', to: '2026-10-15' };
+  expect(await store.awayWindows()).toEqual([]);
+  await store.saveAwayWindow(w);
+  await store.saveAwayWindow(w);
+  await store.saveAwayCheck('2026-10-14', NOW);
+  await store.applyPage([ledgerEvent(1)], 1, true);
+  await store.clearServerCopy();
+  expect([
+    await store.awayWindows(),
+    await store.lastAwayCheck('2026-10-14'),
+    await store.lastAwayCheck('2026-10-15'),
+    await store.cursor(),
+  ]).toEqual([[w], NOW, null, 0]);
+});

@@ -20,12 +20,24 @@ const config: ExpoConfig = {
       monochromeImage: './assets/android-icon-monochrome.png',
     },
     predictiveBackGestureEnabled: false,
+    // Away checks need only a rough position; precise and background location are never requested.
+    blockedPermissions: [
+      'android.permission.ACCESS_FINE_LOCATION',
+      'android.permission.ACCESS_BACKGROUND_LOCATION',
+    ],
   },
   extra: { allowCleartext: isE2E },
   plugins: [
     'expo-router',
     'expo-sqlite',
     'expo-secure-store',
+    [
+      'expo-location',
+      {
+        locationWhenInUsePermission:
+          'Future Flow checks how far you are from home on away days. Your location never leaves the phone.',
+      },
+    ],
     ['expo-build-properties', { android: { usesCleartextTraffic: isE2E } }],
   ],
 };

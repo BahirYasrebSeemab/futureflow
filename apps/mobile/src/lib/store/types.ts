@@ -13,6 +13,9 @@ export type SyncReport = Readonly<{
   at: number;
 }>;
 
+/** An away window this phone declared: the away check needs its id. */
+export type AwayWindowRef = Readonly<{ id: string; from: string; to: string }>;
+
 /** The phone's own data: unsent events, refused events, the server-confirmed ledger and small values. */
 export interface LocalStore {
   /** Validates every event first; writes all or nothing. A repeated id is ignored. */
@@ -37,6 +40,10 @@ export interface LocalStore {
   savedToday(): Promise<SavedToday | null>;
   saveSync(report: SyncReport): Promise<void>;
   lastSync(): Promise<SyncReport | null>;
+  saveAwayWindow(window: AwayWindowRef): Promise<void>;
+  awayWindows(): Promise<AwayWindowRef[]>;
+  saveAwayCheck(day: string, at: number): Promise<void>;
+  lastAwayCheck(day: string): Promise<number | null>;
   /** Drops everything that came from the server; keeps unsent and refused events (ADR 0011). */
   clearServerCopy(): Promise<void>;
 }

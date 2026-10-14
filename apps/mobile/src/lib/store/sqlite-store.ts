@@ -1,8 +1,8 @@
-import { LedgerEventSchema, TodaySchema } from '@futureflow/contracts';
+import { DayKeySchema, LedgerEventSchema, TodaySchema } from '@futureflow/contracts';
 import type { LedgerEvent } from '@futureflow/core';
 import { z } from 'zod';
 import type { SqlDb } from './sql';
-import type { LocalStore, SavedToday, SyncReport } from './types';
+import type { AwayWindowRef, LocalStore, SavedToday, SyncReport } from './types';
 
 const SavedTodaySchema = z.object({ today: TodaySchema, savedAt: z.number().int() });
 const SyncReportSchema = z.object({
@@ -13,12 +13,18 @@ const SyncReportSchema = z.object({
   at: z.number().int(),
 });
 
+const AwayWindowsSchema = z.array(z.object({ id: z.uuid(), from: DayKeySchema, to: DayKeySchema }));
+const awayCheckKey = (day: string) => `away_check:${day}`;
+
 const KEY = {
   cursor: 'ledger_cursor',
   complete: 'ledger_complete',
   today: 'today',
   lastSync: 'last_sync',
+  awayWindows: 'away_windows',
 } as const;
+/** What came from the server; the rest of kv (away windows, check times) is the phone's own. */
+const SERVER_KEYS = [KEY.cursor, KEY.complete, KEY.today, KEY.lastSync] as const;
 
 /** expo-sqlite transactions are not exclusive, so writes take turns instead of nesting. */
 function createQueue() {
@@ -138,11 +144,30 @@ export function sqliteStore(db: SqlDb): LocalStore {
         await setKv(KEY.lastSync, JSON.stringify(report));
       }),
     lastSync: () => readJson(KEY.lastSync, SyncReportSchema),
+    saveAwayWindow: (window: AwayWindowRef) =>
+      write(async () => {
+        const known = (await readJson(KEY.awayWindows, AwayWindowsSchema)) ?? [];
+        if (known.some((w) => w.id === window.id)) return;
+        const next = [...known, { id: window.id, from: window.from, to: window.to }];
+        await setKv(KEY.awayWindows, JSON.stringify(next));
+      }),
+    awayWindows: async () => (await readJson(KEY.awayWindows, AwayWindowsSchema)) ?? [],
+    saveAwayCheck: (day: string, at: number) =>
+      write(async () => {
+        await setKv(awayCheckKey(day), String(at));
+      }),
+    async lastAwayCheck(day: string) {
+      const raw = await getKv(awayCheckKey(day));
+      return raw === null ? null : Number(raw);
+    },
     clearServerCopy: () =>
       write(async () => {
         await db.withTransactionAsync(async () => {
           await db.execAsync('DELETE FROM ledger');
-          await db.execAsync('DELETE FROM kv');
+          await db.runAsync(
+            'DELETE FROM kv WHERE key IN (SELECT value FROM json_each(?))',
+            JSON.stringify(SERVER_KEYS),
+          );
         });
       }),
   };

@@ -2,6 +2,7 @@ import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import { useApp } from '@/lib/app';
+import { checkAway } from '@/lib/away';
 import { dayTotals, projectBalance } from '@/lib/ledger';
 import type { SavedToday, SyncReport } from '@/lib/store/types';
 
@@ -70,6 +71,13 @@ export function useToday() {
 
   const refresh = useCallback(async () => {
     setView((v) => ({ ...v, syncing: true }));
+    try {
+      // On an away day, measure first (on the phone) so this sync brings back the result.
+      const saved = await services.store.savedToday();
+      if (saved !== null) await checkAway(services, saved.today);
+    } catch (error) {
+      logFailure('away_check_failed', error);
+    }
     try {
       await services.syncer.sync();
     } catch (error) {

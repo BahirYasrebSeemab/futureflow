@@ -3,6 +3,7 @@ import { randomBytes } from 'node:crypto';
 import type { Api, Today } from '@/lib/api/client';
 import type { AppServices } from '@/lib/app';
 import { makeIds } from '@/lib/ids';
+import type { Locator } from '@/lib/location';
 import type { SecretStore } from '@/lib/secrets';
 import { migrate } from '@/lib/store/migrations';
 import { sqliteStore } from '@/lib/store/sqlite-store';
@@ -93,6 +94,7 @@ const OFFLINE = { ok: false, error: { kind: 'network' } } as const;
 export async function testServices(
   api: Partial<Api> = {},
   secrets: Record<string, string> = {},
+  options: { locator?: Locator } = {},
 ): Promise<AppServices> {
   const db = nodeSqlDb();
   await migrate(db);
@@ -123,6 +125,7 @@ export async function testServices(
     secrets: memorySecrets(secrets),
     ids: makeIds((n) => new Uint8Array(randomBytes(n))),
     syncer: createSyncer({ api: fullApi, store, now }),
+    locator: options.locator ?? { coarse: async () => null },
     now,
     apiUrl: 'https://api.test',
   };

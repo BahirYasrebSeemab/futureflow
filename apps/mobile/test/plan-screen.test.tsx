@@ -2,6 +2,8 @@ import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testi
 import { Alert } from 'react-native';
 import type { Api, ApiResult, Plan } from '@/lib/api/client';
 import { AppProvider } from '@/lib/app';
+import { AwayScreen } from '@/screens/away';
+import { DiagnosticsScreen } from '@/screens/diagnostics';
 import { PlanScreen } from '@/screens/plan';
 import { RootStack } from '@/screens/root-stack';
 import { TodayScreen } from '@/screens/today';
@@ -31,6 +33,8 @@ async function openPlan(api: Partial<Api>) {
       ),
       index: TodayScreen,
       plan: PlanScreen,
+      away: AwayScreen,
+      diagnostics: DiagnosticsScreen,
     },
     { initialUrl: '/plan' },
   );

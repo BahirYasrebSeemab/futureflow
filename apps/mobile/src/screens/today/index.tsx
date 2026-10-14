@@ -126,6 +126,14 @@ export function TodayScreen() {
             onPress={() => router.push('/plan')}
           />
         </View>
+        <View style={styles.action}>
+          <Button
+            testID="open-away"
+            label="Away"
+            variant="secondary"
+            onPress={() => router.push('/away')}
+          />
+        </View>
         {record === null && (
           <View style={styles.action}>
             <Button

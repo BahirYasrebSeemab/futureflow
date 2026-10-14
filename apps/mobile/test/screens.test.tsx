@@ -13,6 +13,7 @@ import { StartupError } from '@/lib/config';
 import { DiagnosticsScreen } from '@/screens/diagnostics';
 import { PairScreen } from '@/screens/pair';
 import { PlanScreen } from '@/screens/plan';
+import { AwayScreen } from '@/screens/away';
 import { RootStack } from '@/screens/root-stack';
 import { TodayScreen } from '@/screens/today';
 import { ledgerEvent, PAIRED, sampleToday, testServices } from './support/fakes';
@@ -29,6 +30,7 @@ function mount(load: () => Promise<AppServices>, initialUrl = '/') {
       pair: PairScreen,
       diagnostics: DiagnosticsScreen,
       plan: PlanScreen,
+      away: AwayScreen,
     },
     { initialUrl },
   );
@@ -407,4 +409,11 @@ test('an away day excuses the tasks not kept', async () => {
   expect(screen.getByText('Excused')).toBeTruthy();
   expect(screen.getByText('Passed')).toBeTruthy();
   expect(screen.queryByTestId('bad-day')).toBeNull();
+});
+
+test("Today's Away button opens the Away screen", async () => {
+  const services = await testServices({}, PAIRED);
+  mount(ready(services));
+  fireEvent.press(await screen.findByTestId('open-away'));
+  expect(await screen.findByText('Going away')).toBeTruthy();
 });

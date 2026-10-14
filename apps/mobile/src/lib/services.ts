@@ -5,6 +5,7 @@ import type { AppServices } from './app';
 import { createApi } from './api/client';
 import { parseApiUrl } from './config';
 import { makeIds } from './ids';
+import { expoLocator } from './location';
 import { TOKEN_KEY } from './pairing';
 import { secureSecrets } from './secrets';
 import { migrate } from './store/migrations';
@@ -32,6 +33,7 @@ export async function createServices(): Promise<AppServices> {
     secrets: secureSecrets,
     ids: makeIds(getRandomBytes),
     syncer: createSyncer({ api, store, now }),
+    locator: expoLocator,
     now,
     apiUrl,
   };
