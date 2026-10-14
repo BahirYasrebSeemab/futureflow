@@ -1,7 +1,8 @@
+import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import { useApp } from '@/lib/app';
-import { projectBalance } from '@/lib/ledger';
+import { dayTotals, projectBalance } from '@/lib/ledger';
 import type { SavedToday, SyncReport } from '@/lib/store/types';
 
 export type TodayView = Readonly<{
@@ -13,6 +14,10 @@ export type TodayView = Readonly<{
   /** False until a pull has reached the end of the ledger: before that the balance is unknown. */
   ledgerComplete: boolean;
   balanceSeconds: number;
+  /** Paid today for work (tasks, the all-done bonus, math). */
+  earnedSeconds: number;
+  /** The free daily allowance paid today. */
+  allowanceSeconds: number;
   lastSync: SyncReport | null;
 }>;
 
@@ -23,6 +28,8 @@ const INITIAL: TodayView = {
   saved: null,
   ledgerComplete: false,
   balanceSeconds: 0,
+  earnedSeconds: 0,
+  allowanceSeconds: 0,
   lastSync: null,
 };
 
@@ -48,7 +55,17 @@ export function useToday() {
     ]);
     if (!live.current) return;
     const balanceSeconds = projectBalance(confirmed, pending);
-    setView((v) => ({ ...v, loaded: true, saved, ledgerComplete, balanceSeconds, lastSync }));
+    const totals = dayTotals(confirmed, pending, saved?.today.day ?? '');
+    setView((v) => ({
+      ...v,
+      loaded: true,
+      saved,
+      ledgerComplete,
+      balanceSeconds,
+      earnedSeconds: totals.earned,
+      allowanceSeconds: totals.allowance,
+      lastSync,
+    }));
   }, [services]);
 
   const refresh = useCallback(async () => {
@@ -69,7 +86,6 @@ export function useToday() {
 
   useEffect(() => {
     live.current = true;
-    void reload().then(refresh);
     const subscription = AppState.addEventListener('change', (next) => {
       if (next === 'active') void refresh();
     });
@@ -77,7 +93,14 @@ export function useToday() {
       live.current = false;
       subscription.remove();
     };
-  }, [reload, refresh]);
+  }, [refresh]);
+
+  // Every time Today comes into view (first open, or back from Plan or Diagnostics).
+  useFocusEffect(
+    useCallback(() => {
+      void reload().then(refresh);
+    }, [reload, refresh]),
+  );
 
   return { ...view, refresh };
 }

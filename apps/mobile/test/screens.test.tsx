@@ -1,4 +1,11 @@
-import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
+import {
+  act,
+  fireEvent,
+  renderRouter,
+  screen,
+  testRouter,
+  waitFor,
+} from 'expo-router/testing-library';
 import { AppState, type AppStateStatus } from 'react-native';
 import type { ApiResult, Today } from '@/lib/api/client';
 import { AppProvider, type AppServices } from '@/lib/app';
@@ -74,7 +81,8 @@ test('Today shows the balance, earned time, tasks and their verdicts', async () 
   mount(ready(services));
   expect(await screen.findByTestId('balance')).toHaveTextContent('1 h 06 min');
   expect(await screen.findByText('Fractions practice')).toBeTruthy();
-  expect(screen.getByText('Earned today 25 min')).toBeTruthy();
+  expect(screen.getByText('Earned today 0 min')).toBeTruthy();
+  expect(screen.getByText('Daily allowance 1 h 06 min')).toBeTruthy();
   expect(screen.getByText('Wednesday 14 October')).toBeTruthy();
   expect(screen.getByText('Passed')).toBeTruthy();
   expect(screen.getByText('Not checked yet')).toBeTruthy();
@@ -287,4 +295,23 @@ test('Diagnostics frees its button when loading fails after a sync', async () =>
   fireEvent.press(await screen.findByTestId('sync-now'));
   await waitFor(() => expect(screen.getByText('Sync now')).toBeTruthy());
   expect(screen.getByTestId('sync-now')).toBeEnabled();
+});
+
+test('coming back to Today from another screen syncs again', async () => {
+  let syncs = 0;
+  const services = await testServices(
+    {
+      today: async () => {
+        syncs++;
+        return { ok: true, data: sampleToday() };
+      },
+    },
+    PAIRED,
+  );
+  mount(ready(services));
+  expect(await screen.findByText('Fractions practice')).toBeTruthy();
+  fireEvent.press(screen.getByTestId('diagnostics-link'));
+  expect(await screen.findByText('Waiting to send')).toBeTruthy();
+  act(() => testRouter.back());
+  await waitFor(() => expect(syncs).toBe(2));
 });

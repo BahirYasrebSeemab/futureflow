@@ -33,8 +33,8 @@ function staleNotice(report: SyncReport | null, savedAt: number): string | null 
 export function TodayScreen() {
   const c = usePalette();
   const { forgetPairing } = useApp();
-  const { loaded, syncing, tried, saved, ledgerComplete, balanceSeconds, lastSync, refresh } =
-    useToday();
+  const view = useToday();
+  const { loaded, syncing, tried, saved, ledgerComplete, balanceSeconds, lastSync, refresh } = view;
   const center = [styles.center, { backgroundColor: c.background }];
 
   if (lastSync?.status === 'unauthorized') {
@@ -91,7 +91,10 @@ export function TodayScreen() {
           {formatDuration(balanceSeconds)}
         </Text>
         <Text style={[styles.muted, { color: c.muted }]}>
-          Earned today {formatDuration(today.earnedTodaySeconds)}
+          Earned today {formatDuration(view.earnedSeconds)}
+        </Text>
+        <Text style={[styles.muted, { color: c.muted }]}>
+          Daily allowance {formatDuration(view.allowanceSeconds)}
         </Text>
       </View>
       <View style={styles.dayRow}>
