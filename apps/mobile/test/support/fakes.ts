@@ -1,6 +1,13 @@
 import type { LedgerEvent } from '@futureflow/core';
-import type { Today } from '@/lib/api/client';
+import { randomBytes } from 'node:crypto';
+import type { Api, Today } from '@/lib/api/client';
+import type { AppServices } from '@/lib/app';
+import { makeIds } from '@/lib/ids';
 import type { SecretStore } from '@/lib/secrets';
+import { migrate } from '@/lib/store/migrations';
+import { sqliteStore } from '@/lib/store/sqlite-store';
+import { createSyncer } from '@/lib/sync';
+import { nodeSqlDb } from './node-sql';
 
 export const NOW = Date.UTC(2026, 9, 14, 12); // Wednesday 14 October 2026, 12:00 UTC
 
@@ -73,4 +80,39 @@ export function memorySecrets(initial: Record<string, string> = {}) {
     snapshot: () => Object.fromEntries(values),
   };
   return store;
+}
+
+export const PAIRED = {
+  device_token: 'A'.repeat(43),
+  device_id: '01920000-0000-7000-8000-0000000000d1',
+};
+
+/** Real store (node:sqlite) and syncer, with a scripted API and memory secrets. */
+export async function testServices(
+  api: Partial<Api> = {},
+  secrets: Record<string, string> = {},
+): Promise<AppServices> {
+  const db = nodeSqlDb();
+  await migrate(db);
+  const store = sqliteStore(db);
+  const fullApi: Api = {
+    pair: async () => ({ ok: false, error: { kind: 'network' } }),
+    today: async () => ({ ok: true, data: sampleToday() }),
+    pushEvents: async (events) => ({
+      ok: true,
+      data: { added: events.map((e) => e.id), ignored: [], rejected: [] },
+    }),
+    pullLedger: async (since) => ({ ok: true, data: { events: [], next: since } }),
+    ...api,
+  };
+  const now = () => NOW;
+  return {
+    api: fullApi,
+    store,
+    secrets: memorySecrets(secrets),
+    ids: makeIds((n) => new Uint8Array(randomBytes(n))),
+    syncer: createSyncer({ api: fullApi, store, now }),
+    now,
+    apiUrl: 'https://api.test',
+  };
 }
