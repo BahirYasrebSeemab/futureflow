@@ -69,3 +69,10 @@ on each repository's default branch, authored with an email on your GitHub accou
 A half-hourly cron rolls the day over, finds heartbeat gaps (phone off vs. guard disabled), writes
 the nightly review and tomorrow's draft plan at 21:00, and summarizes past weeks of chat (deleted after 30 days).
 Coach chat: `POST /v1/coach/messages`. See `docs/adr/0009-coach-and-upkeep.md`.
+
+## Word problems
+
+The upkeep cron turns exercises from topics you practised into real-world word problems: math-engine
+makes the exercise and its answer, the AI only writes the story, and strict checks (same numbers, no
+number words, a judge at ≥ 0.9) decide. The phone syncs them with `GET /v1/math/bank`. See
+`docs/adr/0010-word-problems.md`.
