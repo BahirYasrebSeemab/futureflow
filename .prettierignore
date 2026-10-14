@@ -3,3 +3,6 @@ coverage/
 learning/
 .superpowers/
 apps/api/worker-configuration.d.ts
+apps/mobile/.expo/
+apps/mobile/android/
+apps/mobile/ios/
