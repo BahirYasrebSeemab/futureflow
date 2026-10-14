@@ -3,7 +3,7 @@ import { runBankStep } from '../math/bank-step';
 import type { WordResult } from '../math/word-problem';
 import { analyzeGuard } from './guard';
 import { ownerContext } from './owner';
-import { runNightly, type NightlyReview } from './nightly';
+import { isNightly, runNightly, type NightlyReview } from './nightly';
 import { rollover } from './rollover';
 import { runWeekly } from './weekly';
 
@@ -39,9 +39,9 @@ export async function upkeep(deps: Deps): Promise<UpkeepRun> {
     summarized: null,
     deleted: 0,
   });
-  // Outside the nightly window only: the busy 21:30 tick keeps its D1 budget.
-  const wordProblem =
-    nightly === null ? await step('bank', () => runBankStep(deps, owner), null) : null;
+  // Never inside the nightly window (21:00–03:59), so the busy 21:30 tick keeps its D1 budget.
+  const daytime = owner !== null && !isNightly(deps.now(), owner.offset);
+  const wordProblem = daytime ? await step('bank', () => runBankStep(deps, owner), null) : null;
   return {
     rolledOver: rolled !== null && (rolled.granted || rolled.expiredSeconds > 0),
     gaps,

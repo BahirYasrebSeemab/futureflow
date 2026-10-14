@@ -40,18 +40,20 @@ export const d1Bank = (db: D1Database): BankRepo => ({
          GROUP BY topic_id, status`,
       )
       .bind(week)
-      .all<{ topic_id: string; status: 'accepted' | 'rejected'; n: number }>();
-    const byTopic = new Map<string, number>();
-    let accepted = 0;
+      .all<{ topic_id: string; status: 'accepted' | 'pending' | 'rejected'; n: number }>();
+    const keptByTopic = new Map<string, number>();
+    const attemptedByTopic = new Map<string, number>();
+    let kept = 0;
     let attempted = 0;
     for (const r of results) {
       attempted += r.n;
-      if (r.status === 'accepted') {
-        accepted += r.n;
-        byTopic.set(r.topic_id, (byTopic.get(r.topic_id) ?? 0) + r.n);
+      attemptedByTopic.set(r.topic_id, (attemptedByTopic.get(r.topic_id) ?? 0) + r.n);
+      if (r.status !== 'rejected') {
+        kept += r.n;
+        keptByTopic.set(r.topic_id, (keptByTopic.get(r.topic_id) ?? 0) + r.n);
       }
     }
-    return { accepted, attempted, byTopic };
+    return { kept, attempted, keptByTopic, attemptedByTopic };
   },
 
   async add(entry, status, reason) {

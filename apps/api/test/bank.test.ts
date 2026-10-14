@@ -35,7 +35,12 @@ describe('problem bank', () => {
 
     expect(page.body.data.problems.map((p) => p.id)).toEqual(['a', 'c']);
     expect(page.body.data.problems[0]).toEqual(entry('a'));
-    expect([counts.accepted, counts.attempted, counts.byTopic.get('percents')]).toEqual([2, 3, 2]);
+    expect([
+      counts.kept,
+      counts.attempted,
+      counts.keptByTopic.get('percents'),
+      counts.attemptedByTopic.get('fractions'),
+    ]).toEqual([2, 3, 2, 1]);
     const rest = await call<{ problems: BankEntry[] }>(
       app,
       'GET',

@@ -180,10 +180,16 @@ export interface UpkeepRepo {
 
 export type BankEntry = BankProblem;
 
+export type BankCounts = Readonly<{
+  kept: number;
+  attempted: number;
+  keptByTopic: ReadonlyMap<string, number>;
+  attemptedByTopic: ReadonlyMap<string, number>;
+}>;
+
 export interface BankRepo {
-  weekCounts(
-    week: string,
-  ): Promise<{ accepted: number; attempted: number; byTopic: Map<string, number> }>;
+  /** This week's counts: kept = accepted or pending (both fill the bank's quota). */
+  weekCounts(week: string): Promise<BankCounts>;
   add(
     entry: BankEntry,
     status: 'accepted' | 'pending' | 'rejected',
