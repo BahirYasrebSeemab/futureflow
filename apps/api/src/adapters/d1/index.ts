@@ -1,5 +1,6 @@
 import type { Repos } from '../../ports';
 import { d1AiUsage } from './ai-usage';
+import { d1Bank } from './bank';
 import { d1Coach } from './coach';
 import { d1Days } from './days';
 import { d1Devices } from './devices';
@@ -21,4 +22,5 @@ export const d1Repos = (db: D1Database): Repos => ({
   verification: d1Verification(db),
   coach: d1Coach(db),
   upkeep: d1Upkeep(db),
+  bank: d1Bank(db),
 });

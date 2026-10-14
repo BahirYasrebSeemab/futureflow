@@ -1,5 +1,12 @@
 import type { UsageCounter } from '@mflow/ai';
-import type { CoachMessage, Heartbeat, MathAttempt, ReadingLog, Roadmap } from '@mflow/contracts';
+import type {
+  BankProblem,
+  CoachMessage,
+  Heartbeat,
+  MathAttempt,
+  ReadingLog,
+  Roadmap,
+} from '@mflow/contracts';
 import type { Beat, DayRecord, GuardGap, LedgerEvent, Plan, Verdict } from '@mflow/core';
 
 export type { CoachMessage } from '@mflow/contracts';
@@ -72,6 +79,8 @@ export interface TelemetryRepo {
     receivedAt: number,
   ): Promise<string[]>;
   mathSummary(day: string): Promise<{ attempts: number; correct: number }>;
+  /** Topics practised on or after `sinceDay`, most practised first. */
+  recentTopics(sinceDay: string): Promise<string[]>;
 }
 
 export interface RoadmapRepo {
@@ -169,6 +178,17 @@ export interface UpkeepRepo {
   saveGaps(deviceId: string, gaps: readonly GuardGap[], seq: number, at: number): Promise<void>;
 }
 
+export type BankEntry = BankProblem;
+
+export interface BankRepo {
+  weekCounts(
+    week: string,
+  ): Promise<{ accepted: number; attempted: number; byTopic: Map<string, number> }>;
+  add(entry: BankEntry, status: 'accepted' | 'rejected', reason: string | null): Promise<void>;
+  /** Accepted problems after the cursor, in server order. */
+  page(since: number, limit: number): Promise<{ problems: BankEntry[]; next: number }>;
+}
+
 export type Repos = Readonly<{
   devices: DeviceRepo;
   ledger: LedgerRepo;
@@ -180,4 +200,5 @@ export type Repos = Readonly<{
   verification: VerificationRepo;
   coach: CoachRepo;
   upkeep: UpkeepRepo;
+  bank: BankRepo;
 }>;

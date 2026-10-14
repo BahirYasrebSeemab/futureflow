@@ -65,4 +65,15 @@ export const d1Telemetry = (db: D1Database): TelemetryRepo => ({
       .first<{ attempts: number; correct: number }>();
     return { attempts: row?.attempts ?? 0, correct: row?.correct ?? 0 };
   },
+
+  async recentTopics(sinceDay) {
+    const { results } = await db
+      .prepare(
+        `SELECT topic_id FROM math_attempts WHERE day >= ?1
+         GROUP BY topic_id ORDER BY count(*) DESC, topic_id`,
+      )
+      .bind(sinceDay)
+      .all<{ topic_id: string }>();
+    return results.map((r) => r.topic_id);
+  },
 });
