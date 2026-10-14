@@ -1,14 +1,14 @@
-# mflow P1: Foundation Implementation Plan
+# Future Flow P1: Foundation Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Create the mflow TypeScript monorepo with CI, plus the pure domain package `@mflow/core` (time model, time ledger, earning/spending rules, plan lifecycle, day types, verdicts) and the edge-validation package `@mflow/contracts`, all built test-first.
+**Goal:** Create the Future Flow TypeScript monorepo with CI, plus the pure domain package `@futureflow/core` (time model, time ledger, earning/spending rules, plan lifecycle, day types, verdicts) and the edge-validation package `@futureflow/contracts`, all built test-first.
 
 **Architecture:** Bun workspaces monorepo. `packages/core` holds pure functions and types with no I/O or framework imports (hexagonal center). `packages/contracts` holds zod schemas that validate data at system edges and map onto core types. Internal packages are consumed as TypeScript source (`exports: ./src/index.ts`), with no build step.
 
 **Tech Stack:** Bun 1.4 (package manager, workspaces, script runner; binaries via `bun x`), Node 24 (runtime for Vitest), TypeScript (strict), Vitest + @vitest/coverage-v8, zod v4, ESLint (flat config) + typescript-eslint, Prettier, GitHub Actions.
 
-**Spec:** `docs/superpowers/specs/2026-10-08-mflow-v1-design.md` (sections 4, 5, 6, 13.1, 14, 16 apply to this phase)
+**Spec:** `docs/superpowers/specs/2026-10-08-futureflow-v1-design.md` (sections 4, 5, 6, 13.1, 14, 16 apply to this phase)
 
 ## Global Constraints
 
@@ -36,7 +36,7 @@
 ## File Structure
 
 ```
-mflow/
+futureflow/
 ├─ package.json                 root scripts, workspaces, dev tooling
 ├─ bun.lock
 ├─ tsconfig.base.json           shared strict compiler options
@@ -83,7 +83,7 @@ mflow/
 
 **Interfaces:**
 
-- Produces: `Result<T, E extends string>`, `ok<T>(value): Result<T, never>`, `err<E>(error): Result<never, E>` from `@mflow/core`. Root scripts `lint`, `format:check`, `typecheck`, `test`, `coverage`.
+- Produces: `Result<T, E extends string>`, `ok<T>(value): Result<T, never>`, `err<E>(error): Result<never, E>` from `@futureflow/core`. Root scripts `lint`, `format:check`, `typecheck`, `test`, `coverage`.
 
 - [ ] **Step 1: Create the root files**
 
@@ -97,7 +97,7 @@ echo "24" > .nvmrc
 
 ```json
 {
-  "name": "mflow",
+  "name": "futureflow",
   "private": true,
   "type": "module",
   "packageManager": "bun@1.4.0",
@@ -183,7 +183,7 @@ export default defineConfig([
 ]);
 ```
 
-- [ ] **Step 3: Create the `@mflow/core` package skeleton**
+- [ ] **Step 3: Create the `@futureflow/core` package skeleton**
 
 ```bash
 mkdir -p packages/core/src packages/core/test
@@ -193,7 +193,7 @@ mkdir -p packages/core/src packages/core/test
 
 ```json
 {
-  "name": "@mflow/core",
+  "name": "@futureflow/core",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -321,9 +321,9 @@ jobs:
 `README.md`:
 
 ```markdown
-# mflow
+# Future Flow
 
-Earn your scroll time. mflow is an Android app where an AI "future you" turns who you want to
+Earn your scroll time. Future Flow is an Android app where an AI "future you" turns who you want to
 become into skills and daily plans, verifies the work with real evidence (GitHub diffs, math
 answers checked by a CAS, reading logs), and pays out social-media time from an event-sourced
 ledger that a native guard enforces.
@@ -400,9 +400,9 @@ Workers → Node).
 
 ## Decision
 
-`@mflow/core` contains only pure functions and types. It performs no I/O, reads no clock, and generates
+`@futureflow/core` contains only pure functions and types. It performs no I/O, reads no clock, and generates
 no IDs (time and ID generators are injected). Infrastructure lives in adapters inside the apps.
-Runtime validation (zod) lives in `@mflow/contracts` and is applied where untrusted data enters:
+Runtime validation (zod) lives in `@futureflow/contracts` and is applied where untrusted data enters:
 HTTP bodies, AI outputs, third-party API responses, stored JSON. Inside the boundary, plain
 TypeScript types are trusted.
 
@@ -2122,7 +2122,7 @@ git commit -m "feat(core): add verdict resolution with confidence threshold and 
 
 ---
 
-### Task 9: Edge contracts (`@mflow/contracts`)
+### Task 9: Edge contracts (`@futureflow/contracts`)
 
 **Files:**
 
@@ -2130,7 +2130,7 @@ git commit -m "feat(core): add verdict resolution with confidence threshold and 
 
 **Interfaces:**
 
-- Consumes: from `@mflow/core`: `LEDGER_EVENT_KINDS`, `VERIFIER_KINDS`, `parseDayKey`, types `LedgerEvent`, `Plan`, `TaskSpec`.
+- Consumes: from `@futureflow/core`: `LEDGER_EVENT_KINDS`, `VERIFIER_KINDS`, `parseDayKey`, types `LedgerEvent`, `Plan`, `TaskSpec`.
 - Produces:
   - `DayKeySchema`, `LedgerEventSchema`, `LedgerEventBatchSchema` (1–500 events), `TaskVersionSchema`, `TaskSpecSchema`, `PlanSchema`, `ApiErrorSchema`
   - `envelope<T extends z.ZodType>(data: T)`: a discriminated union `{ ok: true, data, error: null } | { ok: false, data: null, error: ApiError }`
@@ -2142,7 +2142,7 @@ git commit -m "feat(core): add verdict resolution with confidence threshold and 
 
 ```json
 {
-  "name": "@mflow/contracts",
+  "name": "@futureflow/contracts",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -2161,7 +2161,7 @@ cd packages/contracts
 bun add zod
 bun add -D typescript vitest @vitest/coverage-v8
 cd ../..
-# then add "@mflow/core": "workspace:*" to "dependencies" in packages/contracts/package.json
+# then add "@futureflow/core": "workspace:*" to "dependencies" in packages/contracts/package.json
 bun install
 ```
 
@@ -2197,7 +2197,7 @@ export default defineConfig({
 `packages/contracts/test/schemas.test.ts`:
 
 ```ts
-import type { LedgerEvent, Plan } from '@mflow/core';
+import type { LedgerEvent, Plan } from '@futureflow/core';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import {
@@ -2314,7 +2314,7 @@ Expected: FAIL, cannot resolve `../src/schemas`.
 `packages/contracts/src/schemas.ts`:
 
 ```ts
-import { LEDGER_EVENT_KINDS, parseDayKey, VERIFIER_KINDS } from '@mflow/core';
+import { LEDGER_EVENT_KINDS, parseDayKey, VERIFIER_KINDS } from '@futureflow/core';
 import { z } from 'zod';
 
 export const MAX_EVENTS_PER_BATCH = 500;

@@ -1,6 +1,6 @@
-import type { Ai, Answer, Questions } from '@mflow/ai';
-import type { ReadingLog } from '@mflow/contracts';
-import type { Decision, TaskVersion } from '@mflow/core';
+import type { Ai, Answer, Questions } from '@futureflow/ai';
+import type { ReadingLog } from '@futureflow/contracts';
+import type { Decision, TaskVersion } from '@futureflow/core';
 import type { CommitEvidence } from '../ports';
 
 export const githubQuestions: Questions = {

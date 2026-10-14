@@ -1,6 +1,6 @@
-import { addDays, isoWeekKey } from '@mflow/core';
-import { DEFAULT_REGISTRY } from '@mflow/math-engine/generators';
-import type { Difficulty } from '@mflow/math-engine/types';
+import { addDays, isoWeekKey } from '@futureflow/core';
+import { DEFAULT_REGISTRY } from '@futureflow/math-engine/generators';
+import type { Difficulty } from '@futureflow/math-engine/types';
 import type { Deps } from '../env';
 import type { BankCounts } from '../ports';
 import type { Owner } from '../upkeep/owner';

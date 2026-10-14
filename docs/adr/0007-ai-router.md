@@ -5,7 +5,7 @@
 
 ## Context
 
-mflow needs generated text (coach, plans, reviews, word problems) and typed judgments (did these
+Future Flow needs generated text (coach, plans, reviews, word problems) and typed judgments (did these
 commits finish the task? is this reading summary substantial?). It must cost $0/month, never block
 the daily loop when an AI is down, and never let an AI decide arithmetic.
 

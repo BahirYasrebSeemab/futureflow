@@ -1,4 +1,4 @@
-import { semanticKey, type LedgerEvent } from '@mflow/core';
+import { semanticKey, type LedgerEvent } from '@futureflow/core';
 import type { LedgerRepo } from '../../ports';
 
 type EventRow = {

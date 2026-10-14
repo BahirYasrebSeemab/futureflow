@@ -1,5 +1,5 @@
 {
-  "name": "@mflow/ai",
+  "name": "@futureflow/ai",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -12,7 +12,7 @@
     "coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@mflow/core": "workspace:*",
+    "@futureflow/core": "workspace:*",
     "zod": "^4.6.5"
   },
   "devDependencies": {

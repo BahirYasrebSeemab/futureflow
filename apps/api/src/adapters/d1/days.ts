@@ -1,4 +1,4 @@
-import type { DayRecord } from '@mflow/core';
+import type { DayRecord } from '@futureflow/core';
 import { z } from 'zod';
 import type { DayEntry, DayRepo } from '../../ports';
 

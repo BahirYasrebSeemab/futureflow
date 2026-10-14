@@ -1,4 +1,4 @@
-import type { Ai, FetchLike } from '@mflow/ai';
+import type { Ai, FetchLike } from '@futureflow/ai';
 import type { Device, Repos } from './ports';
 
 /** Worker bindings: the generated `Env` plus secrets, which `wrangler types` cannot see. */

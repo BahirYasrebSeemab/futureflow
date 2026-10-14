@@ -1,4 +1,4 @@
-import { dayKeyFor, DEFAULT_RULES } from '@mflow/core';
+import { dayKeyFor, DEFAULT_RULES } from '@futureflow/core';
 import { importSecretKey, open } from '../crypto/secret-box';
 import type { Deps } from '../env';
 import { githubClient, type CommitSummary } from '../github/client';

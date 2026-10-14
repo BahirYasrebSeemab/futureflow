@@ -1,4 +1,4 @@
-import type { UsageCounter } from '@mflow/ai';
+import type { UsageCounter } from '@futureflow/ai';
 
 export const d1AiUsage = (db: D1Database): UsageCounter => ({
   async used(provider, day) {

@@ -1,4 +1,4 @@
-import { addDays, dayKeyFor, DEFAULT_RULES, type DayKey } from '@mflow/core';
+import { addDays, dayKeyFor, DEFAULT_RULES, type DayKey } from '@futureflow/core';
 import type { Device } from '../ports';
 
 /** Events stamped further ahead than this are refused: the phone clock is wrong or tampered with. */

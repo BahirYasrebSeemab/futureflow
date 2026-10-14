@@ -11,9 +11,9 @@ Workers → Node).
 
 ## Decision
 
-`@mflow/core` contains only pure functions and types. It performs no I/O, reads no clock, and
+`@futureflow/core` contains only pure functions and types. It performs no I/O, reads no clock, and
 generates no IDs (time and ID generators are injected). Infrastructure lives in adapters inside the
-apps. Runtime validation (zod) lives in `@mflow/contracts` and is applied where untrusted data
+apps. Runtime validation (zod) lives in `@futureflow/contracts` and is applied where untrusted data
 enters: HTTP bodies, AI outputs, third-party API responses, stored JSON. Inside the boundary, plain
 TypeScript types are trusted.
 

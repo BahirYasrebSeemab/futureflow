@@ -1,4 +1,4 @@
-import { PairRequestSchema } from '@mflow/contracts';
+import { PairRequestSchema } from '@futureflow/contracts';
 import { Hono } from 'hono';
 import { constantTimeEqual, sha256Hex } from '../auth/token';
 import type { AppEnv } from '../env';

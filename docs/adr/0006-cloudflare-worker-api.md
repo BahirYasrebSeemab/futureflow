@@ -13,7 +13,7 @@ cron on the free tier, and stay easy to port to Node later (the owner will rewri
 
 - **Cloudflare Workers + Hono + D1.** Free plan: 100k requests/day, 10 ms CPU per request, 5 cron
   triggers, D1 with 5M row reads and 100k row writes per day.
-- **Layers:** routes (Hono + zod at the edge) → `@mflow/core` (rules) → ports (`src/ports.ts`) →
+- **Layers:** routes (Hono + zod at the edge) → `@futureflow/core` (rules) → ports (`src/ports.ts`) →
   D1 adapters (`src/adapters/d1`). Only adapters and `src/index.ts` touch Workers APIs. A Node port
   replaces `adapters/d1` (e.g. with SQLite or Postgres) and serves the same Hono app with `@hono/node-server`.
 - **Auth:** the phone generates a device token (32 random bytes, base64url) and registers it with

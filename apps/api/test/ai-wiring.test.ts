@@ -2,7 +2,7 @@ import { env } from 'cloudflare:test';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { aiFromEnv, dailyLimit, GEMINI_MODELS } from '../src/ai';
 import { d1AiUsage } from '../src/adapters/d1/ai-usage';
-import type { FetchLike } from '@mflow/ai';
+import type { FetchLike } from '@futureflow/ai';
 import { geminiReply, T0 } from './helpers';
 
 const recording = (reply: (url: string) => ReturnType<typeof geminiReply>) => {

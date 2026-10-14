@@ -1,20 +1,20 @@
-# mflow P2a: Math Engine Core Implementation Plan
+# Future Flow P2a: Math Engine Core Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build `@mflow/math-engine`: exact rationals, a seeded RNG, an answer checker backed by a CAS, the L0–L2 Ontario knowledge graph, Elo ratings, mastery and spaced review, topic and difficulty scheduling, binary-search placement, mock exams with gates, and 5 proof generators (3 L0, 2 L1). All pure and deterministic, so it runs offline on the phone.
+**Goal:** Build `@futureflow/math-engine`: exact rationals, a seeded RNG, an answer checker backed by a CAS, the L0–L2 Ontario knowledge graph, Elo ratings, mastery and spaced review, topic and difficulty scheduling, binary-search placement, mock exams with gates, and 5 proof generators (3 L0, 2 L1). All pure and deterministic, so it runs offline on the phone.
 
-**Architecture:** A new workspace package `packages/math-engine` that depends on `@mflow/core` (for `Result`, `DayKey`, `addDays`) and `@cortex-js/compute-engine` (CAS). Generators are pure `(seed, difficulty) → Problem` functions, so the same seed always gives the same problem. Tests use the CAS as an **independent oracle**: every generated answer is re-derived from the prompt text by the CAS (property-based via fast-check).
+**Architecture:** A new workspace package `packages/math-engine` that depends on `@futureflow/core` (for `Result`, `DayKey`, `addDays`) and `@cortex-js/compute-engine` (CAS). Generators are pure `(seed, difficulty) → Problem` functions, so the same seed always gives the same problem. Tests use the CAS as an **independent oracle**: every generated answer is re-derived from the prompt text by the CAS (property-based via fast-check).
 
-**Tech Stack:** Bun workspaces, TypeScript 6, Vitest 5, fast-check, @cortex-js/compute-engine (verified 0.149.0 in a spike), @mflow/core.
+**Tech Stack:** Bun workspaces, TypeScript 6, Vitest 5, fast-check, @cortex-js/compute-engine (verified 0.149.0 in a spike), @futureflow/core.
 
-**Spec:** `docs/superpowers/specs/2026-10-08-mflow-v1-design.md` (§2.2, §10, §15 P2a)
+**Spec:** `docs/superpowers/specs/2026-10-08-futureflow-v1-design.md` (§2.2, §10, §15 P2a)
 
 ## Global Constraints
 
 - Bun for installs and scripts; tools via `bun x`. Run package scripts as `bun run --cwd packages/math-engine <script>`.
 - TypeScript pinned `^6` in every package (see ADR 0001).
-- No I/O, no `Date.now()`, no `Math.random()` in `src/`. Randomness only via `createRng(seed)`. Dates only as `DayKey` from `@mflow/core`.
+- No I/O, no `Date.now()`, no `Math.random()` in `src/`. Randomness only via `createRng(seed)`. Dates only as `DayKey` from `@futureflow/core`.
 - All exported data is `Readonly`, and functions return new objects. (Local arrays and the RNG's internal state are the only mutation.)
 - Coverage threshold for `math-engine`: 90% on lines, branches, functions and statements.
 - Commit messages use conventional format under the owner's identity. **No `Co-Authored-By` or AI attribution.**
@@ -89,7 +89,7 @@ mkdir -p packages/math-engine/src/generators packages/math-engine/test
 
 ```json
 {
-  "name": "@mflow/math-engine",
+  "name": "@futureflow/math-engine",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -100,7 +100,7 @@ mkdir -p packages/math-engine/src/generators packages/math-engine/test
     "coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@mflow/core": "workspace:*"
+    "@futureflow/core": "workspace:*"
   }
 }
 ```
@@ -885,7 +885,7 @@ git commit -m "feat(math-engine): add CAS-backed answer checker with form and re
 
 **Interfaces:**
 
-- Consumes: `Topic`, `Gate`, `LevelId` (Task 2); `Result`, `ok`, `err` from `@mflow/core`.
+- Consumes: `Topic`, `Gate`, `LevelId` (Task 2); `Result`, `ok`, `err` from `@futureflow/core`.
 - Produces:
   - `type KnowledgeGraph = Readonly<{ topics: readonly Topic[] }>` (topics in teaching order; each prerequisite must appear earlier)
   - `type GraphError = 'duplicate_topic' | 'unknown_prerequisite' | 'prerequisite_out_of_order'`
@@ -1000,7 +1000,7 @@ Expected: FAIL, cannot resolve `../src/graph` and `../src/curriculum`.
 `packages/math-engine/src/graph.ts`:
 
 ```ts
-import { err, ok, type Result } from '@mflow/core';
+import { err, ok, type Result } from '@futureflow/core';
 import type { Topic } from './types';
 
 /** Topics in teaching order; every prerequisite appears earlier (so the graph is acyclic). */
@@ -1142,7 +1142,7 @@ git commit -m "feat(math-engine): add knowledge graph and Ontario L0-L2 curricul
 
 **Interfaces:**
 
-- Consumes: `Difficulty` (Task 2); `DayKey`, `addDays` from `@mflow/core`.
+- Consumes: `Difficulty` (Task 2); `DayKey`, `addDays` from `@futureflow/core`.
 - Produces:
   - `ELO_SCALE = 400`, `DEFAULT_K = 32`, `INITIAL_LEARNER_RATING = 1000`, `PLACED_RATING = 1200`
   - `expectedScore(learner: number, item: number): number`
@@ -1309,7 +1309,7 @@ export const initialItemRating = (difficulty: Difficulty): number => 600 + 200 *
 `packages/math-engine/src/mastery.ts`:
 
 ```ts
-import { addDays, type DayKey } from '@mflow/core';
+import { addDays, type DayKey } from '@futureflow/core';
 import { INITIAL_LEARNER_RATING } from './elo';
 
 export type TopicProgress = Readonly<{
@@ -1483,7 +1483,7 @@ Expected: FAIL, cannot resolve `../src/scheduler`.
 `packages/math-engine/src/scheduler.ts`:
 
 ```ts
-import type { DayKey } from '@mflow/core';
+import type { DayKey } from '@futureflow/core';
 import { expectedScore } from './elo';
 import { frontier, isUnlocked, type KnowledgeGraph } from './graph';
 import { isReviewDue, type TopicProgress } from './mastery';
@@ -1644,7 +1644,7 @@ Expected: FAIL, cannot resolve `../src/placement`.
 `packages/math-engine/src/placement.ts`:
 
 ```ts
-import type { DayKey } from '@mflow/core';
+import type { DayKey } from '@futureflow/core';
 import { PLACED_RATING } from './elo';
 import type { KnowledgeGraph } from './graph';
 import { newProgress, type TopicProgress } from './mastery';
@@ -2340,7 +2340,7 @@ Expected: FAIL, cannot resolve `../src/mock-exam`.
 `packages/math-engine/src/mock-exam.ts`:
 
 ```ts
-import type { DayKey } from '@mflow/core';
+import type { DayKey } from '@futureflow/core';
 import type { CheckOutcome } from './check';
 import type { GeneratorRegistry } from './generators/registry';
 import type { KnowledgeGraph } from './graph';

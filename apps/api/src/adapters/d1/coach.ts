@@ -1,4 +1,4 @@
-import { isoWeekKey } from '@mflow/core';
+import { isoWeekKey } from '@futureflow/core';
 import type { CoachMessage, CoachRepo } from '../../ports';
 
 type Row = {

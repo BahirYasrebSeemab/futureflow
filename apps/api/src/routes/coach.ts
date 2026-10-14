@@ -1,5 +1,5 @@
-import { CoachMessageRequestSchema, CoachQuerySchema } from '@mflow/contracts';
-import { addDays } from '@mflow/core';
+import { CoachMessageRequestSchema, CoachQuerySchema } from '@futureflow/contracts';
+import { addDays } from '@futureflow/core';
 import { Hono } from 'hono';
 import {
   coachPrompt,

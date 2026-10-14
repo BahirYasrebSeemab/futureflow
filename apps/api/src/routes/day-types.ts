@@ -1,4 +1,8 @@
-import { AwayRequestSchema, AwayVerdictRequestSchema, BadDayRequestSchema } from '@mflow/contracts';
+import {
+  AwayRequestSchema,
+  AwayVerdictRequestSchema,
+  BadDayRequestSchema,
+} from '@futureflow/contracts';
 import {
   addDays,
   applyAwayVerification,
@@ -6,7 +10,7 @@ import {
   declareBadDay,
   DEFAULT_RULES,
   type DayRecord,
-} from '@mflow/core';
+} from '@futureflow/core';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import type { AppEnv, Deps } from '../env';

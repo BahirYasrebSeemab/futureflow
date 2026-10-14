@@ -1,4 +1,4 @@
-# mflow P2d-2: Grade 10 (MPM2D) Geometry & Trigonometry + Mixed-Difficulty Mocks
+# Future Flow P2d-2: Grade 10 (MPM2D) Geometry & Trigonometry + Mixed-Difficulty Mocks
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -10,9 +10,9 @@
 - Angles are integers in 10°–80°, excluding 30°, 45° and 60°, so no answer is accidentally exact at a half.
 - The checker strips a trailing `°`/`degrees`, and length answers carry a `lengthUnit` (`cm` by default, `m` for the shadow problem), so only the asked-for unit is stripped.
 
-**Tech Stack:** Bun, TypeScript 6, Vitest 5, fast-check, @cortex-js/compute-engine, @mflow/core.
+**Tech Stack:** Bun, TypeScript 6, Vitest 5, fast-check, @cortex-js/compute-engine, @futureflow/core.
 
-**Spec:** `docs/superpowers/specs/2026-10-08-mflow-v1-design.md` §10.1, §10.7; ADR 0005 (the mixed-difficulty mock deferral is owned here).
+**Spec:** `docs/superpowers/specs/2026-10-08-futureflow-v1-design.md` §10.1, §10.7; ADR 0005 (the mixed-difficulty mock deferral is owned here).
 
 ## Global Constraints
 

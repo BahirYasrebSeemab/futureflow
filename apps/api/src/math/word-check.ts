@@ -1,4 +1,4 @@
-import type { Problem } from '@mflow/math-engine/types';
+import type { Problem } from '@futureflow/math-engine/types';
 
 /** Topics whose exercises read naturally as real-world stories (pure algebra does not). */
 export const WORD_TOPICS: readonly string[] = [

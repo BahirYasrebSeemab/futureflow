@@ -1,4 +1,4 @@
-import type { UsageCounter } from '@mflow/ai';
+import type { UsageCounter } from '@futureflow/ai';
 import type {
   BankProblem,
   CoachMessage,
@@ -6,10 +6,10 @@ import type {
   MathAttempt,
   ReadingLog,
   Roadmap,
-} from '@mflow/contracts';
-import type { Beat, DayRecord, GuardGap, LedgerEvent, Plan, Verdict } from '@mflow/core';
+} from '@futureflow/contracts';
+import type { Beat, DayRecord, GuardGap, LedgerEvent, Plan, Verdict } from '@futureflow/core';
 
-export type { CoachMessage } from '@mflow/contracts';
+export type { CoachMessage } from '@futureflow/contracts';
 
 /** Repository ports. Routes depend on these; `adapters/d1` implements them. */
 

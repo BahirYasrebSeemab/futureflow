@@ -1,5 +1,5 @@
-import { ReadingLogSchema } from '@mflow/contracts';
-import type { ReadingLog } from '@mflow/contracts';
+import { ReadingLogSchema } from '@futureflow/contracts';
+import type { ReadingLog } from '@futureflow/contracts';
 import { z } from 'zod';
 import type { CommitEvidence, GithubLink, StoredVerdict, VerificationRepo } from '../../ports';
 

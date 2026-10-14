@@ -1,4 +1,4 @@
-# mflow P2d-1: Grade 10 (MPM2D) Algebra Generators + Gate Coverage
+# Future Flow P2d-1: Grade 10 (MPM2D) Algebra Generators + Gate Coverage
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -10,9 +10,9 @@
 - New format helper `formatPolynomial` and checker form `factored`, plus `roundFloat` for irrational roots rounded as the prompt asks.
 - Every generator gets the shared contract, an independent oracle, the registry-wide wording and step validators, and symbolic step checks: every algebra step must stay equivalent to the problem, or true at the solution.
 
-**Tech Stack:** Bun, TypeScript 6, Vitest 5, fast-check, @cortex-js/compute-engine, @mflow/core.
+**Tech Stack:** Bun, TypeScript 6, Vitest 5, fast-check, @cortex-js/compute-engine, @futureflow/core.
 
-**Spec:** `docs/superpowers/specs/2026-10-08-mflow-v1-design.md` §10.1, §10.7, §15 (P2d); ADR 0005 (the "gate coverage" deferral is owned here). Geometry and trigonometry (analytic geometry, similar triangles, trig, sine/cosine laws) follow in **P2d-2**.
+**Spec:** `docs/superpowers/specs/2026-10-08-futureflow-v1-design.md` §10.1, §10.7, §15 (P2d); ADR 0005 (the "gate coverage" deferral is owned here). Geometry and trigonometry (analytic geometry, similar triangles, trig, sine/cosine laws) follow in **P2d-2**.
 
 ## Global Constraints
 

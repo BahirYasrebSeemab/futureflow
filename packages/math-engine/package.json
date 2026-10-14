@@ -1,5 +1,5 @@
 {
-  "name": "@mflow/math-engine",
+  "name": "@futureflow/math-engine",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "@cortex-js/compute-engine": "^0.150.0",
-    "@mflow/core": "workspace:*"
+    "@futureflow/core": "workspace:*"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^5.0.3",

@@ -1,5 +1,5 @@
 {
-  "name": "mflow",
+  "name": "futureflow",
   "private": true,
   "type": "module",
   "packageManager": "bun@1.4.0",

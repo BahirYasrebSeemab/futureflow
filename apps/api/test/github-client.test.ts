@@ -13,7 +13,7 @@ describe('githubClient', () => {
       authorization: 'Bearer tok',
       accept: 'application/vnd.github+json',
       'x-github-api-version': GITHUB_API_VERSION,
-      'user-agent': 'mflow',
+      'user-agent': 'futureflow',
     });
   });
 
@@ -26,7 +26,7 @@ describe('githubClient', () => {
       ],
     });
     const result = await githubClient('tok', fake.fetch).commitsSince(
-      'bahir/mflow',
+      'bahir/futureflow',
       '2026-10-08T00:00:00Z',
       'bahir',
     );
@@ -39,7 +39,7 @@ describe('githubClient', () => {
       ],
     });
     expect(fake.urls[0]).toBe(
-      'https://api.github.com/repos/bahir/mflow/commits?since=2026-10-08T00%3A00%3A00Z&author=bahir&per_page=100',
+      'https://api.github.com/repos/bahir/futureflow/commits?since=2026-10-08T00%3A00%3A00Z&author=bahir&per_page=100',
     );
   });
 
@@ -49,7 +49,7 @@ describe('githubClient', () => {
       commits: [{ sha: 'a1', date: '2026-10-09T08:00:00Z', message: 'fix: bug', patch: long }],
     });
 
-    const result = await githubClient('tok', fake.fetch).commit('bahir/mflow', 'a1');
+    const result = await githubClient('tok', fake.fetch).commit('bahir/futureflow', 'a1');
 
     if (!result.ok) throw new Error(result.error);
     expect(result.value).toMatchObject({
@@ -64,7 +64,7 @@ describe('githubClient', () => {
 
   it('keeps a binary file without a patch', async () => {
     const fake = githubFake({ commits: [{ sha: 'b1', date: '2026-10-09T08:00:00Z' }] });
-    const result = await githubClient('tok', fake.fetch).commit('bahir/mflow', 'b1');
+    const result = await githubClient('tok', fake.fetch).commit('bahir/futureflow', 'b1');
     expect(result.ok && result.value.files).toEqual([
       { filename: 'README', additions: 1, deletions: 1 },
     ]);
@@ -78,7 +78,10 @@ describe('githubClient', () => {
     [502, 'unavailable'],
   ] as const)('maps HTTP %i to %s', async (status, error) => {
     const fake = githubFake({ status: () => status });
-    expect(await githubClient('tok', fake.fetch).repo('bahir/mflow')).toEqual({ ok: false, error });
+    expect(await githubClient('tok', fake.fetch).repo('bahir/futureflow')).toEqual({
+      ok: false,
+      error,
+    });
   });
 
   it('maps a network failure to unavailable and an odd body to invalid_output', async () => {

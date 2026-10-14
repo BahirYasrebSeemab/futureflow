@@ -1,5 +1,5 @@
-import type { Roadmap } from '@mflow/contracts';
-import type { LedgerEvent } from '@mflow/core';
+import type { Roadmap } from '@futureflow/contracts';
+import type { LedgerEvent } from '@futureflow/core';
 import type { Deps } from '../env';
 import type { CoachMessage } from '../ports';
 

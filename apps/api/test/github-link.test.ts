@@ -7,7 +7,7 @@ const TOKEN = 'github_pat_' + 'x'.repeat(40);
 
 async function linked(
   fake = githubFake(),
-  body: object = { token: TOKEN, repos: ['bahir/mflow'] },
+  body: object = { token: TOKEN, repos: ['bahir/futureflow'] },
 ) {
   const app: App = makeApp(undefined, { fetch: fake.fetch });
   const { token } = await pairDevice(app);
@@ -29,7 +29,7 @@ describe('GitHub link', () => {
 
     expect(reply.body.data).toEqual({
       login: 'bahir',
-      repos: ['bahir/mflow'],
+      repos: ['bahir/futureflow'],
       status: 'ok',
       unreadableRepos: [],
     });
@@ -45,7 +45,7 @@ describe('GitHub link', () => {
     const got = await call(app, 'GET', '/v1/github/link', { token });
     expect(got.body.data).toEqual({
       login: 'bahir',
-      repos: ['bahir/mflow'],
+      repos: ['bahir/futureflow'],
       status: 'ok',
       unreadableRepos: [],
     });
@@ -65,7 +65,7 @@ describe('GitHub link', () => {
   it('refuses a repository the token cannot read', async () => {
     const { reply } = await linked(githubFake(), {
       token: TOKEN,
-      repos: ['bahir/mflow', 'bahir/secret'],
+      repos: ['bahir/futureflow', 'bahir/secret'],
     });
     expect([reply.status, reply.body.error?.code]).toEqual([422, 'github_repo_unavailable']);
   });
@@ -81,7 +81,7 @@ describe('GitHub link', () => {
     const { token } = await pairDevice(app);
     const reply = await call(app, 'PUT', '/v1/github/link', {
       token,
-      body: { token: TOKEN, repos: ['bahir/mflow'] },
+      body: { token: TOKEN, repos: ['bahir/futureflow'] },
       env: { GITHUB_TOKEN_KEY: undefined },
     });
     expect([reply.status, reply.body.error?.code]).toEqual([503, 'github_key_missing']);

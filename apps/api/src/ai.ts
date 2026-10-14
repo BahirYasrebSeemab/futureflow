@@ -6,7 +6,7 @@ import {
   type Ai,
   type FetchLike,
   type UsageCounter,
-} from '@mflow/ai';
+} from '@futureflow/ai';
 import type { Bindings } from './env';
 
 /** Talk order: the cheapest free model first. Free-tier quotas are per project (see AI Studio). */

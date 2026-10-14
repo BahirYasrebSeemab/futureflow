@@ -1,4 +1,10 @@
-import { analyzeBeats, DEFAULT_RULES, overlapMs, parseDayKey, type GuardGap } from '@mflow/core';
+import {
+  analyzeBeats,
+  DEFAULT_RULES,
+  overlapMs,
+  parseDayKey,
+  type GuardGap,
+} from '@futureflow/core';
 import type { Deps } from '../env';
 
 export const MAX_BEATS_PER_RUN = 500;

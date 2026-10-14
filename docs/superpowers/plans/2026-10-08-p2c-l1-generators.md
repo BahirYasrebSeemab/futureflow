@@ -1,4 +1,4 @@
-# mflow P2c: Step Validator + Complete L1 (Grade 9, MTH1W) Generators
+# Future Flow P2c: Step Validator + Complete L1 (Grade 9, MTH1W) Generators
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -15,9 +15,9 @@
   - an absolute `tolerance` for rounded money answers
 - Six generators fill L1: linear-inequalities, linear-relations, exponent-laws, measurement-and-geometry, data-and-statistics, financial-literacy.
 
-**Tech Stack:** Bun, TypeScript 6, Vitest 5, fast-check, @cortex-js/compute-engine, @mflow/core.
+**Tech Stack:** Bun, TypeScript 6, Vitest 5, fast-check, @cortex-js/compute-engine, @futureflow/core.
 
-**Spec:** `docs/superpowers/specs/2026-10-08-mflow-v1-design.md` §10; ADR 0005. **Moves `interval`/inequality answers from P2d into P2c**, because linear inequalities are Grade 9.
+**Spec:** `docs/superpowers/specs/2026-10-08-futureflow-v1-design.md` §10; ADR 0005. **Moves `interval`/inequality answers from P2d into P2c**, because linear inequalities are Grade 9.
 
 ## Global Constraints
 

@@ -1,4 +1,4 @@
-import type { GuardGap } from '@mflow/core';
+import type { GuardGap } from '@futureflow/core';
 import type { UpkeepRepo } from '../../ports';
 
 export const d1Upkeep = (db: D1Database): UpkeepRepo => ({

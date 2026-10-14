@@ -1,4 +1,4 @@
-# mflow P3c-2: coach, memory, nightly review, day rollover and guard gaps Implementation Plan
+# Future Flow P3c-2: coach, memory, nightly review, day rollover and guard gaps Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -14,13 +14,13 @@ All of this runs on a second, half-hourly upkeep cron.
 
 **Architecture:**
 
-- **Pure core rules:** `analyzeBeats` (heartbeat gaps) and `expireFromBalances` are new in `@mflow/core`.
+- **Pure core rules:** `analyzeBeats` (heartbeat gaps) and `expireFromBalances` are new in `@futureflow/core`.
 - **Upkeep steps in the API (`src/upkeep/*`):** `rollover`, `analyzeGuard`, `runNightly` and `runWeekly`. Each step is idempotent: semantic keys for ledger events, unique rows per day or week, and cursors for heartbeats.
 - **Coach (`src/coach/*`):** builds a persona prompt from the owner's own roadmap words. It sends minimal context (the latest weekly summary, today's tasks and outcomes, and the last 10 messages), never the full history.
 
-**Tech Stack:** Hono, D1, `@mflow/ai` (talk), `@mflow/core`, Vitest 5 with `@cloudflare/vitest-plugin`.
+**Tech Stack:** Hono, D1, `@futureflow/ai` (talk), `@futureflow/core`, Vitest 5 with `@cloudflare/vitest-plugin`.
 
-**Spec:** `docs/superpowers/specs/2026-10-08-mflow-v1-design.md` (§6.1–6.5, §8 budget, §9.2–9.3, §11 cron, §13).
+**Spec:** `docs/superpowers/specs/2026-10-08-futureflow-v1-design.md` (§6.1–6.5, §8 budget, §9.2–9.3, §11 cron, §13).
 
 **Scope (ruled here):** AI word problems and `GET /math/bank` (spec §10.8) move to **P3c-3**. The CAS has to re-solve every AI problem, and whether math-engine's CAS fits the free Worker's 10 ms CPU limit needs its own spike. Reclassifying a phone-off day as **away** is deferred too: away needs location verification, which can't happen for a past day. **Bad** is supported.
 
@@ -537,10 +537,10 @@ CREATE INDEX guard_gaps_day ON guard_gaps (day);
 
 - [ ] **Step 4: Implement the ports and adapters**
 
-Append to `apps/api/src/ports.ts` (type imports: `CoachMessage` from `@mflow/contracts`; `Beat`, `GuardGap` from `@mflow/core`), and add `coach: CoachRepo; upkeep: UpkeepRepo;` to `Repos`:
+Append to `apps/api/src/ports.ts` (type imports: `CoachMessage` from `@futureflow/contracts`; `Beat`, `GuardGap` from `@futureflow/core`), and add `coach: CoachRepo; upkeep: UpkeepRepo;` to `Repos`:
 
 ```ts
-export type { CoachMessage } from '@mflow/contracts';
+export type { CoachMessage } from '@futureflow/contracts';
 
 export interface CoachRepo {
   /** False when a message with this id is already stored (a retried send). */
@@ -617,7 +617,7 @@ In `apps/api/src/adapters/d1/telemetry.ts`, add:
 `apps/api/src/adapters/d1/coach.ts`:
 
 ```ts
-import { isoWeekKey } from '@mflow/core';
+import { isoWeekKey } from '@futureflow/core';
 import type { CoachMessage, CoachRepo } from '../../ports';
 
 type Row = {
@@ -730,7 +730,7 @@ export const d1Coach = (db: D1Database): CoachRepo => {
 `apps/api/src/adapters/d1/upkeep.ts`:
 
 ```ts
-import type { GuardGap } from '@mflow/core';
+import type { GuardGap } from '@futureflow/core';
 import type { UpkeepRepo } from '../../ports';
 
 export const d1Upkeep = (db: D1Database): UpkeepRepo => ({
@@ -825,7 +825,7 @@ git commit -m "feat(api): storage for coach messages, summaries, nightly runs an
 `apps/api/test/rollover.test.ts`:
 
 ```ts
-import type { LedgerEvent } from '@mflow/core';
+import type { LedgerEvent } from '@futureflow/core';
 import { env } from 'cloudflare:test';
 import { describe, expect, it } from 'vitest';
 import { makeDeps } from '../src/app';
@@ -889,7 +889,7 @@ Expected: FAIL. `../src/upkeep/rollover` can't be resolved.
 `apps/api/src/ledger/base-grant.ts`:
 
 ```ts
-import { DEFAULT_RULES, earn, type LedgerEvent } from '@mflow/core';
+import { DEFAULT_RULES, earn, type LedgerEvent } from '@futureflow/core';
 import type { Deps } from '../env';
 import { appendEvents } from './append';
 
@@ -928,7 +928,7 @@ const paid = await grantBase(deps, day, dayEvents, totals.outstandingBorrow);
 `apps/api/src/upkeep/rollover.ts`:
 
 ```ts
-import { addDays, expireFromBalances } from '@mflow/core';
+import { addDays, expireFromBalances } from '@futureflow/core';
 import type { Deps } from '../env';
 import { appendEvents } from '../ledger/append';
 import { grantBase } from '../ledger/base-grant';
@@ -1103,7 +1103,7 @@ import {
   overlapMs,
   parseDayKey,
   type GuardGap,
-} from '@mflow/core';
+} from '@futureflow/core';
 import type { Deps } from '../env';
 
 export const MAX_BEATS_PER_RUN = 500;
@@ -1172,7 +1172,7 @@ Note: re-reading from the cursor inclusive means the last beat of the previous r
 `apps/api/src/routes/guard.ts`:
 
 ```ts
-import { DayKeySchema } from '@mflow/contracts';
+import { DayKeySchema } from '@futureflow/contracts';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import type { AppEnv } from '../env';
@@ -1258,7 +1258,7 @@ git commit -m "feat(api): heartbeat gaps tell phone-off from guard-disabled"
 `apps/api/test/coach.test.ts`:
 
 ```ts
-import type { FetchLike } from '@mflow/ai';
+import type { FetchLike } from '@futureflow/ai';
 import { v7 as uuidv7 } from 'uuid';
 import { describe, expect, it } from 'vitest';
 import { DISTRESS_GUARDRAIL } from '../src/coach/persona';
@@ -1356,7 +1356,7 @@ Add to `ERRORS` (with the 503s): `coach_unavailable: [503, 'The coach cannot ans
 `apps/api/src/coach/persona.ts`:
 
 ```ts
-import type { Roadmap } from '@mflow/contracts';
+import type { Roadmap } from '@futureflow/contracts';
 import type { Deps } from '../env';
 import type { CoachMessage } from '../ports';
 
@@ -1442,8 +1442,8 @@ export function coachPrompt(input: {
 `apps/api/src/routes/coach.ts`:
 
 ```ts
-import { CoachMessageRequestSchema, CoachQuerySchema } from '@mflow/contracts';
-import { addDays } from '@mflow/core';
+import { CoachMessageRequestSchema, CoachQuerySchema } from '@futureflow/contracts';
+import { addDays } from '@futureflow/core';
 import { Hono } from 'hono';
 import {
   coachPrompt,
@@ -1549,8 +1549,8 @@ git commit -m "feat(api): coach chat as the owner's future self, with a distress
 `apps/api/test/nightly.test.ts`:
 
 ```ts
-import type { FetchLike } from '@mflow/ai';
-import type { Plan } from '@mflow/core';
+import type { FetchLike } from '@futureflow/ai';
+import type { Plan } from '@futureflow/core';
 import { env } from 'cloudflare:test';
 import { describe, expect, it } from 'vitest';
 import { makeDeps } from '../src/app';
@@ -1656,7 +1656,7 @@ Expected: FAIL. `../src/upkeep/nightly` can't be resolved.
 `apps/api/src/upkeep/nightly.ts`:
 
 ```ts
-import { addDays, createDraft, DEFAULT_RULES, editDraft } from '@mflow/core';
+import { addDays, createDraft, DEFAULT_RULES, editDraft } from '@futureflow/core';
 import { coachSystem, todayFacts, type CoachFacts } from '../coach/persona';
 import type { Deps } from '../env';
 import { activeSkills, aiTasks, templateTasks } from '../planning/propose';
@@ -1809,7 +1809,7 @@ git commit -m "feat(api): nightly review and tomorrow's proposal at the reminder
 `apps/api/test/weekly.test.ts`:
 
 ```ts
-import type { FetchLike } from '@mflow/ai';
+import type { FetchLike } from '@futureflow/ai';
 import { env } from 'cloudflare:test';
 import { describe, expect, it } from 'vitest';
 import { d1Repos } from '../src/adapters/d1';
@@ -1896,7 +1896,7 @@ Expected: FAIL. `../src/upkeep/weekly` can't be resolved.
 `apps/api/src/upkeep/weekly.ts`:
 
 ```ts
-import { addDays, isoWeekKey, weekdayOf } from '@mflow/core';
+import { addDays, isoWeekKey, weekdayOf } from '@futureflow/core';
 import { coachSystem } from '../coach/persona';
 import type { Deps } from '../env';
 import { ownerDay } from '../verification/run';
@@ -1980,7 +1980,7 @@ git commit -m "feat(api): weekly coach summaries and 30-day transcript retention
 `apps/api/test/upkeep.test.ts`:
 
 ```ts
-import type { FetchLike } from '@mflow/ai';
+import type { FetchLike } from '@futureflow/ai';
 import { env } from 'cloudflare:test';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { runUpkeep } from '../src/scheduled';

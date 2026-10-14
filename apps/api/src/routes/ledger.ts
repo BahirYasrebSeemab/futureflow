@@ -1,4 +1,4 @@
-import { LedgerEventBatchSchema, LedgerQuerySchema } from '@mflow/contracts';
+import { LedgerEventBatchSchema, LedgerQuerySchema } from '@futureflow/contracts';
 import { Hono } from 'hono';
 import type { AppEnv } from '../env';
 import { ok } from '../http/envelope';

@@ -1,4 +1,4 @@
-import { GithubLinkRequestSchema } from '@mflow/contracts';
+import { GithubLinkRequestSchema } from '@futureflow/contracts';
 import { Hono } from 'hono';
 import { importSecretKey, seal } from '../crypto/secret-box';
 import type { AppEnv } from '../env';

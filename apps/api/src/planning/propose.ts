@@ -1,6 +1,6 @@
-import type { Ai } from '@mflow/ai';
-import type { Roadmap } from '@mflow/contracts';
-import { DEFAULT_RULES, isRestDay, weekdayOf, type DayKey, type TaskSpec } from '@mflow/core';
+import type { Ai } from '@futureflow/ai';
+import type { Roadmap } from '@futureflow/contracts';
+import { DEFAULT_RULES, isRestDay, weekdayOf, type DayKey, type TaskSpec } from '@futureflow/core';
 import { z } from 'zod';
 
 export const PROPOSAL_TASK_SECONDS = 30 * 60;
