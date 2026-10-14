@@ -1,5 +1,6 @@
 import type { Deps } from '../env';
 import { runBankStep } from '../math/bank-step';
+import type { WordResult } from '../math/word-problem';
 import { analyzeGuard } from './guard';
 import { ownerContext } from './owner';
 import { runNightly, type NightlyReview } from './nightly';
@@ -12,7 +13,7 @@ export type UpkeepRun = Readonly<{
   nightly: NightlyReview | null;
   summarized: string | null;
   deleted: number;
-  wordProblem: 'accepted' | 'rejected' | 'unavailable' | null;
+  wordProblem: WordResult | null;
 }>;
 
 /** Runs one step; a failure is logged by step name (never data) and the next steps still run. */

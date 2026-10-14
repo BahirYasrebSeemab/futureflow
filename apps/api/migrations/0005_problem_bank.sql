@@ -12,7 +12,8 @@ CREATE TABLE problem_bank (
   answer_json TEXT NOT NULL,
   hints_json TEXT NOT NULL,
   steps_json TEXT NOT NULL,
-  status TEXT NOT NULL CHECK (status IN ('accepted', 'rejected')),
+  -- pending: passed every check, but judge decisions are not enabled yet (JUDGE_AUTO_DECIDE).
+  status TEXT NOT NULL CHECK (status IN ('accepted', 'pending', 'rejected')),
   reason TEXT,
   created_at INTEGER NOT NULL
 );

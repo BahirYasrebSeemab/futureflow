@@ -184,7 +184,11 @@ export interface BankRepo {
   weekCounts(
     week: string,
   ): Promise<{ accepted: number; attempted: number; byTopic: Map<string, number> }>;
-  add(entry: BankEntry, status: 'accepted' | 'rejected', reason: string | null): Promise<void>;
+  add(
+    entry: BankEntry,
+    status: 'accepted' | 'pending' | 'rejected',
+    reason: string | null,
+  ): Promise<void>;
   /** Accepted problems after the cursor, in server order. */
   page(since: number, limit: number): Promise<{ problems: BankEntry[]; next: number }>;
 }

@@ -3,7 +3,7 @@ import type { Difficulty } from '@mflow/math-engine/types';
 import type { Deps } from '../env';
 import type { Owner } from '../upkeep/owner';
 import { seedFor, WORD_TOPICS } from './word-check';
-import { makeWordProblem, type WordJob } from './word-problem';
+import { makeWordProblem, type WordJob, type WordResult } from './word-problem';
 
 export const PER_TOPIC = 3;
 export const PER_WEEK = 12;
@@ -35,10 +35,7 @@ export function nextJob(week: string, topics: readonly string[], counts: Counts)
 }
 
 /** One word problem per upkeep tick, for the topics the owner practised recently. */
-export async function runBankStep(
-  deps: Deps,
-  owner: Owner | null,
-): Promise<'accepted' | 'rejected' | 'unavailable' | null> {
+export async function runBankStep(deps: Deps, owner: Owner | null): Promise<WordResult | null> {
   if (owner === null) return null;
   const week = isoWeekKey(owner.day);
   const [topics, counts] = await Promise.all([
