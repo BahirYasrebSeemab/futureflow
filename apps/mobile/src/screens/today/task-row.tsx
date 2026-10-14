@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 import type { Today } from '@/lib/api/client';
+import { Button } from '@/components/button';
 import { formatDuration } from '@/lib/format';
 import { radius, space, usePalette } from '@/theme';
 
@@ -15,9 +16,20 @@ const STATUS: Record<Verdict['outcome'], string> = {
   pending: 'Checking',
 };
 
-type Props = Readonly<{ task: Task; verdict: Verdict | undefined; mode: TaskMode }>;
+type Props = Readonly<{
+  task: Task;
+  verdict: Verdict | undefined;
+  mode: TaskMode;
+  /** Present only when the owner may answer for this task. */
+  onDecide?: (outcome: 'pass' | 'fail') => void;
+}>;
 
-export function TaskRow({ task, verdict, mode }: Props) {
+const SUGGESTION = {
+  pass: 'The checker thinks: done',
+  fail: 'The checker thinks: not done',
+} as const;
+
+export function TaskRow({ task, verdict, mode, onDecide }: Props) {
   const c = usePalette();
   const version = mode === 'small' ? task.twoMinute : task.full;
   const status =
@@ -39,6 +51,33 @@ export function TaskRow({ task, verdict, mode }: Props) {
         </Text>
         <Text style={[styles.metaText, { color: c.text }]}>{status}</Text>
       </View>
+      {onDecide !== undefined && (
+        <View style={styles.decide}>
+          <Text style={[styles.metaText, { color: c.text }]}>Waiting for your answer</Text>
+          {verdict?.suggestion !== undefined && (
+            <Text style={[styles.metaText, { color: c.muted }]}>
+              {SUGGESTION[verdict.suggestion]}
+            </Text>
+          )}
+          <View style={styles.buttons}>
+            <View style={styles.button}>
+              <Button
+                testID={`did-it-${task.id}`}
+                label="I did it"
+                onPress={() => onDecide('pass')}
+              />
+            </View>
+            <View style={styles.button}>
+              <Button
+                testID={`not-done-${task.id}`}
+                label="Not done"
+                variant="secondary"
+                onPress={() => onDecide('fail')}
+              />
+            </View>
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -57,4 +96,7 @@ const styles = StyleSheet.create({
     marginTop: space.xs,
   },
   metaText: { fontSize: 14 },
+  decide: { gap: space.sm, marginTop: space.sm },
+  buttons: { flexDirection: 'row', gap: space.sm },
+  button: { flex: 1 },
 });

@@ -417,3 +417,96 @@ test("Today's Away button opens the Away screen", async () => {
   fireEvent.press(await screen.findByTestId('open-away'));
   expect(await screen.findByText('Going away')).toBeTruthy();
 });
+
+function pendingToday() {
+  const t = sampleToday();
+  const id = t.plan!.tasks[1]!.id;
+  const data: Today = {
+    ...t,
+    verdicts: [
+      ...t.verdicts,
+      {
+        day: t.day,
+        taskId: id,
+        outcome: 'pending',
+        confidence: 0.6,
+        by: 'judge',
+        evidenceIds: [],
+        suggestion: 'pass',
+      },
+    ],
+  };
+  return { id, data };
+}
+
+test('a pending task can be confirmed done after a warning', async () => {
+  const { id, data } = pendingToday();
+  const decideVerdict = jest.fn(async () => ({
+    ok: true as const,
+    data: {
+      day: data.day,
+      taskId: id,
+      outcome: 'pass' as const,
+      confidence: 1,
+      by: 'owner' as const,
+      evidenceIds: [],
+    },
+  }));
+  const services = await testServices(
+    { today: async () => ({ ok: true, data }), decideVerdict },
+    PAIRED,
+  );
+  mount(ready(services));
+  expect(await screen.findByText('The checker thinks: done')).toBeTruthy();
+  expect(screen.getByText('Waiting for your answer')).toBeTruthy();
+  fireEvent.press(screen.getByTestId(`did-it-${id}`));
+  answerAlert('Yes, I did it');
+  await waitFor(() =>
+    expect(decideVerdict).toHaveBeenCalledWith(id, { day: data.day, outcome: 'pass' }),
+  );
+});
+
+test('cancel sends nothing', async () => {
+  const { id, data } = pendingToday();
+  const decideVerdict = jest.fn(async () => offline);
+  const services = await testServices(
+    { today: async () => ({ ok: true, data }), decideVerdict },
+    PAIRED,
+  );
+  mount(ready(services));
+  fireEvent.press(await screen.findByTestId(`not-done-${id}`));
+  answerAlert('Cancel');
+  expect(decideVerdict).not.toHaveBeenCalled();
+  fireEvent.press(screen.getByTestId(`not-done-${id}`));
+  answerAlert('Not done');
+  await waitFor(() =>
+    expect(decideVerdict).toHaveBeenCalledWith(id, { day: data.day, outcome: 'fail' }),
+  );
+});
+
+test('an already decided task says so', async () => {
+  const { id, data } = pendingToday();
+  const services = await testServices(
+    {
+      today: async () => ({ ok: true, data }),
+      decideVerdict: async () => ({
+        ok: false,
+        error: { kind: 'rejected', status: 409, code: 'verdict_not_pending', message: 'x' },
+      }),
+    },
+    PAIRED,
+  );
+  mount(ready(services));
+  fireEvent.press(await screen.findByTestId(`did-it-${id}`));
+  answerAlert('Yes, I did it');
+  expect(await screen.findByText('This task was already decided.')).toBeTruthy();
+});
+
+test('a pending task in a draft plan or on an excused day has no answer buttons', async () => {
+  const { id, data } = pendingToday();
+  const draft: Today = { ...data, plan: { ...data.plan!, status: 'draft' } };
+  const services = await testServices({ today: async () => ({ ok: true, data: draft }) }, PAIRED);
+  mount(ready(services));
+  expect(await screen.findByText('Fractions practice')).toBeTruthy();
+  expect(screen.queryByTestId(`did-it-${id}`)).toBeNull();
+});

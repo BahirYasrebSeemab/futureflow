@@ -164,14 +164,23 @@ export function TodayScreen() {
           {today.plan?.status === 'draft' && (
             <Text style={[styles.caption, { color: c.muted }]}>Draft plan, not locked yet</Text>
           )}
-          {tasks.map((task) => (
-            <TaskRow
-              key={task.id}
-              task={task}
-              verdict={today.verdicts.find((v) => v.taskId === task.id)}
-              mode={modeFor(record, task.id)}
-            />
-          ))}
+          {tasks.map((task) => {
+            const verdict = today.verdicts.find((v) => v.taskId === task.id);
+            const mode = modeFor(record, task.id);
+            const canDecide =
+              today.plan?.status === 'locked' &&
+              verdict?.outcome === 'pending' &&
+              mode !== 'excused';
+            return (
+              <TaskRow
+                key={task.id}
+                task={task}
+                verdict={verdict}
+                mode={mode}
+                onDecide={canDecide ? (outcome) => actions.decide(task.id, outcome) : undefined}
+              />
+            );
+          })}
         </View>
       )}
       <Link
