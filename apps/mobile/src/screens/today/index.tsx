@@ -11,12 +11,29 @@ import { Banner } from '@/components/banner';
 import { Button } from '@/components/button';
 import { useApp } from '@/lib/app';
 import { formatDayLabel, formatDuration, formatTime, localOffsetMinutes } from '@/lib/format';
+import type { Today } from '@/lib/api/client';
 import type { SyncReport } from '@/lib/store/types';
 import { space, usePalette } from '@/theme';
-import { TaskRow } from './task-row';
+import { TaskRow, type TaskMode } from './task-row';
+import { useDayActions } from './use-day-actions';
 import { useToday } from './use-today';
 
-const DAY_KIND: Readonly<Record<string, string>> = { bad: 'Bad day', away: 'Away' };
+type DayRecord = NonNullable<Today['dayRecord']>;
+
+function dayCaption(record: DayRecord | null): string | null {
+  if (record === null) return null;
+  if (record.kind === 'bad') return 'Bad day: 2-minute versions count';
+  if (record.kind === 'away') return `Away: ${record.away?.place ?? ''}`;
+  return null;
+}
+
+function modeFor(record: DayRecord | null, taskId: string): TaskMode {
+  if (record?.kind === 'bad') return 'small';
+  if (record?.kind === 'away' && !(record.away?.keptTaskIds ?? []).includes(taskId)) {
+    return 'excused';
+  }
+  return 'full';
+}
 
 /** Null when the last sync worked; otherwise why the screen shows saved data. */
 function staleNotice(report: SyncReport | null, savedAt: number): string | null {
@@ -36,6 +53,7 @@ export function TodayScreen() {
   const view = useToday();
   const { loaded, syncing, tried, saved, ledgerComplete, balanceSeconds, lastSync, refresh } = view;
   const center = [styles.center, { backgroundColor: c.background }];
+  const actions = useDayActions(saved?.today.day ?? '', refresh);
 
   if (lastSync?.status === 'unauthorized') {
     return (
@@ -76,7 +94,8 @@ export function TodayScreen() {
 
   const { today } = saved;
   const notice = staleNotice(lastSync, saved.savedAt);
-  const dayKind = today.dayRecord ? DAY_KIND[today.dayRecord.kind] : undefined;
+  const record = today.dayRecord;
+  const caption = dayCaption(record);
   const tasks = today.plan?.tasks ?? [];
   return (
     <ScrollView
@@ -85,6 +104,7 @@ export function TodayScreen() {
       refreshControl={<RefreshControl refreshing={syncing} onRefresh={() => void refresh()} />}
     >
       {notice !== null && <Banner tone="warning" message={notice} />}
+      {actions.message !== null && <Banner tone="warning" message={actions.message} />}
       <View style={styles.hero}>
         <Text style={[styles.caption, { color: c.muted }]}>Time left</Text>
         <Text testID="balance" style={[styles.balance, { color: c.text }]}>
@@ -106,14 +126,23 @@ export function TodayScreen() {
             onPress={() => router.push('/plan')}
           />
         </View>
+        {record === null && (
+          <View style={styles.action}>
+            <Button
+              testID="bad-day"
+              label="Bad day"
+              variant="secondary"
+              disabled={actions.busy}
+              onPress={actions.declareBadDay}
+            />
+          </View>
+        )}
       </View>
       <View style={styles.dayRow}>
         <Text accessibilityRole="header" style={[styles.heading, { color: c.text }]}>
           {formatDayLabel(today.day)}
         </Text>
-        {dayKind !== undefined && (
-          <Text style={[styles.caption, { color: c.muted }]}>{dayKind}</Text>
-        )}
+        {caption !== null && <Text style={[styles.caption, { color: c.muted }]}>{caption}</Text>}
       </View>
       {tasks.length === 0 ? (
         <View style={styles.empty}>
@@ -132,6 +161,7 @@ export function TodayScreen() {
               key={task.id}
               task={task}
               verdict={today.verdicts.find((v) => v.taskId === task.id)}
+              mode={modeFor(record, task.id)}
             />
           ))}
         </View>

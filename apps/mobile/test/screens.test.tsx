@@ -6,7 +6,7 @@ import {
   testRouter,
   waitFor,
 } from 'expo-router/testing-library';
-import { AppState, type AppStateStatus } from 'react-native';
+import { Alert, AppState, type AppStateStatus } from 'react-native';
 import type { ApiResult, Today } from '@/lib/api/client';
 import { AppProvider, type AppServices } from '@/lib/app';
 import { StartupError } from '@/lib/config';
@@ -33,6 +33,16 @@ function mount(load: () => Promise<AppServices>, initialUrl = '/') {
     { initialUrl },
   );
 }
+
+/** Presses the named button of the latest Alert. */
+function answerAlert(label: string) {
+  const buttons = jest.mocked(Alert.alert).mock.calls.at(-1)?.[2] ?? [];
+  act(() => buttons.find((b) => b.text === label)?.onPress?.());
+}
+
+beforeEach(() => {
+  jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+});
 
 const ready = (services: AppServices) => async () => services;
 const offline: ApiResult<never> = { ok: false, error: { kind: 'network' } };
@@ -323,4 +333,78 @@ test("Today's Plan button opens the Plan screen", async () => {
   mount(ready(services));
   fireEvent.press(await screen.findByTestId('open-plan'));
   expect(await screen.findByText('Plan today')).toBeTruthy();
+});
+
+test('a confirmed bad day shrinks the tasks to their 2-minute versions', async () => {
+  let record: Today['dayRecord'] = null;
+  const declareBadDay = jest.fn(async (day: string) => {
+    record = { day, kind: 'bad' };
+    return { ok: true as const, data: record };
+  });
+  const services = await testServices(
+    { today: async () => ({ ok: true, data: sampleToday({ dayRecord: record }) }), declareBadDay },
+    PAIRED,
+  );
+  mount(ready(services));
+  fireEvent.press(await screen.findByTestId('bad-day'));
+  answerAlert('Bad day');
+  expect(await screen.findByText('Bad day: 2-minute versions count')).toBeTruthy();
+  expect(screen.getAllByText('One problem')).toHaveLength(2);
+  expect(screen.getAllByText('2-minute version')).toHaveLength(2);
+  expect(declareBadDay).toHaveBeenCalledWith('2026-10-14');
+  expect(screen.queryByTestId('bad-day')).toBeNull();
+});
+
+test('cancelling the bad day sends nothing; a used week says so', async () => {
+  const declareBadDay = jest.fn(async () => ({
+    ok: false as const,
+    error: {
+      kind: 'rejected' as const,
+      status: 409,
+      code: 'bad_day_limit_reached',
+      message: 'x',
+    },
+  }));
+  const services = await testServices({ declareBadDay }, PAIRED);
+  mount(ready(services));
+  fireEvent.press(await screen.findByTestId('bad-day'));
+  answerAlert('Cancel');
+  expect(declareBadDay).not.toHaveBeenCalled();
+  fireEvent.press(screen.getByTestId('bad-day'));
+  answerAlert('Bad day');
+  expect(await screen.findByText("This week's bad day is already used.")).toBeTruthy();
+});
+
+test('declaring a bad day offline says it needs a connection', async () => {
+  const services = await testServices({}, PAIRED);
+  mount(ready(services));
+  fireEvent.press(await screen.findByTestId('bad-day'));
+  answerAlert('Bad day');
+  expect(await screen.findByText('Declaring a day needs a connection.')).toBeTruthy();
+});
+
+test('an away day excuses the tasks not kept', async () => {
+  const today = sampleToday();
+  const kept = today.plan!.tasks[0]!.id;
+  const services = await testServices(
+    {
+      today: async () => ({
+        ok: true,
+        data: {
+          ...today,
+          dayRecord: {
+            day: today.day,
+            kind: 'away',
+            away: { place: 'Montreal', keptTaskIds: [kept], verified: 'pending' },
+          },
+        },
+      }),
+    },
+    PAIRED,
+  );
+  mount(ready(services));
+  expect(await screen.findByText('Away: Montreal')).toBeTruthy();
+  expect(screen.getByText('Excused')).toBeTruthy();
+  expect(screen.getByText('Passed')).toBeTruthy();
+  expect(screen.queryByTestId('bad-day')).toBeNull();
 });
