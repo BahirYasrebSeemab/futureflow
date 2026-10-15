@@ -40,6 +40,8 @@ bun run --cwd apps/mobile test                 # Jest, with real SQL through nod
 - Plan today or tomorrow (propose, edit, add, lock), declare a bad day or an away trip, and answer
   for tasks the checker left pending. Away days are checked on the phone; the location never
   leaves it ([ADR 0012](docs/adr/0012-planning-and-day-types-on-the-phone.md)).
+- Math practice on the phone: an optional placement test, problems chosen for your level, checked
+  by the CAS on the phone, time earned for real work ([ADR 0013](docs/adr/0013-math-practice-on-the-phone.md)).
 - The phone bundle includes the math checker (CAS), so it's built only in CI or EAS. Never run
   `expo export` on a small machine.
 - CI bundles the app for Android. The `Android e2e` workflow pairs a release build with a local Worker
