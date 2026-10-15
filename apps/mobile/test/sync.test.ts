@@ -8,11 +8,12 @@ import { nodeSqlDb } from './support/node-sql';
 
 type Script = {
   push?: (events: readonly LedgerEvent[]) => ApiResult<LedgerSyncResult>;
+  attempts?: (attempts: readonly { id: string }[]) => ApiResult<LedgerSyncResult>;
   pull?: (since: number) => ApiResult<LedgerPage>;
   today?: () => ApiResult<Today>;
 };
 
-const takeAll = (events: readonly LedgerEvent[]): ApiResult<LedgerSyncResult> => ({
+const takeAll = (events: readonly { id: string }[]): ApiResult<LedgerSyncResult> => ({
   ok: true,
   data: { added: events.map((e) => e.id), ignored: [], rejected: [] },
 });
@@ -26,8 +27,12 @@ async function setup(script: Script = {}) {
   const db = nodeSqlDb();
   await migrate(db);
   const store = sqliteStore(db);
-  const calls = { push: [] as number[], pull: [] as number[], today: 0 };
+  const calls = { push: [] as number[], pull: [] as number[], today: 0, attempts: [] as number[] };
   const api: SyncDeps['api'] = {
+    pushMathAttempts: async (attempts) => {
+      calls.attempts.push(attempts.length);
+      return (script.attempts ?? takeAll)(attempts);
+    },
     pushEvents: async (events) => {
       calls.push.push(events.length);
       return (script.push ?? takeAll)(events);
@@ -237,4 +242,49 @@ test('idle waits for a running sync and resolves at once otherwise', async () =>
   });
   await syncer.idle();
   expect(done).toBe(true);
+});
+
+const mathAttempt = (i: number) => ({
+  id: `01920000-0000-7000-8000-${String(900 + i).padStart(12, '0')}`,
+  day: '2026-10-14',
+  at: NOW - 1000 + i,
+  topicId: 'fractions',
+  difficulty: 3,
+  correct: true,
+  answerType: 'typed' as const,
+});
+
+test('math attempts are pushed and marked sent', async () => {
+  const { deps, store, calls } = await setup();
+  await store.saveAttempt(mathAttempt(1));
+  await store.saveAttempt(mathAttempt(2));
+  expect((await syncOnce(deps)).status).toBe('ok');
+  expect(calls.attempts).toEqual([2]);
+  expect(await store.unsentAttempts()).toEqual([]);
+  await syncOnce(deps);
+  expect(calls.attempts).toEqual([2]);
+});
+
+test('future-dated attempts the server refuses are not retried', async () => {
+  const { deps, store } = await setup({
+    attempts: (attempts) => ({
+      ok: true,
+      data: {
+        added: [],
+        ignored: [],
+        rejected: attempts.map((a) => ({ id: a.id, reason: 'future_timestamp' as const })),
+      },
+    }),
+  });
+  await store.saveAttempt(mathAttempt(1));
+  await syncOnce(deps);
+  expect(await store.unsentAttempts()).toEqual([]);
+});
+
+test('an offline attempt push keeps them unsent and stops the sync', async () => {
+  const { deps, store, calls } = await setup({ attempts: () => failure({ kind: 'network' }) });
+  await store.saveAttempt(mathAttempt(1));
+  expect((await syncOnce(deps)).status).toBe('offline');
+  expect(await store.unsentAttempts()).toEqual([mathAttempt(1)]);
+  expect(calls.today).toBe(0);
 });

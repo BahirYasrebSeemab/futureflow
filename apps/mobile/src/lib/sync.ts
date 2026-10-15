@@ -1,4 +1,4 @@
-import { MAX_EVENTS_PER_BATCH } from '@futureflow/contracts';
+import { MAX_ATTEMPTS_PER_BATCH, MAX_EVENTS_PER_BATCH } from '@futureflow/contracts';
 import type { LedgerEvent } from '@futureflow/core';
 import type { Api, ApiFailure } from './api/client';
 import type { LocalStore, SyncReport, SyncStatus } from './store/types';
@@ -9,7 +9,7 @@ export const PULL_PAGE = MAX_EVENTS_PER_BATCH;
 export const MAX_ROUNDS = 20;
 
 export type SyncDeps = Readonly<{
-  api: Pick<Api, 'pushEvents' | 'today' | 'pullLedger'>;
+  api: Pick<Api, 'pushEvents' | 'pushMathAttempts' | 'today' | 'pullLedger'>;
   store: LocalStore;
   now: () => number;
 }>;
@@ -84,6 +84,21 @@ async function push(deps: SyncDeps): Promise<Pushed> {
   return { stop: null, pushed, buried };
 }
 
+/** Math attempts: everything the server answered for (added, ignored, refused) is done. */
+async function pushAttempts(deps: SyncDeps): Promise<Stop | null> {
+  for (let round = 0; round < MAX_ROUNDS; round++) {
+    const batch = await deps.store.unsentAttempts(MAX_ATTEMPTS_PER_BATCH);
+    if (batch.length === 0) return null;
+    const result = await deps.api.pushMathAttempts(batch);
+    if (!result.ok) return stopFor(result.error);
+    const { added, ignored, rejected } = result.data;
+    const done = [...added, ...ignored, ...rejected.map((r) => r.id)];
+    if (done.length === 0) return 'invalid_response';
+    await deps.store.markAttemptsSent(done);
+  }
+  return null;
+}
+
 async function refreshToday(deps: SyncDeps): Promise<Stop | null> {
   const result = await deps.api.today();
   if (!result.ok) return stopFor(result.error);
@@ -112,6 +127,7 @@ export async function syncOnce(deps: SyncDeps): Promise<SyncReport> {
   const sent = await push(deps);
   let status: SyncStatus = sent.stop ?? 'ok';
   let pulled = 0;
+  if (status === 'ok') status = (await pushAttempts(deps)) ?? 'ok';
   if (status === 'ok') status = (await refreshToday(deps)) ?? 'ok';
   if (status === 'ok') {
     const page = await pull(deps);

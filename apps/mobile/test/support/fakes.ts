@@ -116,6 +116,10 @@ export async function testServices(
     declareAway: async () => OFFLINE,
     sendAwayVerdict: async () => OFFLINE,
     decideVerdict: async () => OFFLINE,
+    pushMathAttempts: async (attempts) => ({
+      ok: true,
+      data: { added: attempts.map((a) => a.id), ignored: [], rejected: [] },
+    }),
     ...api,
   };
   const now = () => NOW;

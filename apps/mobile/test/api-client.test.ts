@@ -272,3 +272,24 @@ test('getPlan returns the plan, and getRoadmap may be empty', async () => {
   expect(await empty.api.getRoadmap()).toEqual({ ok: true, data: null });
   expect(empty.calls[0]?.url).toBe('https://api.test/v1/onboarding/roadmap');
 });
+
+test('pushMathAttempts posts the attempts', async () => {
+  const a = {
+    id: '01920000-0000-7000-8000-000000000901',
+    day: '2026-10-14',
+    at: 1,
+    topicId: 'fractions',
+    difficulty: 3,
+    correct: true,
+    answerType: 'typed' as const,
+  };
+  const { api, calls } = setup(async () =>
+    jsonResponse(200, okBody({ added: [a.id], ignored: [], rejected: [] })),
+  );
+  expect(await api.pushMathAttempts([a])).toEqual({
+    ok: true,
+    data: { added: [a.id], ignored: [], rejected: [] },
+  });
+  expect(calls[0]?.url).toBe('https://api.test/v1/math/attempts');
+  expect(JSON.parse(String(calls[0]?.init.body))).toEqual({ attempts: [a] });
+});
