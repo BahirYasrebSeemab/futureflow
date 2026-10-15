@@ -136,3 +136,56 @@ test('away windows and check times survive clearing the server copy', async () =
     await store.cursor(),
   ]).toEqual([[w], NOW, null, 0]);
 });
+
+const attempt = (i: number, day = '2026-10-14') => ({
+  id: `01920000-0000-7000-8000-${String(i).padStart(12, '0')}`,
+  day,
+  at: NOW + i,
+  topicId: 'fractions',
+  difficulty: 3,
+  correct: i % 2 === 0,
+  answerType: 'typed' as const,
+});
+
+test('math progress and item ratings round-trip and upsert', async () => {
+  const { store } = await open();
+  const p = { topicId: 'fractions', rating: 1050, streak: 2, mastered: false, reviewStage: 0 };
+  await store.saveMathProgress([p]);
+  await store.saveMathProgress([{ ...p, streak: 3 }]);
+  expect([...(await store.mathProgress()).values()]).toEqual([{ ...p, streak: 3 }]);
+  expect(await store.itemRating('fractions:3')).toBeNull();
+  await store.saveItemRating('fractions:3', 1180.5);
+  expect(await store.itemRating('fractions:3')).toBe(1180.5);
+});
+
+test('attempts are kept per day, sent in batches, and survive clearing the server copy', async () => {
+  const { store } = await open();
+  await store.saveAttempt(attempt(1));
+  await store.saveAttempt(attempt(1));
+  await store.saveAttempt(attempt(2, '2026-10-13'));
+  expect(await store.attemptsOn('2026-10-14')).toEqual([attempt(1)]);
+  expect(await store.unsentAttempts()).toEqual([attempt(1), attempt(2, '2026-10-13')]);
+  expect(await store.unsentAttempts(1)).toEqual([attempt(1)]);
+  await store.markAttemptsSent([attempt(1).id]);
+  expect(await store.unsentAttempts()).toEqual([attempt(2, '2026-10-13')]);
+  await store.markSeen('fractions:7:3', NOW);
+  await store.savePlacement({ state: { low: 3, high: 3, correctAtProbe: 0 }, done: true });
+  await store.clearServerCopy();
+  expect([
+    await store.attemptsOn('2026-10-14'),
+    await store.hasSeen('fractions:7:3'),
+    await store.hasSeen('fractions:8:3'),
+    await store.placement(),
+  ]).toEqual([
+    [attempt(1)],
+    true,
+    false,
+    { state: { low: 3, high: 3, correctAtProbe: 0 }, done: true },
+  ]);
+});
+
+test('broken math progress rows are skipped', async () => {
+  const { db, store } = await open();
+  await db.runAsync("INSERT INTO math_progress (topic_id, progress) VALUES ('x', '{\"bad\":1}')");
+  expect((await store.mathProgress()).size).toBe(0);
+});
