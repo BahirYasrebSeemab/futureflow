@@ -131,6 +131,22 @@ export function TodayScreen() {
         </View>
         <View style={styles.action}>
           <Button
+            testID="open-coach"
+            label="Coach"
+            variant="secondary"
+            onPress={() => router.push('/coach')}
+          />
+        </View>
+        <View style={styles.action}>
+          <Button
+            testID="open-more"
+            label="More"
+            variant="secondary"
+            onPress={() => router.push('/more')}
+          />
+        </View>
+        <View style={styles.action}>
+          <Button
             testID="open-math"
             label="Math"
             variant="secondary"
