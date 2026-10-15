@@ -38,6 +38,7 @@ export default defineConfig([
   },
   {
     files: ['apps/mobile/**/*.{ts,tsx}'],
+    ignores: ['apps/mobile/src/lib/math/engine.ts'],
     rules: {
       'no-restricted-imports': [
         'error',
@@ -46,7 +47,7 @@ export default defineConfig([
             {
               name: '@futureflow/math-engine',
               message:
-                'The package root pulls in the CAS, which this machine cannot bundle (ADR 0011). Import @futureflow/math-engine/generators, /types or /rational.',
+                'The CAS enters the phone through one module only: import from @/lib/math/engine (ADR 0013).',
             },
           ],
         },

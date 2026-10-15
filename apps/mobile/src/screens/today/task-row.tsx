@@ -20,6 +20,8 @@ type Props = Readonly<{
   task: Task;
   verdict: Verdict | undefined;
   mode: TaskMode;
+  /** Progress toward the task's target (math tasks), shown under the reward line. */
+  detail?: string;
   /** Present only when the owner may answer for this task. */
   onDecide?: (outcome: 'pass' | 'fail') => void;
 }>;
@@ -29,7 +31,7 @@ const SUGGESTION = {
   fail: 'The checker thinks: not done',
 } as const;
 
-export function TaskRow({ task, verdict, mode, onDecide }: Props) {
+export function TaskRow({ task, verdict, mode, detail, onDecide }: Props) {
   const c = usePalette();
   const version = mode === 'small' ? task.twoMinute : task.full;
   const status =
@@ -51,6 +53,7 @@ export function TaskRow({ task, verdict, mode, onDecide }: Props) {
         </Text>
         <Text style={[styles.metaText, { color: c.text }]}>{status}</Text>
       </View>
+      {detail !== undefined && <Text style={[styles.metaText, { color: c.muted }]}>{detail}</Text>}
       {onDecide !== undefined && (
         <View style={styles.decide}>
           <Text style={[styles.metaText, { color: c.text }]}>Waiting for your answer</Text>

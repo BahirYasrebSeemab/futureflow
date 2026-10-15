@@ -11,6 +11,7 @@ import { Banner } from '@/components/banner';
 import { useBottomPadding } from '@/components/bottom-padding';
 import { Button } from '@/components/button';
 import { useApp } from '@/lib/app';
+import { mathTarget } from '@/lib/math/tasks';
 import { formatDayLabel, formatDuration, formatTime, localOffsetMinutes } from '@/lib/format';
 import type { Today } from '@/lib/api/client';
 import type { SyncReport } from '@/lib/store/types';
@@ -130,6 +131,14 @@ export function TodayScreen() {
         </View>
         <View style={styles.action}>
           <Button
+            testID="open-math"
+            label="Math"
+            variant="secondary"
+            onPress={() => router.push('/math')}
+          />
+        </View>
+        <View style={styles.action}>
+          <Button
             testID="open-away"
             label="Away"
             variant="secondary"
@@ -179,6 +188,11 @@ export function TodayScreen() {
                 task={task}
                 verdict={verdict}
                 mode={mode}
+                detail={
+                  task.verifier === 'math' && verdict?.outcome !== 'pass' && mode !== 'excused'
+                    ? mathTarget(view.mathAttempts, mode === 'small').label
+                    : undefined
+                }
                 onDecide={canDecide ? (outcome) => actions.decide(task.id, outcome) : undefined}
               />
             );

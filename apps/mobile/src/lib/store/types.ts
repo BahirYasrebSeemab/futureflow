@@ -1,4 +1,6 @@
+import type { MathAttempt } from '@futureflow/contracts';
 import type { LedgerEvent } from '@futureflow/core';
+import type { PlacementState, TopicProgress } from '../math/engine';
 import type { Today } from '../api/client';
 
 export type SavedToday = Readonly<{ today: Today; savedAt: number }>;
@@ -12,6 +14,9 @@ export type SyncReport = Readonly<{
   pulled: number;
   at: number;
 }>;
+
+/** Where the placement test stands; `done` once it finished or was skipped. */
+export type PlacementRecord = Readonly<{ state: PlacementState; done: boolean }>;
 
 /** An away window this phone declared: the away check needs its id. */
 export type AwayWindowRef = Readonly<{ id: string; from: string; to: string }>;
@@ -44,6 +49,22 @@ export interface LocalStore {
   awayWindows(): Promise<AwayWindowRef[]>;
   saveAwayCheck(day: string, at: number): Promise<void>;
   lastAwayCheck(day: string): Promise<number | null>;
+  mathProgress(): Promise<Map<string, TopicProgress>>;
+  saveMathProgress(items: readonly TopicProgress[]): Promise<void>;
+  itemRating(key: string): Promise<number | null>;
+  saveItemRating(key: string, rating: number): Promise<void>;
+  /** A repeated id is ignored. */
+  saveAttempt(attempt: MathAttempt): Promise<void>;
+  attemptsOn(day: string): Promise<MathAttempt[]>;
+  unsentAttempts(limit?: number): Promise<MathAttempt[]>;
+  markAttemptsSent(ids: readonly string[]): Promise<void>;
+  hasSeen(problemKey: string): Promise<boolean>;
+  markSeen(problemKey: string, at: number): Promise<void>;
+  /** A math task this phone already passed (or found decided): never sent again. */
+  mathTaskDone(taskId: string): Promise<boolean>;
+  markMathTaskDone(taskId: string): Promise<void>;
+  placement(): Promise<PlacementRecord | null>;
+  savePlacement(record: PlacementRecord): Promise<void>;
   /** Drops everything that came from the server; keeps unsent and refused events (ADR 0011). */
   clearServerCopy(): Promise<void>;
 }

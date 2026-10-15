@@ -1,4 +1,4 @@
-import { parseDayKey } from '@futureflow/core';
+import { dayKeyFor, DEFAULT_RULES, parseDayKey } from '@futureflow/core';
 
 const WEEKDAYS = [
   'Sunday',
@@ -34,6 +34,10 @@ export function formatDuration(seconds: number): string {
 }
 
 export const localOffsetMinutes = (ms: number): number => -new Date(ms).getTimezoneOffset();
+
+/** The phone's day now: local time with the 04:00 day boundary. */
+export const currentDayKey = (ms: number): string =>
+  dayKeyFor(ms, localOffsetMinutes(ms), DEFAULT_RULES.dayBoundaryHour);
 
 export function formatTime(ms: number, offsetMinutes: number): string {
   const local = new Date(ms + offsetMinutes * 60_000);

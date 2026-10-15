@@ -5,6 +5,7 @@ import {
   envelope,
   LedgerPageSchema,
   LedgerSyncResultSchema,
+  type MathAttempt,
   PairResponseSchema,
   type PairRequestSchema,
   PlanSchema,
@@ -180,6 +181,13 @@ export function createApi(deps: ApiDeps) {
       }),
     decideVerdict: (taskId: string, body: { day: string; outcome: 'pass' | 'fail' }) =>
       request(deps, VerdictSchema, { method: 'POST', path: `/v1/verdicts/${taskId}`, body }),
+    /** Same answer shape as the ledger push: added, ignored and (future-dated) rejected ids. */
+    pushMathAttempts: (attempts: readonly MathAttempt[]) =>
+      request(deps, LedgerSyncResultSchema, {
+        method: 'POST',
+        path: '/v1/math/attempts',
+        body: { attempts },
+      }),
     getRoadmap: () =>
       request(deps, RoadmapSchema.nullable(), { method: 'GET', path: '/v1/onboarding/roadmap' }),
   };

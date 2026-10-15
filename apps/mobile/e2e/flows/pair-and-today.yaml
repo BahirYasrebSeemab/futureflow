@@ -2,6 +2,12 @@ appId: com.bahiryasreb.futureflow
 ---
 - launchApp:
     clearState: true
+# A slow CI emulator sometimes shows "<system app> isn't responding" over our app: wait it out.
+- runFlow:
+    when:
+      visible: ".*isn't responding.*"
+    commands:
+      - tapOn: 'Wait'
 - extendedWaitUntil:
     visible: 'Pair this phone'
     timeout: 30000
@@ -58,3 +64,22 @@ appId: com.bahiryasreb.futureflow
     visible: 'Bad day: 2-minute versions count'
     timeout: 20000
 - takeScreenshot: 06-bad-day
+- tapOn:
+    id: 'open-math'
+- tapOn:
+    id: 'skip-placement'
+- extendedWaitUntil:
+    visible:
+      id: 'problem-prompt'
+    timeout: 20000
+- takeScreenshot: 07-practice
+- tapOn:
+    id: 'answer-input'
+- inputText: '-1'
+- hideKeyboard
+- tapOn:
+    id: 'check'
+- extendedWaitUntil:
+    visible: 'Not quite.*'
+    timeout: 20000
+- takeScreenshot: 08-feedback

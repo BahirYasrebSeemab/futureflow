@@ -1,8 +1,15 @@
-import { DayKeySchema, LedgerEventSchema, TodaySchema } from '@futureflow/contracts';
+import {
+  DayKeySchema,
+  LedgerEventSchema,
+  type MathAttempt,
+  MathAttemptSchema,
+  TodaySchema,
+} from '@futureflow/contracts';
+import type { TopicProgress } from '../math/engine';
 import type { LedgerEvent } from '@futureflow/core';
 import { z } from 'zod';
 import type { SqlDb } from './sql';
-import type { AwayWindowRef, LocalStore, SavedToday, SyncReport } from './types';
+import type { AwayWindowRef, LocalStore, PlacementRecord, SavedToday, SyncReport } from './types';
 
 const SavedTodaySchema = z.object({ today: TodaySchema, savedAt: z.number().int() });
 const SyncReportSchema = z.object({
@@ -14,6 +21,24 @@ const SyncReportSchema = z.object({
 });
 
 const AwayWindowsSchema = z.array(z.object({ id: z.uuid(), from: DayKeySchema, to: DayKeySchema }));
+const TopicProgressSchema = z.object({
+  topicId: z.string(),
+  rating: z.number(),
+  streak: z.number().int(),
+  mastered: z.boolean(),
+  reviewStage: z.number().int(),
+  nextReviewDay: DayKeySchema.optional(),
+});
+const PlacementSchema = z.object({
+  state: z.object({
+    low: z.number().int(),
+    high: z.number().int(),
+    correctAtProbe: z.number().int(),
+  }),
+  done: z.boolean(),
+});
+
+const mathTaskKey = (taskId: string) => `math_task_passed:${taskId}`;
 const awayCheckKey = (day: string) => `away_check:${day}`;
 
 const KEY = {
@@ -22,6 +47,7 @@ const KEY = {
   today: 'today',
   lastSync: 'last_sync',
   awayWindows: 'away_windows',
+  placement: 'placement',
 } as const;
 /** What came from the server; the rest of kv (away windows, check times) is the phone's own. */
 const SERVER_KEYS = [KEY.cursor, KEY.complete, KEY.today, KEY.lastSync] as const;
@@ -35,6 +61,9 @@ function createQueue() {
     return run;
   };
 }
+
+const toAttempts = (rows: readonly { attempt: string }[]): MathAttempt[] =>
+  rows.map((row) => JSON.parse(row.attempt) as MathAttempt);
 
 const toEvents = (rows: readonly { event: string }[]): LedgerEvent[] =>
   rows.map((row) => JSON.parse(row.event) as LedgerEvent);
@@ -160,6 +189,102 @@ export function sqliteStore(db: SqlDb): LocalStore {
       const raw = await getKv(awayCheckKey(day));
       return raw === null ? null : Number(raw);
     },
+    async mathProgress() {
+      const rows = await db.getAllAsync<{ progress: string }>(
+        'SELECT progress FROM math_progress ORDER BY topic_id',
+      );
+      const items = rows.flatMap((row) => {
+        try {
+          const parsed = TopicProgressSchema.safeParse(JSON.parse(row.progress));
+          return parsed.success ? [parsed.data as TopicProgress] : [];
+        } catch {
+          return [];
+        }
+      });
+      return new Map(items.map((p) => [p.topicId, p]));
+    },
+    saveMathProgress: (items: readonly TopicProgress[]) =>
+      write(async () => {
+        // `WHERE true` keeps SQLite from reading ON CONFLICT as a join condition.
+        await db.runAsync(
+          `INSERT INTO math_progress (topic_id, progress)
+           SELECT value ->> '$.topicId', value FROM json_each(?) WHERE true
+           ON CONFLICT(topic_id) DO UPDATE SET progress = excluded.progress`,
+          JSON.stringify(items),
+        );
+      }),
+    async itemRating(key: string) {
+      const row = await db.getFirstAsync<{ rating: number }>(
+        'SELECT rating FROM math_items WHERE item_key = ?',
+        key,
+      );
+      return row?.rating ?? null;
+    },
+    saveItemRating: (key: string, rating: number) =>
+      write(async () => {
+        await db.runAsync(
+          `INSERT INTO math_items (item_key, rating) VALUES (?, ?)
+           ON CONFLICT(item_key) DO UPDATE SET rating = excluded.rating`,
+          key,
+          rating,
+        );
+      }),
+    saveAttempt: (attempt: MathAttempt) =>
+      write(async () => {
+        const valid = MathAttemptSchema.parse(attempt);
+        await db.runAsync(
+          'INSERT OR IGNORE INTO math_attempts (id, day, at, attempt) VALUES (?, ?, ?, ?)',
+          valid.id,
+          valid.day,
+          valid.at,
+          JSON.stringify(valid),
+        );
+      }),
+    attemptsOn: async (day: string) =>
+      toAttempts(
+        await db.getAllAsync<{ attempt: string }>(
+          'SELECT attempt FROM math_attempts WHERE day = ? ORDER BY at, rowid',
+          day,
+        ),
+      ),
+    unsentAttempts: async (limit = -1) =>
+      toAttempts(
+        await db.getAllAsync<{ attempt: string }>(
+          'SELECT attempt FROM math_attempts WHERE sent = 0 ORDER BY at, rowid LIMIT ?',
+          limit,
+        ),
+      ),
+    markAttemptsSent: (ids: readonly string[]) =>
+      write(async () => {
+        await db.runAsync(
+          'UPDATE math_attempts SET sent = 1 WHERE id IN (SELECT value FROM json_each(?))',
+          inList(ids),
+        );
+      }),
+    hasSeen: async (problemKey: string) =>
+      (await db.getFirstAsync(
+        'SELECT 1 AS seen FROM math_seen WHERE problem_key = ?',
+        problemKey,
+      )) !== null,
+    markSeen: (problemKey: string, at: number) =>
+      write(async () => {
+        await db.runAsync(
+          'INSERT OR IGNORE INTO math_seen (problem_key, at) VALUES (?, ?)',
+          problemKey,
+          at,
+        );
+      }),
+    mathTaskDone: async (taskId: string) => (await getKv(mathTaskKey(taskId))) !== null,
+    markMathTaskDone: (taskId: string) =>
+      write(async () => {
+        await setKv(mathTaskKey(taskId), '1');
+      }),
+    placement: async () =>
+      (await readJson(KEY.placement, PlacementSchema)) as PlacementRecord | null,
+    savePlacement: (record: PlacementRecord) =>
+      write(async () => {
+        await setKv(KEY.placement, JSON.stringify(record));
+      }),
     clearServerCopy: () =>
       write(async () => {
         await db.withTransactionAsync(async () => {

@@ -6,6 +6,12 @@ const MIGRATIONS: readonly string[] = [
    CREATE TABLE dead_letters (id TEXT PRIMARY KEY, event TEXT NOT NULL, reason TEXT NOT NULL, buried_at INTEGER NOT NULL);
    CREATE TABLE ledger (id TEXT PRIMARY KEY, at INTEGER NOT NULL, event TEXT NOT NULL);
    CREATE TABLE kv (key TEXT PRIMARY KEY, value TEXT NOT NULL);`,
+  // 2: math practice (P4c-1)
+  `CREATE TABLE math_progress (topic_id TEXT PRIMARY KEY, progress TEXT NOT NULL);
+   CREATE TABLE math_items (item_key TEXT PRIMARY KEY, rating REAL NOT NULL);
+   CREATE TABLE math_attempts (id TEXT PRIMARY KEY, day TEXT NOT NULL, at INTEGER NOT NULL,
+     attempt TEXT NOT NULL, sent INTEGER NOT NULL DEFAULT 0);
+   CREATE TABLE math_seen (problem_key TEXT PRIMARY KEY, at INTEGER NOT NULL);`,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;
