@@ -108,11 +108,7 @@ function rewardReason(correct: boolean, served: Served, ctx: GradeContext): NoRe
   return null;
 }
 
-/** "Unreadable" never costs anything: ratings, streaks and rewards are untouched. */
-export function gradeAttempt(served: Served, given: string, ctx: GradeContext): Graded {
-  const outcome = checkAnswer(served.problem.answer, given);
-  if (outcome === 'unreadable') return { outcome };
-  const correct = outcome === 'correct';
+function grade(served: Served, correct: boolean, ctx: GradeContext): Graded {
   const ratings = updateRatings(served.learnerRating, served.itemRating, correct);
   const current =
     ctx.current.topicId === served.topicId ? ctx.current : newProgress(served.topicId);
@@ -123,9 +119,9 @@ export function gradeAttempt(served: Served, given: string, ctx: GradeContext): 
     ctx.today,
   );
   const reason = rewardReason(correct, served, ctx);
-  const choice = served.problem.answer.type === 'choice';
+  const answer = served.problem.answer;
   return {
-    outcome,
+    outcome: correct ? 'correct' : 'incorrect',
     progress,
     itemKey: itemKey(served.topicId, served.difficulty),
     itemRating: ratings.item,
@@ -136,13 +132,21 @@ export function gradeAttempt(served: Served, given: string, ctx: GradeContext): 
       topicId: served.topicId,
       difficulty: served.difficulty,
       correct,
-      answerType: choice ? 'choice' : 'typed',
+      answerType: answer.type === 'choice' ? 'choice' : 'typed',
     },
     earns: reason === null,
     reason,
     answer:
-      served.problem.answer.type === 'choice'
-        ? (served.problem.answer.options[served.problem.answer.correctIndex] ?? '')
-        : answerText(served.problem.answer),
+      answer.type === 'choice' ? (answer.options[answer.correctIndex] ?? '') : answerText(answer),
   };
 }
+
+/** "Unreadable" never costs anything: ratings, streaks and rewards are untouched. */
+export function gradeAttempt(served: Served, given: string, ctx: GradeContext): Graded {
+  const outcome = checkAnswer(served.problem.answer, given);
+  if (outcome === 'unreadable') return { outcome };
+  return grade(served, outcome === 'correct', ctx);
+}
+
+/** "Show the answer" is an honest wrong attempt: it counts, and it earns nothing. */
+export const giveUp = (served: Served, ctx: GradeContext): Graded => grade(served, false, ctx);

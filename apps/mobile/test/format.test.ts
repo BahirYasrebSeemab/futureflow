@@ -1,4 +1,10 @@
-import { formatDayLabel, formatDuration, formatTime, localOffsetMinutes } from '@/lib/format';
+import {
+  currentDayKey,
+  formatDayLabel,
+  formatDuration,
+  formatTime,
+  localOffsetMinutes,
+} from '@/lib/format';
 
 test.each([
   [0, '0 min'],
@@ -27,4 +33,10 @@ test('localOffsetMinutes is the opposite sign of getTimezoneOffset', () => {
 test('formatDayLabel names the weekday and month', () => {
   expect(formatDayLabel('2026-10-14')).toBe('Wednesday 14 October');
   expect(formatDayLabel('2027-01-01')).toBe('Friday 1 January');
+});
+
+test('currentDayKey uses the 04:00 boundary in local time', () => {
+  expect(currentDayKey(Date.UTC(2026, 9, 14, 12))).toBe('2026-10-14');
+  expect(currentDayKey(Date.UTC(2026, 9, 15, 3))).toBe('2026-10-14');
+  expect(currentDayKey(Date.UTC(2026, 9, 15, 4))).toBe('2026-10-15');
 });

@@ -3,6 +3,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import { useApp } from '@/lib/app';
 import { checkAway } from '@/lib/away';
+import { currentDayKey } from '@/lib/format';
+import { checkMathTasks } from '@/lib/math/tasks';
+import type { MathAttempt } from '@futureflow/contracts';
 import { dayTotals, projectBalance } from '@/lib/ledger';
 import type { SavedToday, SyncReport } from '@/lib/store/types';
 
@@ -19,6 +22,8 @@ export type TodayView = Readonly<{
   earnedSeconds: number;
   /** The free daily allowance paid today. */
   allowanceSeconds: number;
+  /** Today's math attempts, for a math task's progress. */
+  mathAttempts: MathAttempt[];
   lastSync: SyncReport | null;
 }>;
 
@@ -31,6 +36,7 @@ const INITIAL: TodayView = {
   balanceSeconds: 0,
   earnedSeconds: 0,
   allowanceSeconds: 0,
+  mathAttempts: [],
   lastSync: null,
 };
 
@@ -57,6 +63,7 @@ export function useToday() {
     if (!live.current) return;
     const balanceSeconds = projectBalance(confirmed, pending);
     const totals = dayTotals(confirmed, pending, saved?.today.day ?? '');
+    const mathAttempts = saved === null ? [] : await store.attemptsOn(saved.today.day);
     setView((v) => ({
       ...v,
       loaded: true,
@@ -65,6 +72,7 @@ export function useToday() {
       balanceSeconds,
       earnedSeconds: totals.earned,
       allowanceSeconds: totals.allowance,
+      mathAttempts,
       lastSync,
     }));
   }, [services]);
@@ -85,6 +93,14 @@ export function useToday() {
       }
     } catch (error) {
       logFailure('away_check_failed', error);
+    }
+    try {
+      // Practice done offline may have met a math task's target: pass it now.
+      const saved = await services.store.savedToday();
+      if (saved !== null)
+        await checkMathTasks(services, saved.today, currentDayKey(services.now()));
+    } catch (error) {
+      logFailure('math_tasks_failed', error);
     }
     try {
       await reload();

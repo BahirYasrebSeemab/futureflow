@@ -68,6 +68,7 @@
       }
     },
     "restoreMocks": true,
-    "testTimeout": 15000
+    "testTimeout": 15000,
+    "globalSetup": "<rootDir>/test/support/global-setup.ts"
   }
 }

@@ -5,6 +5,7 @@ export {
   answerText,
   checkAnswer,
   DEFAULT_REGISTRY,
+  DIFFICULTIES,
   earnsTime,
   expectedScore,
   initialItemRating,

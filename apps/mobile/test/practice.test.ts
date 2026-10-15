@@ -1,5 +1,5 @@
 import { answerText, newProgress, type TopicProgress } from '@/lib/math/engine';
-import { gradeAttempt, serveProblem, type Served } from '@/lib/math/practice';
+import { giveUp, gradeAttempt, serveProblem, type Served } from '@/lib/math/practice';
 
 const answerOf = (s: Served): string =>
   s.problem.answer.type === 'choice'
@@ -119,4 +119,15 @@ test('a stored item rating moves the difficulty choice', () => {
   expect(
     serveProblem({ progress: new Map(), itemRating: hardOnes }, '2026-10-14', 5)!.difficulty,
   ).toBe(2);
+});
+
+test('showing the answer counts as a wrong attempt', () => {
+  const served = serveProblem(empty, '2026-10-14', 42)!;
+  expect(giveUp(served, ctx())).toMatchObject({
+    outcome: 'incorrect',
+    earns: false,
+    reason: 'wrong',
+    answer: answerOf(served),
+    attempt: { correct: false },
+  });
 });
