@@ -18,6 +18,7 @@ export function RootStack() {
         <Stack.Screen name="mock" options={{ title: 'Mock exam' }} />
         <Stack.Screen name="reading" options={{ title: 'Reading' }} />
         <Stack.Screen name="coach" options={{ title: 'Coach' }} />
+        <Stack.Screen name="roadmap" options={{ title: 'Roadmap' }} />
       </Stack.Protected>
       <Stack.Protected guard={!paired}>
         <Stack.Screen name="pair" options={{ title: 'Pair this phone', headerShown: false }} />
