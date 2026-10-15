@@ -158,7 +158,5 @@ test('kept tasks are named for their day, and the screen warns about being home'
   expect(await screen.findByText('Keep these tasks on Tomorrow')).toBeTruthy();
   fireEvent.press(screen.getByTestId('days-plus'));
   expect(screen.getByText('On the other days every task is excused.')).toBeTruthy();
-  expect(
-    screen.getByText(/at home on a declared day, that day turns back into a normal day/),
-  ).toBeTruthy();
+  expect(screen.getByText(/Once it has seen you away on a day, that day stays away/)).toBeTruthy();
 });

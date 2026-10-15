@@ -136,3 +136,18 @@ test('the day follows the 04:00 boundary in local time', async () => {
   expect(await checkAway(deps, awayToday)).toBe('sent');
   expect(sent).toHaveLength(1);
 });
+
+test('a day already confirmed away is not measured again', async () => {
+  const { deps, sent } = await setup(TORONTO);
+  await saveHome(deps.secrets, TORONTO);
+  await deps.store.saveAwayWindow(WINDOW);
+  const confirmed = sampleToday({
+    dayRecord: {
+      day: '2026-10-14',
+      kind: 'away',
+      away: { place: 'Montreal', keptTaskIds: [], verified: 'yes' },
+    },
+  });
+  expect(await checkAway(deps, confirmed)).toBe('skipped');
+  expect(sent).toEqual([]);
+});

@@ -28,6 +28,10 @@ never leaving the phone**. The judge's verdicts stay `pending` until its accurac
   - `AWAY_MIN_KM = 25`: a coarse fix can be 2–3 km off, and a trip is farther than a commute.
     It changes if the owner asks.
   - No permission or no fix sends `unknown`, which counts toward the 2 unverified away days a month.
+  - **Once a day is confirmed away (`yes`), it stays away** (owner's choice, 2026-10-15). Coming
+    home that evening, or a later check without a fix, never undoes it. A `no` still cancels a
+    day the phone has not yet seen away, such as a check at home before leaving. The rule lives in
+    `core` (`applyAwayVerification`), so the server enforces it.
 - **Owner decisions:** a task the judge left `pending` shows the judge's suggestion and two
   buttons. "I did it" warns that it pays the task's time. Nothing is decided silently.
 - **Earned today** counts only work (task rewards, the all-done bonus, math). The free daily

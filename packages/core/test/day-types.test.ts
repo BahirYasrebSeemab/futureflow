@@ -78,6 +78,11 @@ describe('applyAwayVerification', () => {
     expect(applyAwayVerification(history, confirmed, 'unknown', R)).toBe(confirmed);
   });
 
+  it('keeps a day the phone already saw away, even if the owner is home later that day', () => {
+    const confirmed = applyAwayVerification([], record, 'yes', R);
+    expect(applyAwayVerification([], confirmed, 'no', R)).toBe(confirmed);
+  });
+
   it('cancels away mode when the owner is found at home', () => {
     expect(applyAwayVerification([], record, 'no', R)).toEqual({
       day: '2026-10-10',

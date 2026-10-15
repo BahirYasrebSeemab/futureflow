@@ -63,6 +63,8 @@ export type AwayDeps = Readonly<{
 /** At most hourly on an away day: measures on the device and sends only the verdict. */
 export async function checkAway(deps: AwayDeps, today: Today): Promise<'sent' | 'skipped'> {
   if (today.dayRecord?.kind !== 'away') return 'skipped';
+  // Seen away once today: the day stays away whatever comes later, so there's nothing to measure.
+  if (today.dayRecord.away?.verified === 'yes') return 'skipped';
   const day = today.day;
   // Only measure for the day it is now: a snapshot from yesterday would judge yesterday by today's place.
   const now = deps.now();

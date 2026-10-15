@@ -152,8 +152,9 @@ export function AwayScreen() {
       </Text>
       <Text style={[styles.muted, { color: c.muted }]}>
         Tasks you don&apos;t keep are excused. On away days the phone checks how far you are from
-        home; only the distance, rounded to 10 km, leaves the phone. If it finds you at home on a
-        declared day, that day turns back into a normal day.
+        home; only the distance, rounded to 10 km, leaves the phone. Once it has seen you away on a
+        day, that day stays away. But if it finds you at home before that, the day turns back into a
+        normal day.
       </Text>
       {message !== null && <Banner tone="warning" message={message} />}
 
