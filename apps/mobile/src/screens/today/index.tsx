@@ -8,6 +8,7 @@ import {
   View,
 } from 'react-native';
 import { Banner } from '@/components/banner';
+import { useBottomPadding } from '@/components/bottom-padding';
 import { Button } from '@/components/button';
 import { useApp } from '@/lib/app';
 import { formatDayLabel, formatDuration, formatTime, localOffsetMinutes } from '@/lib/format';
@@ -49,6 +50,7 @@ function staleNotice(report: SyncReport | null, savedAt: number): string | null 
 
 export function TodayScreen() {
   const c = usePalette();
+  const bottomPadding = useBottomPadding();
   const { forgetPairing } = useApp();
   const view = useToday();
   const { loaded, syncing, tried, saved, ledgerComplete, balanceSeconds, lastSync, refresh } = view;
@@ -100,7 +102,7 @@ export function TodayScreen() {
   return (
     <ScrollView
       style={{ backgroundColor: c.background }}
-      contentContainerStyle={styles.body}
+      contentContainerStyle={[styles.body, bottomPadding]}
       refreshControl={<RefreshControl refreshing={syncing} onRefresh={() => void refresh()} />}
     >
       {notice !== null && <Banner tone="warning" message={notice} />}

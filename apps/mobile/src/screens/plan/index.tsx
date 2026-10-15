@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Banner } from '@/components/banner';
+import { useBottomPadding } from '@/components/bottom-padding';
 import { Button } from '@/components/button';
 import { formatDayLabel, formatTime, localOffsetMinutes } from '@/lib/format';
 import { lockProblems, taskProblems } from '@/lib/plan-draft';
@@ -12,6 +13,7 @@ const SOURCE_LABEL = { ai: 'Suggested by your coach', template: 'From your roadm
 
 export function PlanScreen() {
   const c = usePalette();
+  const bottomPadding = useBottomPadding();
   const plan = usePlan();
   const [picking, setPicking] = useState(false);
   const { day, saved, tasks, busy, dirty } = plan;
@@ -32,7 +34,10 @@ export function PlanScreen() {
   const canLock = lockProblems(tasks).length === 0 && !busy;
 
   return (
-    <ScrollView style={{ backgroundColor: c.background }} contentContainerStyle={styles.body}>
+    <ScrollView
+      style={{ backgroundColor: c.background }}
+      contentContainerStyle={[styles.body, bottomPadding]}
+    >
       <View style={styles.switcher}>
         {(['today', 'tomorrow'] as const).map((which) => (
           <View key={which} style={styles.switch}>

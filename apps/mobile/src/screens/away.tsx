@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Banner } from '@/components/banner';
+import { useBottomPadding } from '@/components/bottom-padding';
 import { Button } from '@/components/button';
 import type { ApiFailure } from '@/lib/api/client';
 import { useApp } from '@/lib/app';
@@ -38,6 +39,7 @@ const startLabel = (index: number, day: string) =>
 
 export function AwayScreen() {
   const c = usePalette();
+  const bottomPadding = useBottomPadding();
   const { services } = useApp();
   const [id] = useState(() => services.ids.newId()); // reused by retries
   const [today, setToday] = useState<string | null>(null);
@@ -141,7 +143,10 @@ export function AwayScreen() {
     },
   ];
   return (
-    <ScrollView style={{ backgroundColor: c.background }} contentContainerStyle={styles.body}>
+    <ScrollView
+      style={{ backgroundColor: c.background }}
+      contentContainerStyle={[styles.body, bottomPadding]}
+    >
       <Text accessibilityRole="header" style={[styles.heading, { color: c.text }]}>
         Going away
       </Text>

@@ -36,8 +36,6 @@ appId: com.bahiryasreb.futureflow
 - scrollUntilVisible:
     element:
       id: 'lock-plan'
-    centerElement: true
-    visibilityPercentage: 50
 - tapOn:
     id: 'lock-plan'
 - tapOn: '(?i)^lock$'
