@@ -5,6 +5,7 @@ import { Button } from '@/components/button';
 import { MASTERY_STREAK, ONTARIO_GRAPH } from '@/lib/math/engine';
 import { radius, space, usePalette } from '@/theme';
 import { AnswerInput } from './answer-input';
+import { ExampleFlow } from './example';
 import { usePractice } from './use-practice';
 
 const topicTitle = (id: string) => ONTARIO_GRAPH.topics.find((t) => t.id === id)?.title ?? id;
@@ -46,6 +47,12 @@ export function MathScreen() {
           onPress={p.skipPlacement}
         />
       </ScrollView>
+    );
+  }
+
+  if (p.phase === 'example' && p.served !== null) {
+    return (
+      <ExampleFlow key={p.served.topicId} topicId={p.served.topicId} onDone={p.finishExample} />
     );
   }
 

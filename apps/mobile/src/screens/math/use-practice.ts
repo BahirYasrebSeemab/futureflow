@@ -11,7 +11,7 @@ export type Feedback =
   | { kind: 'correct'; reward: string | null }
   | { kind: 'incorrect'; answer: string; steps: readonly string[] };
 
-type Phase = 'loading' | 'choose' | 'practice' | 'finished';
+type Phase = 'loading' | 'choose' | 'example' | 'practice' | 'finished';
 
 const logFailure = (event: string, error: unknown) => {
   const name = error instanceof Error ? error.name : 'unknown';
@@ -44,7 +44,11 @@ export function usePractice() {
     setInput('');
     setHints(0);
     setFeedback(null);
-    setPhase('practice');
+    // A topic met for the first time opens with a worked example (reviews and mastered skip it).
+    const fresh =
+      !(progress.get(next.topicId)?.mastered ?? false) &&
+      !(await services.store.exampleSeen(next.topicId));
+    setPhase(fresh ? 'example' : 'practice');
   }, [services]);
 
   useEffect(() => {
@@ -129,7 +133,13 @@ export function usePractice() {
       );
     });
 
+  const finishExample = async () => {
+    if (served !== null) await services.store.markExampleSeen(served.topicId, services.now());
+    setPhase('practice');
+  };
+
   return {
+    finishExample: () => void finishExample(),
     phase,
     served,
     streak,

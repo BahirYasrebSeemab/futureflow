@@ -50,6 +50,7 @@ async function open(api: Partial<Api> = {}, url = '/math'): Promise<AppServices>
 
 async function startPractice() {
   fireEvent.press(await screen.findByTestId('skip-placement'));
+  fireEvent.press(await screen.findByTestId('skip-example'));
   return screen.findByTestId('problem-prompt');
 }
 
@@ -270,6 +271,7 @@ test('placement: wrong answers walk down to the first topic, then practice start
   expect(await services.store.placement()).toMatchObject({ done: true });
   expect((await services.store.attemptsOn(DAY)).length).toBeGreaterThan(0);
   fireEvent.press(screen.getByTestId('go-practice'));
+  fireEvent.press(await screen.findByTestId('skip-example'));
   expect(await screen.findByTestId('problem-prompt')).toBeTruthy();
 });
 
@@ -290,4 +292,69 @@ test('time that pays back borrowed time says so', async () => {
   await startPractice();
   answer(answerText(first().problem.answer));
   expect(await screen.findByText('+3 min, paid toward borrowed time')).toBeTruthy();
+});
+
+test('a new topic opens with a worked example, then a faded one, then practice', async () => {
+  const services = await open();
+  fireEvent.press(await screen.findByTestId('skip-placement'));
+  expect(await screen.findByText(/^Worked example/)).toBeTruthy();
+  expect(screen.getByText(/^Answer: /)).toBeTruthy();
+  fireEvent.press(screen.getByTestId('try-faded'));
+  expect(await screen.findByText('Finish the last step')).toBeTruthy();
+  fireEvent.changeText(screen.getByTestId('answer-input'), '-999999');
+  fireEvent.press(screen.getByTestId('check-faded'));
+  expect(await screen.findByText(/^Not quite\. The answer is/)).toBeTruthy();
+  // Examples are learning, not practice: nothing is recorded or paid.
+  expect(await services.store.attemptsOn(DAY)).toEqual([]);
+  expect(await services.store.pending()).toEqual([]);
+  fireEvent.press(screen.getByTestId('start-practice'));
+  expect(await screen.findByTestId('problem-prompt')).toHaveTextContent(first().problem.prompt);
+  expect(await services.store.exampleSeen(first().topicId)).toBe(true);
+});
+
+test('examples are shown once per topic', async () => {
+  const services = await open();
+  await services.store.markExampleSeen(first().topicId, 1);
+  fireEvent.press(await screen.findByTestId('skip-placement'));
+  expect(await screen.findByTestId('problem-prompt')).toBeTruthy();
+  expect(screen.queryByText(/^Worked example/)).toBeNull();
+});
+
+test('skip goes straight to practice', async () => {
+  const services = await open();
+  fireEvent.press(await screen.findByTestId('skip-placement'));
+  fireEvent.press(await screen.findByTestId('skip-example'));
+  expect(await screen.findByTestId('problem-prompt')).toBeTruthy();
+  expect(await services.store.exampleSeen(first().topicId)).toBe(true);
+});
+
+test('a review of a mastered topic skips the worked example', async () => {
+  const services = await testServices({}, PAIRED);
+  await services.syncer.sync();
+  await services.store.savePlacement({ state: { low: 1, high: 1, correctAtProbe: 0 }, done: true });
+  await services.store.saveMathProgress([
+    {
+      topicId: first().topicId,
+      rating: 1200,
+      streak: 5,
+      mastered: true,
+      reviewStage: 0,
+      nextReviewDay: DAY,
+    },
+  ]);
+  renderRouter(
+    {
+      _layout: () => (
+        <AppProvider load={async () => services}>
+          <RootStack />
+        </AppProvider>
+      ),
+      index: TodayScreen,
+      math: MathScreen,
+      'math-placement': PlacementScreen,
+    },
+    { initialUrl: '/math' },
+  );
+  expect(await screen.findByText('Review')).toBeTruthy();
+  expect(screen.queryByText(/^Worked example/)).toBeNull();
 });
