@@ -53,7 +53,7 @@ const KEY = {
   bankCursor: 'bank_cursor',
 } as const;
 /** What came from the server; the rest of kv (away windows, check times) is the phone's own. */
-const SERVER_KEYS = [KEY.cursor, KEY.complete, KEY.today, KEY.lastSync] as const;
+const SERVER_KEYS = [KEY.cursor, KEY.complete, KEY.today, KEY.lastSync, KEY.bankCursor] as const;
 
 /** expo-sqlite transactions are not exclusive, so writes take turns instead of nesting. */
 function createQueue() {
@@ -327,15 +327,24 @@ export function sqliteStore(db: SqlDb): LocalStore {
       }),
     bankCursor: async () => Number((await getKv(KEY.bankCursor)) ?? 0),
     async unusedBankProblem(topicId: string, difficulty: number) {
-      const row = await db.getFirstAsync<{ problem: string }>(
-        `SELECT problem FROM math_bank WHERE topic_id = ? AND difficulty = ? AND used = 0
-         ORDER BY seq, rowid LIMIT 1`,
-        topicId,
-        difficulty,
-      );
-      if (row === null) return null;
-      const parsed = BankProblemSchema.safeParse(JSON.parse(row.problem));
-      return parsed.success ? parsed.data : null;
+      for (;;) {
+        const row = await db.getFirstAsync<{ id: string; problem: string }>(
+          `SELECT id, problem FROM math_bank WHERE topic_id = ? AND difficulty = ? AND used = 0
+           ORDER BY seq, rowid LIMIT 1`,
+          topicId,
+          difficulty,
+        );
+        if (row === null) return null;
+        try {
+          const parsed = BankProblemSchema.safeParse(JSON.parse(row.problem));
+          if (parsed.success) return parsed.data;
+        } catch {
+          // fall through: set the broken row aside
+        }
+        await write(async () => {
+          await db.runAsync('UPDATE math_bank SET used = 1 WHERE id = ?', row.id);
+        });
+      }
     },
     markBankUsed: (id: string) =>
       write(async () => {

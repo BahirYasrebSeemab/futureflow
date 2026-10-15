@@ -1,5 +1,6 @@
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 import { router } from 'expo-router';
+import { Alert } from 'react-native';
 import { AppProvider, type AppServices } from '@/lib/app';
 import { answerText, ONTARIO_GRAPH } from '@/lib/math/engine';
 import { startMock } from '@/lib/math/mocks';
@@ -14,6 +15,7 @@ const L2_TOPICS = ONTARIO_GRAPH.topics.filter((t) => t.level === 'L2').map((t) =
 
 beforeEach(() => {
   jest.spyOn(Math, 'random').mockReturnValue(0.5);
+  jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
 });
 
 async function open(url: string, setup?: (s: AppServices) => Promise<void>) {
@@ -87,6 +89,25 @@ test('leaving a mock saves nothing', async () => {
   fireEvent.changeText(await screen.findByTestId('answer-input'), '1');
   fireEvent.press(screen.getByTestId('mock-next'));
   act(() => router.back());
+  // Leaving asks first; only "Leave" leaves, and nothing is saved.
+  await waitFor(() => expect(Alert.alert).toHaveBeenCalled());
+  const buttons = jest.mocked(Alert.alert).mock.calls.at(-1)?.[2] ?? [];
+  act(() => buttons.find((b) => b.text === 'Leave')?.onPress?.());
   expect(await screen.findByTestId('balance')).toBeTruthy();
   expect(await services.store.mockResults()).toEqual([]);
+});
+
+test('after a mock, the list shows the new score', async () => {
+  const { clock } = await open('/mocks');
+  fireEvent.press(await screen.findByTestId('mock-L0'));
+  const exam = startMock('L0', SEED, NOW);
+  fireEvent.changeText(
+    await screen.findByTestId('answer-input'),
+    answerText(exam.problems[0]!.answer),
+  );
+  clock.now = exam.endsAt + 1;
+  fireEvent.press(screen.getByTestId('mock-next'));
+  expect(await screen.findByText(/^You scored/)).toBeTruthy();
+  act(() => router.back());
+  await waitFor(() => expect(screen.getByTestId('mock-L0')).toHaveTextContent(/Best: 0%/));
 });

@@ -27,7 +27,14 @@ export async function nextProblem(
     topicId,
   );
   if (served === null) return null;
-  return (await fromBank(services, served)) ?? served;
+  try {
+    return (await fromBank(services, served)) ?? served;
+  } catch (error) {
+    // The bank is optional: any trouble with it falls back to a generated problem.
+    const name = error instanceof Error ? error.name : 'unknown';
+    console.error(JSON.stringify({ event: 'bank_serve_failed', name }));
+    return served;
+  }
 }
 
 /** An unused bank word problem for the same topic and difficulty, if it re-verifies on the phone. */
@@ -35,12 +42,19 @@ async function fromBank(services: AppServices, served: Served): Promise<Served |
   for (;;) {
     const bank = await services.store.unusedBankProblem(served.topicId, served.difficulty);
     if (bank === null) return null;
-    const problem = verifiedBankProblem(bank);
-    if (problem === null) {
+    const verified = verifiedBankProblem(bank);
+    if (verified === null) {
       await services.store.markBankUsed(bank.id); // never show a problem that doesn't re-verify
       continue;
     }
-    return { ...served, problem, seed: bank.seed, key: `bank:${bank.id}`, bankId: bank.id };
+    return {
+      ...served,
+      problem: verified.problem,
+      story: verified.story,
+      seed: bank.seed,
+      key: `bank:${bank.id}`,
+      bankId: bank.id,
+    };
   }
 }
 

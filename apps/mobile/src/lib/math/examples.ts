@@ -9,6 +9,29 @@ export function exampleProblem(topicId: string, seed: number): Problem {
   return generator.generate(seed, EXAMPLE_DIFFICULTY);
 }
 
+const MAX_DRAWS = 20;
+
+/**
+ * A worked and a faded example that differ from each other and from the practice problem waiting
+ * behind them: easy levels have few distinct problems, so seeds alone don't guarantee that.
+ */
+export function pickExamples(
+  topicId: string,
+  practicePrompt: string,
+  nextSeed: () => number,
+): { worked: Problem; faded: Problem } {
+  const draw = (avoid: readonly string[]): Problem => {
+    let problem = exampleProblem(topicId, nextSeed());
+    for (let i = 1; i < MAX_DRAWS && avoid.includes(problem.prompt); i++) {
+      problem = exampleProblem(topicId, nextSeed());
+    }
+    return problem;
+  };
+  const worked = draw([practicePrompt]);
+  const faded = draw([practicePrompt, worked.prompt]);
+  return { worked, faded };
+}
+
 /** A faded example shows the worked steps but the last: that one is the learner's to finish. */
 export function fadedSteps(steps: readonly string[]): { shown: string[]; hidden: number } {
   if (steps.length === 0) return { shown: [], hidden: 0 };

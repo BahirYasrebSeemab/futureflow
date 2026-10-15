@@ -52,7 +52,12 @@ export function MathScreen() {
 
   if (p.phase === 'example' && p.served !== null) {
     return (
-      <ExampleFlow key={p.served.topicId} topicId={p.served.topicId} onDone={p.finishExample} />
+      <ExampleFlow
+        key={p.served.topicId}
+        topicId={p.served.topicId}
+        practicePrompt={p.served.problem.prompt}
+        onDone={p.finishExample}
+      />
     );
   }
 
@@ -80,7 +85,7 @@ export function MathScreen() {
         {served.isReview && <Text style={[styles.caption, { color: c.accent }]}>Review</Text>}
       </View>
       <Text testID="problem-prompt" style={[styles.prompt, { color: c.text }]}>
-        {served.problem.prompt}
+        {served.story ?? served.problem.prompt}
       </Text>
       {!p.mastered && (
         <Text style={[styles.muted, { color: c.muted }]}>

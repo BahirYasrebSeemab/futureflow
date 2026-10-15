@@ -1,6 +1,6 @@
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useNavigation } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useBottomPadding } from '@/components/bottom-padding';
 import { Button } from '@/components/button';
 import { useApp } from '@/lib/app';
@@ -40,19 +40,44 @@ export function MockScreen() {
   const [result, setResult] = useState<MockResult | null>(null);
   const [, setTick] = useState(0);
 
-  const finish = useCallback(() => {
+  const finish = useCallback(async () => {
     if (saved.current) return;
     saved.current = true;
     const now = services.now();
     const final = finishMock(mock, outcomes.current, currentDayKey(now));
-    setResult(final);
-    void services.store.saveMockResult(services.ids.newId(now), final);
+    try {
+      await services.store.saveMockResult(services.ids.newId(now), final);
+    } catch (error) {
+      const name = error instanceof Error ? error.name : 'unknown';
+      console.error(JSON.stringify({ event: 'mock_save_failed', name }));
+    }
+    setResult(final); // shown after the save, so the list reads it
   }, [mock, services]);
+
+  // A long mock must not vanish on one back swipe: ask first while it is running.
+  const navigation = useNavigation();
+  useEffect(
+    () =>
+      navigation.addListener('beforeRemove', (event) => {
+        if (saved.current) return;
+        event.preventDefault();
+        Alert.alert('Leave this mock?', "It won't count, and your answers are lost.", [
+          { text: 'Stay', style: 'cancel' },
+          {
+            text: 'Leave',
+            style: 'destructive',
+            onPress: () => navigation.dispatch(event.data.action),
+          },
+        ]);
+      }),
+    [navigation],
+  );
 
   useEffect(() => {
     void warmChecker();
     const timer = setInterval(() => {
-      if (services.now() >= mock.endsAt) finish();
+      if (saved.current) clearInterval(timer);
+      else if (services.now() >= mock.endsAt) void finish();
       else setTick((t) => t + 1);
     }, 1000);
     return () => clearInterval(timer);
@@ -61,7 +86,7 @@ export function MockScreen() {
   const next = () => {
     if (result !== null) return;
     if (services.now() >= mock.endsAt) {
-      finish(); // time is up: this answer and the rest count as wrong
+      void finish(); // time is up: this answer and the rest count as wrong
       return;
     }
     const problem = mock.problems[index];
@@ -74,7 +99,7 @@ export function MockScreen() {
     outcomes.current[index] = outcome;
     setUnreadable(false);
     setInput('');
-    if (index + 1 >= mock.problems.length) finish();
+    if (index + 1 >= mock.problems.length) void finish();
     else setIndex(index + 1);
   };
 
@@ -116,7 +141,10 @@ export function MockScreen() {
         <Text style={[styles.caption, { color: c.muted }]}>
           Question {index + 1} of {mock.problems.length}
         </Text>
-        <Text accessibilityLabel="Time left" style={[styles.caption, { color: c.text }]}>
+        <Text
+          accessibilityLabel={`Time left ${clockText(mock.endsAt - services.now())}`}
+          style={[styles.caption, { color: c.text }]}
+        >
           {clockText(mock.endsAt - services.now())}
         </Text>
       </View>

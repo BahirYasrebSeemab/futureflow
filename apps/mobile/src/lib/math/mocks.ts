@@ -14,7 +14,7 @@ import {
 
 /** The levels with generators today; L3–L5 arrive with their phase (P7). */
 export const MOCK_LEVELS: readonly LevelId[] = ['L0', 'L1', 'L2'];
-const MS_PER_QUESTION = 120_000;
+export const MS_PER_QUESTION = 120_000;
 
 export type RunningMock = Readonly<{
   level: LevelId;

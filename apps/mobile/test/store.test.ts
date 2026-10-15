@@ -242,3 +242,17 @@ test('bank pages advance the cursor; an unused problem is returned until marked 
   expect(await store.unusedBankProblem('percents', 2)).toBeNull();
   expect((await store.unusedBankProblem('decimals', 2))?.story).toBe('Story 2?');
 });
+
+test('a broken bank row is set aside and does not block the next one', async () => {
+  const { db, store } = await open();
+  await store.saveBankProblems([bankProblem(1), bankProblem(2)], 2);
+  await db.runAsync("UPDATE math_bank SET problem = 'not json' WHERE id = 'bank-1'");
+  expect((await store.unusedBankProblem('percents', 2))?.id).toBe('bank-2');
+});
+
+test('pairing again re-downloads the bank from the start', async () => {
+  const { store } = await open();
+  await store.saveBankProblems([bankProblem(1)], 9);
+  await store.clearServerCopy();
+  expect(await store.bankCursor()).toBe(0);
+});

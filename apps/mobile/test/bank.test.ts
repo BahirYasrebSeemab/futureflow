@@ -18,11 +18,9 @@ const bank = (over = {}) => ({
 });
 
 test('a matching bank problem keeps the story but takes everything else from the phone', () => {
-  const p = verifiedBankProblem(bank())!;
-  expect(p.prompt).toBe(bank().story);
-  expect(p.answer).toEqual(generated.answer);
-  expect(p.steps).toEqual(generated.steps);
-  expect(p.hints).toEqual(generated.hints);
+  const v = verifiedBankProblem(bank())!;
+  expect(v.story).toBe(bank().story);
+  expect(v.problem).toEqual(generated); // prompt, answer, hints and steps all the phone's own
 });
 
 test('a mismatched or unknown bank problem is refused', () => {

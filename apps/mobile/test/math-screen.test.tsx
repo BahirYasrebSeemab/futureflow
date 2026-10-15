@@ -300,7 +300,7 @@ test('a new topic opens with a worked example, then a faded one, then practice',
   expect(await screen.findByText(/^Worked example/)).toBeTruthy();
   expect(screen.getByText(/^Answer: /)).toBeTruthy();
   fireEvent.press(screen.getByTestId('try-faded'));
-  expect(await screen.findByText('Finish the last step')).toBeTruthy();
+  expect(await screen.findByText('Your turn: type the answer to the question')).toBeTruthy();
   fireEvent.changeText(screen.getByTestId('answer-input'), '-999999');
   fireEvent.press(screen.getByTestId('check-faded'));
   expect(await screen.findByText(/^Not quite\. The answer is/)).toBeTruthy();
@@ -359,7 +359,7 @@ test('a review of a mastered topic skips the worked example', async () => {
   expect(screen.queryByText(/^Worked example/)).toBeNull();
 });
 
-const STORY = 'A baker makes some loaves in the morning and more after lunch. How many in all?';
+const STORY = 'Stickers cost a few cents each. How many cents in all?';
 function bankFor(prompt: string) {
   const f = first();
   return {
@@ -394,4 +394,41 @@ test('a mismatched bank problem is skipped', async () => {
   await services.store.saveBankProblems([bankFor('a different exercise')], 1);
   expect(await startPractice()).toHaveTextContent(first().problem.prompt);
   expect(await services.store.unusedBankProblem(first().topicId, first().difficulty)).toBeNull();
+});
+
+test('a wrong answer on a word problem shows the exercise answer, whatever the story says', async () => {
+  const services = await open();
+  await services.store.saveBankProblems([bankFor(bankGenerated().prompt)], 1);
+  await startPractice();
+  answer('-999999');
+  expect(
+    await screen.findByText(`Not quite. The answer is ${displayAnswer(bankGenerated())}`),
+  ).toBeTruthy();
+});
+
+test('a broken bank never blocks practice', async () => {
+  const services = await open();
+  const broken = {
+    ...services,
+    store: {
+      ...services.store,
+      unusedBankProblem: async () => {
+        throw new Error('disk');
+      },
+    },
+  };
+  jest.spyOn(console, 'error').mockImplementation(() => undefined);
+  // reopen with the broken store
+  renderRouter(
+    {
+      _layout: () => (
+        <AppProvider load={async () => broken}>
+          <RootStack />
+        </AppProvider>
+      ),
+      math: MathScreen,
+    },
+    { initialUrl: '/math' },
+  );
+  expect(await startPractice()).toBeTruthy();
 });

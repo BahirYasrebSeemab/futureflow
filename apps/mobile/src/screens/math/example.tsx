@@ -4,21 +4,20 @@ import { useBottomPadding } from '@/components/bottom-padding';
 import { Button } from '@/components/button';
 import { displayAnswer } from '@/lib/math/display';
 import { checkAnswer, ONTARIO_GRAPH } from '@/lib/math/engine';
-import { exampleProblem, fadedSteps } from '@/lib/math/examples';
+import { fadedSteps, pickExamples } from '@/lib/math/examples';
 import { randomSeed } from '@/lib/math/session';
 import { space, usePalette } from '@/theme';
 import { AnswerInput } from './answer-input';
 
-type Props = Readonly<{ topicId: string; onDone: () => void }>;
+type Props = Readonly<{ topicId: string; practicePrompt: string; onDone: () => void }>;
 type Faded = { kind: 'correct' | 'incorrect' | 'unreadable' } | null;
 
 /** Worked example, then a faded one; neither is recorded, rated or paid (ADR 0014). */
-export function ExampleFlow({ topicId, onDone }: Props) {
+export function ExampleFlow({ topicId, practicePrompt, onDone }: Props) {
   const c = usePalette();
   const bottomPadding = useBottomPadding();
-  // Seeds of their own, so the example never repeats the practice problem waiting behind it.
-  const [worked] = useState(() => exampleProblem(topicId, randomSeed() ^ 0x5bd1e995));
-  const [faded] = useState(() => exampleProblem(topicId, randomSeed() ^ 0x2545f491));
+  // Never the practice problem waiting behind, and never the same problem twice.
+  const [{ worked, faded }] = useState(() => pickExamples(topicId, practicePrompt, randomSeed));
   const [stage, setStage] = useState<'worked' | 'faded'>('worked');
   const [input, setInput] = useState('');
   const [result, setResult] = useState<Faded>(null);
@@ -65,7 +64,9 @@ export function ExampleFlow({ topicId, onDone }: Props) {
           {step}
         </Text>
       ))}
-      <Text style={[styles.result, { color: c.text }]}>Finish the last step</Text>
+      <Text style={[styles.result, { color: c.text }]}>
+        Your turn: type the answer to the question
+      </Text>
       <AnswerInput
         value={input}
         onChange={(text) => {

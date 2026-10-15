@@ -1,5 +1,5 @@
-import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
 import { useBottomPadding } from '@/components/bottom-padding';
 import { useApp } from '@/lib/app';
@@ -10,7 +10,7 @@ import {
   ONTARIO_GRAPH,
   recommendedMockSize,
 } from '@/lib/math/engine';
-import { gateProgress, MOCK_LEVELS } from '@/lib/math/mocks';
+import { gateProgress, MOCK_LEVELS, MS_PER_QUESTION } from '@/lib/math/mocks';
 import { radius, space, usePalette } from '@/theme';
 
 const LEVEL_NAME: Readonly<Record<string, string>> = {
@@ -25,9 +25,12 @@ export function MockListScreen() {
   const { services } = useApp();
   const [results, setResults] = useState<MockResult[]>([]);
 
-  useEffect(() => {
-    void services.store.mockResults().then(setResults);
-  }, [services]);
+  // Every visit, so a mock just finished shows in the best score and Gate A.
+  useFocusEffect(
+    useCallback(() => {
+      void services.store.mockResults().then(setResults);
+    }, [services]),
+  );
 
   const best = (level: LevelId) => {
     const scores = results.filter((r) => r.level === level).map((r) => r.score);
@@ -45,7 +48,7 @@ export function MockListScreen() {
       </Text>
       <Text style={[styles.gate, { color: c.text }]}>
         {gate.passed
-          ? 'Gate A passed: ready for the Grade 10 placement'
+          ? 'Gate A passed: ready for the TDSB math placement'
           : `Gate A: ${gate.passes} of ${gate.required} passing L2 mocks (75%+), on different days`}
       </Text>
       {MOCK_LEVELS.map((level) => {
@@ -68,7 +71,7 @@ export function MockListScreen() {
               {level} · {LEVEL_NAME[level]}
             </Text>
             <Text style={[styles.muted, { color: c.muted }]}>
-              {topics} topics · {size} problems · {size * 2} min
+              {topics} topics · {size} problems · {(size * MS_PER_QUESTION) / 60_000} min
               {score === null ? '' : ` · Best: ${score}%`}
             </Text>
           </Pressable>
