@@ -1,7 +1,7 @@
 import { fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 import type { Api, Today } from '@/lib/api/client';
 import { AppProvider, type AppServices } from '@/lib/app';
-import { answerText, ONTARIO_GRAPH, type TopicProgress } from '@/lib/math/engine';
+import { answerText, DEFAULT_REGISTRY, ONTARIO_GRAPH, type TopicProgress } from '@/lib/math/engine';
 import { displayAnswer } from '@/lib/math/display';
 import { serveProblem } from '@/lib/math/practice';
 import { AwayScreen } from '@/screens/away';
@@ -357,4 +357,41 @@ test('a review of a mastered topic skips the worked example', async () => {
   );
   expect(await screen.findByText('Review')).toBeTruthy();
   expect(screen.queryByText(/^Worked example/)).toBeNull();
+});
+
+const STORY = 'A baker makes some loaves in the morning and more after lunch. How many in all?';
+function bankFor(prompt: string) {
+  const f = first();
+  return {
+    id: 'bank-1',
+    topicId: f.topicId,
+    difficulty: f.difficulty,
+    seed: 4242,
+    story: STORY,
+    prompt,
+    answer: {},
+    hints: [],
+    steps: [],
+    week: '2026-W42',
+    createdAt: 1,
+  };
+}
+const bankGenerated = () =>
+  DEFAULT_REGISTRY.get(first().topicId)!.generate(4242, first().difficulty);
+
+test('a verified bank problem is served with its story and earns like any other', async () => {
+  const services = await open();
+  await services.store.saveBankProblems([bankFor(bankGenerated().prompt)], 1);
+  await startPractice();
+  expect(screen.getByTestId('problem-prompt')).toHaveTextContent(STORY);
+  answer(answerText(bankGenerated().answer));
+  expect(await screen.findByText('+3 min')).toBeTruthy();
+  expect(await services.store.unusedBankProblem(first().topicId, first().difficulty)).toBeNull();
+});
+
+test('a mismatched bank problem is skipped', async () => {
+  const services = await open();
+  await services.store.saveBankProblems([bankFor('a different exercise')], 1);
+  expect(await startPractice()).toHaveTextContent(first().problem.prompt);
+  expect(await services.store.unusedBankProblem(first().topicId, first().difficulty)).toBeNull();
 });

@@ -293,3 +293,9 @@ test('pushMathAttempts posts the attempts', async () => {
   expect(calls[0]?.url).toBe('https://api.test/v1/math/attempts');
   expect(JSON.parse(String(calls[0]?.init.body))).toEqual({ attempts: [a] });
 });
+
+test('getBank reads accepted word problems from the cursor', async () => {
+  const { api, calls } = setup(async () => jsonResponse(200, okBody({ problems: [], next: 4 })));
+  expect(await api.getBank(4)).toEqual({ ok: true, data: { problems: [], next: 4 } });
+  expect(calls[0]?.url).toBe('https://api.test/v1/math/bank?since=4&limit=50');
+});

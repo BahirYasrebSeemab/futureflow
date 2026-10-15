@@ -116,6 +116,7 @@ export async function testServices(
     declareAway: async () => OFFLINE,
     sendAwayVerdict: async () => OFFLINE,
     decideVerdict: async () => OFFLINE,
+    getBank: async (since) => ({ ok: true, data: { problems: [], next: since } }),
     pushMathAttempts: async (attempts) => ({
       ok: true,
       data: { added: attempts.map((a) => a.id), ignored: [], rejected: [] },

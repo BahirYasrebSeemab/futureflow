@@ -1,5 +1,12 @@
 import type { LedgerEvent } from '@futureflow/core';
-import type { ApiFailure, ApiResult, LedgerPage, LedgerSyncResult, Today } from '@/lib/api/client';
+import type {
+  ApiFailure,
+  ApiResult,
+  BankPage,
+  LedgerPage,
+  LedgerSyncResult,
+  Today,
+} from '@/lib/api/client';
 import { migrate } from '@/lib/store/migrations';
 import { sqliteStore } from '@/lib/store/sqlite-store';
 import { createSyncer, syncOnce, type SyncDeps } from '@/lib/sync';
@@ -9,6 +16,7 @@ import { nodeSqlDb } from './support/node-sql';
 type Script = {
   push?: (events: readonly LedgerEvent[]) => ApiResult<LedgerSyncResult>;
   attempts?: (attempts: readonly { id: string }[]) => ApiResult<LedgerSyncResult>;
+  bank?: (since: number) => ApiResult<BankPage>;
   pull?: (since: number) => ApiResult<LedgerPage>;
   today?: () => ApiResult<Today>;
 };
@@ -27,8 +35,18 @@ async function setup(script: Script = {}) {
   const db = nodeSqlDb();
   await migrate(db);
   const store = sqliteStore(db);
-  const calls = { push: [] as number[], pull: [] as number[], today: 0, attempts: [] as number[] };
+  const calls = {
+    push: [] as number[],
+    pull: [] as number[],
+    today: 0,
+    attempts: [] as number[],
+    bank: [] as number[],
+  };
   const api: SyncDeps['api'] = {
+    getBank: async (since) => {
+      calls.bank.push(since);
+      return script.bank?.(since) ?? { ok: true, data: { problems: [], next: since } };
+    },
     pushMathAttempts: async (attempts) => {
       calls.attempts.push(attempts.length);
       return (script.attempts ?? takeAll)(attempts);
@@ -288,4 +306,38 @@ test('an offline attempt push keeps them unsent and stops the sync', async () =>
   expect(await store.unsentAttempts()).toEqual([mathAttempt(1)]);
   // Attempts go last, so today and the ledger were already refreshed.
   expect(calls.today).toBe(1);
+});
+
+const bankItem = (n: number) => ({
+  id: `b${n}`,
+  topicId: 'percents',
+  difficulty: 2,
+  seed: n,
+  story: 's',
+  prompt: 'p',
+  answer: {},
+  hints: [],
+  steps: [],
+  week: '2026-W42',
+  createdAt: 1,
+});
+
+test('bank pages are pulled after attempts, until a short page', async () => {
+  const pages: Record<number, BankPage> = {
+    0: { problems: Array.from({ length: 50 }, (_, i) => bankItem(i)), next: 50 },
+    50: { problems: [bankItem(99)], next: 51 },
+  };
+  const { deps, store, calls } = await setup({
+    bank: (since) => ({ ok: true, data: pages[since] ?? { problems: [], next: since } }),
+  });
+  expect((await syncOnce(deps)).status).toBe('ok');
+  expect(calls.bank).toEqual([0, 50]);
+  expect(await store.bankCursor()).toBe(51);
+});
+
+test('a bank failure keeps the sync ok', async () => {
+  const { deps, calls } = await setup({ bank: () => failure({ kind: 'network' }) });
+  jest.spyOn(console, 'error').mockImplementation(() => undefined);
+  expect((await syncOnce(deps)).status).toBe('ok');
+  expect(calls.bank).toEqual([0]);
 });
