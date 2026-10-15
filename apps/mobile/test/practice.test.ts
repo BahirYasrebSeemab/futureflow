@@ -1,4 +1,5 @@
 import { answerText, newProgress, type TopicProgress } from '@/lib/math/engine';
+import { displayAnswer } from '@/lib/math/display';
 import { giveUp, gradeAttempt, serveProblem, type Served } from '@/lib/math/practice';
 
 const answerOf = (s: Served): string =>
@@ -60,7 +61,7 @@ test('a wrong answer shows the right one, resets the streak and earns nothing', 
     outcome: 'incorrect',
     earns: false,
     reason: 'wrong',
-    answer: answerOf(served),
+    answer: displayAnswer(served.problem),
   });
   if (g.outcome === 'unreadable') throw new Error('graded');
   expect(g.progress.streak).toBe(0);
@@ -127,7 +128,21 @@ test('showing the answer counts as a wrong attempt', () => {
     outcome: 'incorrect',
     earns: false,
     reason: 'wrong',
-    answer: answerOf(served),
+    answer: displayAnswer(served.problem),
     attempt: { correct: false },
   });
+});
+
+test('a wrong decimal answer shows the right answer as a decimal, not a fraction', () => {
+  // Find a decimals problem whose answer is not a whole number.
+  let served: Served | null = null;
+  for (let seed = 1; seed < 200 && served === null; seed++) {
+    const s = serveProblem(empty, '2026-10-14', seed, 'decimals')!;
+    if (s.problem.answer.type === 'number' && s.problem.answer.value.den !== 1) served = s;
+  }
+  if (served === null) throw new Error('no fractional decimals problem found');
+  const g = giveUp(served, ctx({ current: newProgress('decimals') }));
+  if (g.outcome === 'unreadable') throw new Error('graded');
+  expect(g.answer).not.toContain('/');
+  expect(g.answer).toBe(displayAnswer(served.problem));
 });

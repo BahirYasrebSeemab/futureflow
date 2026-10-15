@@ -2,6 +2,7 @@ import { fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-li
 import type { Api, Today } from '@/lib/api/client';
 import { AppProvider, type AppServices } from '@/lib/app';
 import { answerText, ONTARIO_GRAPH, type TopicProgress } from '@/lib/math/engine';
+import { displayAnswer } from '@/lib/math/display';
 import { serveProblem } from '@/lib/math/practice';
 import { AwayScreen } from '@/screens/away';
 import { DiagnosticsScreen } from '@/screens/diagnostics';
@@ -10,7 +11,7 @@ import { PlacementScreen } from '@/screens/math/placement';
 import { PlanScreen } from '@/screens/plan';
 import { RootStack } from '@/screens/root-stack';
 import { TodayScreen } from '@/screens/today';
-import { PAIRED, sampleToday, testServices } from './support/fakes';
+import { ledgerEvent, PAIRED, sampleToday, testServices } from './support/fakes';
 
 const SEED = Math.floor(0.5 * 2 ** 31);
 const DAY = '2026-10-14';
@@ -97,8 +98,9 @@ test('a wrong answer shows the right answer and the steps', async () => {
   await open();
   await startPractice();
   answer('-999999');
-  const right = answerText(first().problem.answer);
-  expect(await screen.findByText(`Not quite. The answer is ${right}`)).toBeTruthy();
+  expect(
+    await screen.findByText(`Not quite. The answer is ${displayAnswer(first().problem)}`),
+  ).toBeTruthy();
   expect(screen.getByText(first().problem.steps[0]!)).toBeTruthy();
 });
 
@@ -139,6 +141,117 @@ test('Next serves another problem', async () => {
   expect(screen.queryByText(/^Not quite/)).toBeNull();
 });
 
+test('a paused placement offers to continue', async () => {
+  const services = await testServices({}, PAIRED);
+  await services.syncer.sync();
+  await services.store.savePlacement({
+    state: { low: 0, high: 13, correctAtProbe: 1 },
+    done: false,
+  });
+  renderRouter(
+    {
+      _layout: () => (
+        <AppProvider load={async () => services}>
+          <RootStack />
+        </AppProvider>
+      ),
+      index: TodayScreen,
+      math: MathScreen,
+      'math-placement': PlacementScreen,
+    },
+    { initialUrl: '/math' },
+  );
+  expect(await screen.findByText('Continue the placement test')).toBeTruthy();
+});
+
+test('placement refuses to start over existing practice', async () => {
+  const services = await testServices({}, PAIRED);
+  await services.syncer.sync();
+  await services.store.saveMathProgress([
+    { topicId: 'fractions', rating: 1100, streak: 2, mastered: false, reviewStage: 0 },
+  ]);
+  renderRouter(
+    {
+      _layout: () => (
+        <AppProvider load={async () => services}>
+          <RootStack />
+        </AppProvider>
+      ),
+      index: TodayScreen,
+      math: MathScreen,
+      'math-placement': PlacementScreen,
+    },
+    { initialUrl: '/math-placement' },
+  );
+  expect(await screen.findByText(/already started practising/)).toBeTruthy();
+  expect(screen.queryByTestId('problem-prompt')).toBeNull();
+});
+
+test('Show answer works after an unreadable answer', async () => {
+  await open();
+  await startPractice();
+  answer('abc');
+  expect(await screen.findByText(/I couldn't read that/)).toBeTruthy();
+  fireEvent.press(screen.getByTestId('show-answer'));
+  expect(await screen.findByText(/^Not quite\. The answer is/)).toBeTruthy();
+});
+
+test('the result shows even if passing the math task fails', async () => {
+  const services = await open({
+    decideVerdict: async () => {
+      throw new Error('network died');
+    },
+  });
+  jest.spyOn(console, 'error').mockImplementation(() => undefined);
+  await services.store.saveAttempt({
+    id: '01920000-0000-7000-8000-000000000990',
+    day: DAY,
+    at: 1,
+    topicId: 'fractions',
+    difficulty: 3,
+    correct: true,
+    answerType: 'typed',
+  });
+  for (let i = 0; i < 9; i++) {
+    await services.store.saveAttempt({
+      id: `01920000-0000-7000-8000-00000000098${i}`,
+      day: DAY,
+      at: 2 + i,
+      topicId: 'fractions',
+      difficulty: 3,
+      correct: true,
+      answerType: 'typed',
+    });
+  }
+  await startPractice();
+  answer(answerText(first().problem.answer));
+  expect(await screen.findByText('Correct')).toBeTruthy();
+});
+
+test('one answer is never recorded twice', async () => {
+  const services = await open();
+  await startPractice();
+  fireEvent.changeText(screen.getByTestId('answer-input'), answerText(first().problem.answer));
+  fireEvent.press(screen.getByTestId('check'));
+  fireEvent.press(screen.getByTestId('check'));
+  expect(await screen.findByText('Correct')).toBeTruthy();
+  expect(await services.store.attemptsOn(DAY)).toHaveLength(1);
+});
+
+test('placement: a double tap saves one attempt', async () => {
+  const services = await open();
+  fireEvent.press(await screen.findByTestId('start-placement'));
+  fireEvent.changeText(await screen.findByTestId('answer-input'), '-999999');
+  fireEvent.press(screen.getByTestId('check'));
+  fireEvent.press(screen.getByTestId('check'));
+  await waitFor(async () => expect((await services.store.attemptsOn(DAY)).length).toBe(1));
+});
+
+test('placement says it is about 10 problems', async () => {
+  await open();
+  expect(await screen.findByText(/About 10 problems/)).toBeTruthy();
+});
+
 test('placement: wrong answers walk down to the first topic, then practice starts there', async () => {
   const services = await open();
   fireEvent.press(await screen.findByTestId('start-placement'));
@@ -165,4 +278,16 @@ test('Today has a Math button and shows a math task’s progress', async () => {
   expect(await screen.findByText(/of 10 problems/)).toBeTruthy();
   fireEvent.press(screen.getByTestId('open-math'));
   expect(await screen.findByText('Find your level')).toBeTruthy();
+});
+
+test('time that pays back borrowed time says so', async () => {
+  const services = await open();
+  await services.store.applyPage(
+    [ledgerEvent(1, { kind: 'unlock_borrow', seconds: 600 })],
+    1,
+    true,
+  );
+  await startPractice();
+  answer(answerText(first().problem.answer));
+  expect(await screen.findByText('+3 min, paid toward borrowed time')).toBeTruthy();
 });

@@ -30,12 +30,13 @@ export function MathScreen() {
           Find your level
         </Text>
         <Text style={[styles.muted, { color: c.muted }]}>
-          A short placement test skips what you already know. About 20–30 problems. It doesn&apos;t
-          earn time.
+          {p.pausedPlacement
+            ? 'You started the placement test. Pick up where you left off.'
+            : "A short placement test skips what you already know. About 10 problems. It doesn't earn time."}
         </Text>
         <Button
           testID="start-placement"
-          label="Take the placement test"
+          label={p.pausedPlacement ? 'Continue the placement test' : 'Take the placement test'}
           onPress={() => router.push('/math-placement')}
         />
         <Button
@@ -74,13 +75,15 @@ export function MathScreen() {
       <Text testID="problem-prompt" style={[styles.prompt, { color: c.text }]}>
         {served.problem.prompt}
       </Text>
-      <Text style={[styles.muted, { color: c.muted }]}>
-        {p.streak} of {MASTERY_STREAK} in a row
-      </Text>
+      {!p.mastered && (
+        <Text style={[styles.muted, { color: c.muted }]}>
+          {p.streak} of {MASTERY_STREAK} in a row
+        </Text>
+      )}
 
-      {served.problem.hints.slice(0, p.hints).map((hint) => (
+      {served.problem.hints.slice(0, p.hints).map((hint, index) => (
         <Text
-          key={hint}
+          key={index}
           style={[
             styles.hint,
             { color: c.text, backgroundColor: c.surface, borderColor: c.border },
@@ -110,8 +113,8 @@ export function MathScreen() {
           <Text style={[styles.result, { color: c.text }]}>
             Not quite. The answer is {feedback.answer}
           </Text>
-          {feedback.steps.map((step) => (
-            <Text key={step} style={[styles.muted, { color: c.muted }]}>
+          {feedback.steps.map((step, index) => (
+            <Text key={index} style={[styles.muted, { color: c.muted }]}>
               {step}
             </Text>
           ))}

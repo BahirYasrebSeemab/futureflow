@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useBottomPadding } from '@/components/bottom-padding';
 import { Button } from '@/components/button';
@@ -15,6 +15,7 @@ import {
   type Problem,
   recordPlacementAnswer,
   startPlacement,
+  warmChecker,
 } from '@/lib/math/engine';
 import { randomSeed } from '@/lib/math/session';
 import { space, usePalette } from '@/theme';
@@ -35,6 +36,8 @@ export function PlacementScreen() {
   const [input, setInput] = useState('');
   const [unreadable, setUnreadable] = useState(false);
   const [startTopic, setStartTopic] = useState<string | null>(null);
+  const [blocked, setBlocked] = useState(false);
+  const busy = useRef(false); // one answer per tap, even on a double tap
 
   const ask = useCallback((next: PlacementState) => {
     const index = placementProbe(next);
@@ -62,32 +65,50 @@ export function PlacementScreen() {
   );
 
   useEffect(() => {
+    void warmChecker();
     void (async () => {
-      const saved = await services.store.placement();
-      const initial = saved !== null && !saved.done ? saved.state : startPlacement(TOPICS.length);
-      ask(initial);
+      const [saved, progress] = await Promise.all([
+        services.store.placement(),
+        services.store.mathProgress(),
+      ]);
+      const paused = saved !== null && !saved.done;
+      // Placement rewrites every topic's progress: never over practice already done.
+      if (!paused && progress.size > 0) {
+        setBlocked(true);
+        return;
+      }
+      ask(paused ? saved.state : startPlacement(TOPICS.length));
     })();
   }, [services, ask]);
 
   const check = async () => {
-    if (state === null || probe === null) return;
+    if (state === null || probe === null || busy.current) return;
     const outcome = checkAnswer(probe.problem.answer, input);
     if (outcome === 'unreadable') {
       setUnreadable(true);
       return;
     }
     setUnreadable(false);
+    busy.current = true;
+    try {
+      await recordAnswer(state, probe, outcome === 'correct');
+    } finally {
+      busy.current = false;
+    }
+  };
+
+  const recordAnswer = async (current: PlacementState, asked: Probe, correct: boolean) => {
     const now = services.now();
     await services.store.saveAttempt({
       id: services.ids.newId(now),
       day: currentDayKey(now),
       at: now,
-      topicId: probe.problem.topicId,
+      topicId: asked.problem.topicId,
       difficulty: PROBE_DIFFICULTY,
-      correct: outcome === 'correct',
+      correct,
       answerType: 'typed',
     });
-    const next = recordPlacementAnswer(state, outcome === 'correct');
+    const next = recordPlacementAnswer(current, correct);
     await services.store.savePlacement({ state: next, done: false });
     if (placementProbe(next) === null) await finish(next);
     ask(next);
@@ -108,9 +129,18 @@ export function PlacementScreen() {
         <Button
           testID="go-practice"
           label="Start practising"
-          onPress={() => router.replace('/math')}
+          onPress={() => (router.canGoBack() ? router.back() : router.replace('/math'))}
         />
       </ScrollView>
+    );
+  }
+  if (blocked) {
+    return (
+      <View style={[styles.center, { backgroundColor: c.background }]}>
+        <Text style={[styles.muted, { color: c.text }]}>
+          You&apos;ve already started practising, so the placement test would reset your progress.
+        </Text>
+      </View>
     );
   }
   if (probe === null) {
@@ -141,7 +171,7 @@ export function PlacementScreen() {
         editable
       />
       {unreadable && (
-        <Text style={[styles.muted, { color: c.warningText }]}>
+        <Text accessibilityLiveRegion="polite" style={[styles.muted, { color: c.warningText }]}>
           I couldn&apos;t read that. Write it like 3/4, 2.5 or 2x+1.
         </Text>
       )}

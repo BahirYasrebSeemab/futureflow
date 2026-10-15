@@ -32,7 +32,7 @@ const NO_REWARD: Readonly<Record<string, string>> = {
   used_hints: 'Earns nothing after a hint',
   repeat: 'Already seen, so no time',
   plan_not_locked: "Lock today's plan to earn time",
-  cap_reached: "Today's math time is used up",
+  cap_reached: "Today's earning limit is reached",
   not_today: 'Open Today to sync, then try again to earn time',
   already_granted: 'Already paid',
 };
@@ -76,12 +76,21 @@ export async function recordGraded(
       });
       if ('seconds' in reward) {
         await store.enqueue(reward.events);
-        line = `+${formatDuration(reward.seconds)}`;
+        const repaid = reward.events.some((e) => e.kind === 'borrow_repay');
+        line = repaid
+          ? `+${formatDuration(reward.seconds)}, paid toward borrowed time`
+          : `+${formatDuration(reward.seconds)}`;
       } else {
         line = NO_REWARD[reward.reason] ?? null;
       }
     }
   }
-  if (saved !== null) await checkMathTasks(services, saved.today, currentDay);
+  if (saved !== null) {
+    // In the background: the answer's result must not wait on the network (Today retries too).
+    void checkMathTasks(services, saved.today, currentDay).catch((error: unknown) => {
+      const name = error instanceof Error ? error.name : 'unknown';
+      console.error(JSON.stringify({ event: 'math_tasks_failed', name }));
+    });
+  }
   return line;
 }

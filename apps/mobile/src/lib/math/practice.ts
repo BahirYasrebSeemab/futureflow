@@ -1,6 +1,6 @@
 import type { MathAttempt } from '@futureflow/contracts';
+import { displayAnswer } from './display';
 import {
-  answerText,
   checkAnswer,
   DEFAULT_REGISTRY,
   type Difficulty,
@@ -87,7 +87,7 @@ export type Graded =
       attempt: MathAttempt;
       earns: boolean;
       reason: NoRewardReason | null;
-      /** The right answer, as the checker accepts it (shown after a wrong answer). */
+      /** The right answer in the form the question asks for (shown after a wrong answer). */
       answer: string;
     };
 
@@ -136,8 +136,7 @@ function grade(served: Served, correct: boolean, ctx: GradeContext): Graded {
     },
     earns: reason === null,
     reason,
-    answer:
-      answer.type === 'choice' ? (answer.options[answer.correctIndex] ?? '') : answerText(answer),
+    answer: displayAnswer(served.problem),
   };
 }
 

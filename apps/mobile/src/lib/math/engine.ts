@@ -4,12 +4,15 @@ import { checkAnswer } from '@futureflow/math-engine';
 export {
   answerText,
   checkAnswer,
+  decimalFixed,
+  decimalText,
   DEFAULT_REGISTRY,
   DIFFICULTIES,
   earnsTime,
   expectedScore,
   initialItemRating,
   MASTERY_STREAK,
+  moneyText,
   newProgress,
   nextTopic,
   ONTARIO_GRAPH,
@@ -20,6 +23,7 @@ export {
   recordAttempt,
   recordPlacementAnswer,
   startPlacement,
+  toText,
   updateRatings,
 } from '@futureflow/math-engine';
 export type {

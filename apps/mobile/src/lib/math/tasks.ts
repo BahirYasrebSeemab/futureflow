@@ -62,8 +62,12 @@ export async function checkMathTasks(
     if (result.ok) {
       await deps.store.markMathTaskDone(task.id);
       passed.push(task.id);
-    } else if (result.error.kind === 'rejected' && result.error.code === 'verdict_not_pending') {
-      await deps.store.markMathTaskDone(task.id); // already decided: never ask again
+    } else if (
+      result.error.kind === 'rejected' &&
+      (result.error.code === 'verdict_not_pending' || result.error.code === 'not_found')
+    ) {
+      // Already decided, or not required today (a rest day): never ask again.
+      await deps.store.markMathTaskDone(task.id);
     }
   }
   return passed;

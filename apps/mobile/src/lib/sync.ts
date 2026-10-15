@@ -127,13 +127,15 @@ export async function syncOnce(deps: SyncDeps): Promise<SyncReport> {
   const sent = await push(deps);
   let status: SyncStatus = sent.stop ?? 'ok';
   let pulled = 0;
-  if (status === 'ok') status = (await pushAttempts(deps)) ?? 'ok';
   if (status === 'ok') status = (await refreshToday(deps)) ?? 'ok';
   if (status === 'ok') {
     const page = await pull(deps);
     pulled = page.pulled;
     status = page.stop ?? 'ok';
   }
+  // Attempts are a record for the server, not money: send them last, so a problem with them
+  // never holds up today's plan or the ledger.
+  if (status === 'ok') status = (await pushAttempts(deps)) ?? 'ok';
   const report: SyncReport = {
     status,
     pushed: sent.pushed,

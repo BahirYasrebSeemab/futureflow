@@ -133,3 +133,17 @@ test('a draft plan, or another day, sends nothing', async () => {
     expect(decideVerdict).not.toHaveBeenCalled();
   }
 });
+
+test('a task the server says is not required today (rest day) is not retried', async () => {
+  const { decideVerdict, run } = await setup(sampleToday(), attempts(10, 10));
+  decideVerdict.mockImplementationOnce(
+    async () =>
+      ({
+        ok: false as const,
+        error: { kind: 'rejected' as const, status: 404, code: 'not_found', message: 'x' },
+      }) as never,
+  );
+  await run();
+  await run();
+  expect(decideVerdict).toHaveBeenCalledTimes(1);
+});

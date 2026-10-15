@@ -286,5 +286,6 @@ test('an offline attempt push keeps them unsent and stops the sync', async () =>
   await store.saveAttempt(mathAttempt(1));
   expect((await syncOnce(deps)).status).toBe('offline');
   expect(await store.unsentAttempts()).toEqual([mathAttempt(1)]);
-  expect(calls.today).toBe(0);
+  // Attempts go last, so today and the ledger were already refreshed.
+  expect(calls.today).toBe(1);
 });

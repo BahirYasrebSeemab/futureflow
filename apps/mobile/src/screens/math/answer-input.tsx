@@ -7,7 +7,6 @@ const KEYS: readonly [string, string][] = [
   ['/', 'fraction'],
   ['(', 'open bracket'],
   [')', 'close bracket'],
-  ['√', 'square root'],
   ['π', 'pi'],
 ];
 
