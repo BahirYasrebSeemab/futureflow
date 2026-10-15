@@ -1,11 +1,13 @@
 import {
+  type BankProblem,
+  BankProblemSchema,
   DayKeySchema,
   LedgerEventSchema,
   type MathAttempt,
   MathAttemptSchema,
   TodaySchema,
 } from '@futureflow/contracts';
-import type { TopicProgress } from '../math/engine';
+import type { MockResult, TopicProgress } from '../math/engine';
 import type { LedgerEvent } from '@futureflow/core';
 import { z } from 'zod';
 import type { SqlDb } from './sql';
@@ -48,6 +50,7 @@ const KEY = {
   lastSync: 'last_sync',
   awayWindows: 'away_windows',
   placement: 'placement',
+  bankCursor: 'bank_cursor',
 } as const;
 /** What came from the server; the rest of kv (away windows, check times) is the phone's own. */
 const SERVER_KEYS = [KEY.cursor, KEY.complete, KEY.today, KEY.lastSync] as const;
@@ -273,6 +276,70 @@ export function sqliteStore(db: SqlDb): LocalStore {
           problemKey,
           at,
         );
+      }),
+    exampleSeen: async (topicId: string) =>
+      (await db.getFirstAsync(
+        'SELECT 1 AS seen FROM math_examples WHERE topic_id = ?',
+        topicId,
+      )) !== null,
+    markExampleSeen: (topicId: string, at: number) =>
+      write(async () => {
+        await db.runAsync(
+          'INSERT OR IGNORE INTO math_examples (topic_id, at) VALUES (?, ?)',
+          topicId,
+          at,
+        );
+      }),
+    saveMockResult: (id: string, result: MockResult) =>
+      write(async () => {
+        await db.runAsync(
+          'INSERT OR IGNORE INTO mock_results (id, day, level, score, result) VALUES (?, ?, ?, ?, ?)',
+          id,
+          result.day,
+          result.level,
+          result.score,
+          JSON.stringify(result),
+        );
+      }),
+    mockResults: async () =>
+      (
+        await db.getAllAsync<{ result: string }>(
+          'SELECT result FROM mock_results ORDER BY day, rowid',
+        )
+      ).map((row) => JSON.parse(row.result) as MockResult),
+    saveBankProblems: (problems: readonly BankProblem[], next: number) =>
+      write(async () => {
+        await db.withTransactionAsync(async () => {
+          for (const p of problems) {
+            const valid = BankProblemSchema.parse(p);
+            await db.runAsync(
+              `INSERT OR IGNORE INTO math_bank (id, seq, topic_id, difficulty, problem)
+               VALUES (?, ?, ?, ?, ?)`,
+              valid.id,
+              next,
+              valid.topicId,
+              valid.difficulty,
+              JSON.stringify(valid),
+            );
+          }
+          await setKv(KEY.bankCursor, String(next));
+        });
+      }),
+    bankCursor: async () => Number((await getKv(KEY.bankCursor)) ?? 0),
+    async unusedBankProblem(topicId: string, difficulty: number) {
+      const row = await db.getFirstAsync<{ problem: string }>(
+        `SELECT problem FROM math_bank WHERE topic_id = ? AND difficulty = ? AND used = 0
+         ORDER BY seq, rowid LIMIT 1`,
+        topicId,
+        difficulty,
+      );
+      if (row === null) return null;
+      const parsed = BankProblemSchema.safeParse(JSON.parse(row.problem));
+      return parsed.success ? parsed.data : null;
+    },
+    markBankUsed: (id: string) =>
+      write(async () => {
+        await db.runAsync('UPDATE math_bank SET used = 1 WHERE id = ?', id);
       }),
     mathTaskDone: async (taskId: string) => (await getKv(mathTaskKey(taskId))) !== null,
     markMathTaskDone: (taskId: string) =>

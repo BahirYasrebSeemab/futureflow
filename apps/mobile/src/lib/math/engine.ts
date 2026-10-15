@@ -28,6 +28,7 @@ export {
 } from '@futureflow/math-engine';
 export type {
   Answer,
+  MockResult,
   CheckOutcome,
   Difficulty,
   PlacementState,

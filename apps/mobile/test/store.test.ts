@@ -189,3 +189,56 @@ test('broken math progress rows are skipped', async () => {
   await db.runAsync("INSERT INTO math_progress (topic_id, progress) VALUES ('x', '{\"bad\":1}')");
   expect((await store.mathProgress()).size).toBe(0);
 });
+
+const bankProblem = (n: number, topicId = 'percents', difficulty = 2) => ({
+  id: `bank-${n}`,
+  topicId,
+  difficulty,
+  seed: 100 + n,
+  story: `Story ${n}?`,
+  prompt: `Prompt ${n}?`,
+  answer: { type: 'number', value: { num: 1, den: 1 } },
+  hints: [],
+  steps: [],
+  week: '2026-W42',
+  createdAt: 1,
+});
+
+test('worked examples are remembered per topic and survive clearing the server copy', async () => {
+  const { store } = await open();
+  expect(await store.exampleSeen('fractions')).toBe(false);
+  await store.markExampleSeen('fractions', NOW);
+  await store.clearServerCopy();
+  expect([await store.exampleSeen('fractions'), await store.exampleSeen('decimals')]).toEqual([
+    true,
+    false,
+  ]);
+});
+
+test('mock results round-trip in order', async () => {
+  const { store } = await open();
+  const r = (day: string, score: number) => ({
+    day,
+    level: 'L2' as const,
+    score,
+    topicIds: ['a'],
+    problemCount: 40,
+  });
+  await store.saveMockResult('m1', r('2026-10-13', 0.8));
+  await store.saveMockResult('m1', r('2026-10-13', 0.8));
+  await store.saveMockResult('m2', r('2026-10-14', 0.6));
+  expect(await store.mockResults()).toEqual([r('2026-10-13', 0.8), r('2026-10-14', 0.6)]);
+});
+
+test('bank pages advance the cursor; an unused problem is returned until marked used', async () => {
+  const { store } = await open();
+  expect(await store.bankCursor()).toBe(0);
+  await store.saveBankProblems([bankProblem(1), bankProblem(2, 'decimals')], 7);
+  await store.saveBankProblems([bankProblem(1)], 7);
+  expect(await store.bankCursor()).toBe(7);
+  expect((await store.unusedBankProblem('percents', 2))?.id).toBe('bank-1');
+  expect(await store.unusedBankProblem('percents', 3)).toBeNull();
+  await store.markBankUsed('bank-1');
+  expect(await store.unusedBankProblem('percents', 2)).toBeNull();
+  expect((await store.unusedBankProblem('decimals', 2))?.story).toBe('Story 2?');
+});
