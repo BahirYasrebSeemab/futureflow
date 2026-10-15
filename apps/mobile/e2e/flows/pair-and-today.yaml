@@ -33,7 +33,13 @@ appId: com.bahiryasreb.futureflow
     visible: 'From your roadmap'
     timeout: 20000
 - takeScreenshot: 04-plan-draft
-# scrollUntilVisible misjudged the fully visible Lock button on this emulator, so scroll to the end.
+# scrollUntilVisible misjudged the Lock button on this emulator, so scroll well past the end
+# (extra scrolls at the end do nothing; Android lists only on-screen elements).
+- scroll
+- scroll
+- scroll
+- scroll
+- scroll
 - scroll
 - scroll
 - scroll
