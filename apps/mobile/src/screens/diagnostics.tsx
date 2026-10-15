@@ -1,6 +1,7 @@
 import Constants from 'expo-constants';
 import { useCallback, useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useBottomPadding } from '@/components/bottom-padding';
 import { Button } from '@/components/button';
 import { useApp } from '@/lib/app';
 import { formatTime, localOffsetMinutes } from '@/lib/format';
@@ -12,6 +13,7 @@ type Row = { label: string; value: string; testID?: string };
 
 export function DiagnosticsScreen() {
   const c = usePalette();
+  const bottomPadding = useBottomPadding();
   const { services, session } = useApp();
   const [facts, setFacts] = useState<Facts | null>(null);
   const [busy, setBusy] = useState(false);
@@ -32,9 +34,15 @@ export function DiagnosticsScreen() {
 
   const syncNow = async () => {
     setBusy(true);
-    await services.syncer.sync().catch(() => undefined);
-    await load();
-    setBusy(false);
+    try {
+      await services.syncer.sync();
+      await load();
+    } catch (error) {
+      const name = error instanceof Error ? error.name : 'unknown';
+      console.error(JSON.stringify({ event: 'diagnostics_failed', name }));
+    } finally {
+      setBusy(false);
+    }
   };
 
   const last = facts?.lastSync;
@@ -56,7 +64,10 @@ export function DiagnosticsScreen() {
     { label: 'App version', value: Constants.expoConfig?.version ?? 'unknown' },
   ];
   return (
-    <ScrollView style={{ backgroundColor: c.background }} contentContainerStyle={styles.body}>
+    <ScrollView
+      style={{ backgroundColor: c.background }}
+      contentContainerStyle={[styles.body, bottomPadding]}
+    >
       {rows.map((row) => (
         <View key={row.label} style={[styles.row, { borderColor: c.border }]}>
           <Text style={[styles.label, { color: c.muted }]}>{row.label}</Text>

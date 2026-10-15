@@ -1,18 +1,34 @@
 import {
+  type AwayRequestSchema,
+  type AwayVerdictRequestSchema,
+  DayRecordSchema,
   envelope,
   LedgerPageSchema,
   LedgerSyncResultSchema,
   PairResponseSchema,
   type PairRequestSchema,
+  PlanSchema,
+  ProposeResponseSchema,
+  RoadmapSchema,
   TodaySchema,
+  VerdictSchema,
 } from '@futureflow/contracts';
-import type { LedgerEvent } from '@futureflow/core';
-import type { z } from 'zod';
+import type { LedgerEvent, TaskSpec } from '@futureflow/core';
+import { z } from 'zod';
 
 export type Today = z.infer<typeof TodaySchema>;
 export type PairRequest = z.infer<typeof PairRequestSchema>;
 export type LedgerSyncResult = z.infer<typeof LedgerSyncResultSchema>;
 export type LedgerPage = z.infer<typeof LedgerPageSchema>;
+export type Plan = z.infer<typeof PlanSchema>;
+export type DayRecord = z.infer<typeof DayRecordSchema>;
+export type Verdict = z.infer<typeof VerdictSchema>;
+export type Roadmap = z.infer<typeof RoadmapSchema>;
+export type ProposeResult = z.infer<typeof ProposeResponseSchema>;
+export type AwayRequest = z.input<typeof AwayRequestSchema>;
+export type AwayVerdictRequest = z.input<typeof AwayVerdictRequestSchema>;
+
+const AwayResponseSchema = z.object({ id: z.uuid(), days: z.array(DayRecordSchema) });
 
 /** Why a call failed, in the terms the caller acts on: retry later, give up on this request, or update the app. */
 export type ApiFailure =
@@ -56,7 +72,7 @@ type Envelope<T> =
   | { ok: true; data: T; error: null }
   | { ok: false; data: null; error: { code: string; message: string } };
 
-type Call = { method: 'GET' | 'POST'; path: string; body?: unknown; auth?: boolean };
+type Call = { method: 'GET' | 'POST' | 'PUT'; path: string; body?: unknown; auth?: boolean };
 
 async function request<S extends z.ZodType>(
   deps: ApiDeps,
@@ -135,6 +151,37 @@ export function createApi(deps: ApiDeps) {
         method: 'GET',
         path: `/v1/ledger?since=${since}&limit=${limit}`,
       }),
+    /** A day without a plan is not an error here: it answers null. */
+    getPlan: async (day: string): Promise<ApiResult<Plan | null>> => {
+      const result = await request(deps, PlanSchema, { method: 'GET', path: `/v1/plans/${day}` });
+      const missing =
+        !result.ok && result.error.kind === 'rejected' && result.error.code === 'not_found';
+      return missing ? { ok: true, data: null } : result;
+    },
+    savePlan: (day: string, tasks: readonly TaskSpec[]) =>
+      request(deps, PlanSchema, { method: 'PUT', path: `/v1/plans/${day}`, body: { tasks } }),
+    proposePlan: (day: string) =>
+      request(deps, ProposeResponseSchema, { method: 'POST', path: `/v1/plans/${day}/propose` }),
+    lockPlan: (day: string) =>
+      request(deps, PlanSchema, { method: 'POST', path: `/v1/plans/${day}/lock` }),
+    declareBadDay: (day: string) =>
+      request(deps, DayRecordSchema, {
+        method: 'POST',
+        path: '/v1/day-type',
+        body: { day, kind: 'bad' },
+      }),
+    declareAway: (body: AwayRequest) =>
+      request(deps, AwayResponseSchema, { method: 'POST', path: '/v1/away', body }),
+    sendAwayVerdict: (id: string, body: AwayVerdictRequest) =>
+      request(deps, DayRecordSchema, {
+        method: 'POST',
+        path: `/v1/away/${id}/verdict`,
+        body,
+      }),
+    decideVerdict: (taskId: string, body: { day: string; outcome: 'pass' | 'fail' }) =>
+      request(deps, VerdictSchema, { method: 'POST', path: `/v1/verdicts/${taskId}`, body }),
+    getRoadmap: () =>
+      request(deps, RoadmapSchema.nullable(), { method: 'GET', path: '/v1/onboarding/roadmap' }),
   };
 }
 

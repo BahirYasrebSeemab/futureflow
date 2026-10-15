@@ -107,3 +107,32 @@ test('clearServerCopy keeps unsent and refused events and drops the server copy'
     await store.ledgerComplete(),
   ]).toEqual([{ pending: 1, dead: 1 }, [ledgerEvent(1)], [], 0, null, false]);
 });
+
+test('concurrent writes never nest transactions', async () => {
+  const { store } = await open();
+  await store.enqueue([ledgerEvent(1), ledgerEvent(2)]);
+  await Promise.all([
+    store.applyPage([ledgerEvent(3)], 1, true),
+    store.clearServerCopy(),
+    store.bury([ledgerEvent(2).id], 'future_timestamp', NOW),
+    store.settle([ledgerEvent(1).id], []),
+  ]);
+  expect(await store.counts()).toEqual({ pending: 0, dead: 1 });
+});
+
+test('away windows and check times survive clearing the server copy', async () => {
+  const { store } = await open();
+  const w = { id: '01920000-0000-7000-8000-0000000000e1', from: '2026-10-14', to: '2026-10-15' };
+  expect(await store.awayWindows()).toEqual([]);
+  await store.saveAwayWindow(w);
+  await store.saveAwayWindow(w);
+  await store.saveAwayCheck('2026-10-14', NOW);
+  await store.applyPage([ledgerEvent(1)], 1, true);
+  await store.clearServerCopy();
+  expect([
+    await store.awayWindows(),
+    await store.lastAwayCheck('2026-10-14'),
+    await store.lastAwayCheck('2026-10-15'),
+    await store.cursor(),
+  ]).toEqual([[w], NOW, null, 0]);
+});

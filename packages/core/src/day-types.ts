@@ -46,10 +46,11 @@ export function applyAwayVerification(
   rules: Rules,
 ): DayRecord {
   if (record.kind !== 'away' || record.away === undefined) return record;
+  // Once the phone has seen the owner away that day, the day stays away: coming home in the
+  // evening, or a later check without a fix, never undoes it (owner's choice, ADR 0012).
+  if (record.away.verified === 'yes') return record;
   const normal: DayRecord = { day: record.day, kind: 'normal' };
   if (verified === 'no') return normal;
-  // A confirmed away day stays confirmed; only being found at home ('no') overturns it.
-  if (record.away.verified === 'yes') return record;
 
   if (verified === 'unknown') {
     const month = monthKey(record.day);

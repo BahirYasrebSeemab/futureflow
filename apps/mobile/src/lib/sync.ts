@@ -8,7 +8,11 @@ export const PULL_PAGE = MAX_EVENTS_PER_BATCH;
 /** Bounds each loop: 20 × 500 events per sync is far beyond a day's traffic. */
 export const MAX_ROUNDS = 20;
 
-export type SyncDeps = Readonly<{ api: Api; store: LocalStore; now: () => number }>;
+export type SyncDeps = Readonly<{
+  api: Pick<Api, 'pushEvents' | 'today' | 'pullLedger'>;
+  store: LocalStore;
+  now: () => number;
+}>;
 
 type Stop = Exclude<SyncStatus, 'ok'>;
 type Pushed = { stop: Stop | null; pushed: number; buried: number };
@@ -90,12 +94,15 @@ async function refreshToday(deps: SyncDeps): Promise<Stop | null> {
 async function pull(deps: SyncDeps): Promise<Pulled> {
   let pulled = 0;
   for (let round = 0; round < MAX_ROUNDS; round++) {
-    const result = await deps.api.pullLedger(await deps.store.cursor(), PULL_PAGE);
+    const since = await deps.store.cursor();
+    const result = await deps.api.pullLedger(since, PULL_PAGE);
     if (!result.ok) return { stop: stopFor(result.error), pulled };
     const complete = result.data.events.length < PULL_PAGE;
     await deps.store.applyPage(result.data.events, result.data.next, complete);
     pulled += result.data.events.length;
     if (complete) break;
+    // A full page that doesn't move the cursor would be fetched again and again.
+    if (result.data.next <= since) return { stop: 'invalid_response', pulled };
   }
   return { stop: null, pulled };
 }
@@ -122,7 +129,11 @@ export async function syncOnce(deps: SyncDeps): Promise<SyncReport> {
   return report;
 }
 
-export type Syncer = Readonly<{ sync(): Promise<SyncReport> }>;
+export type Syncer = Readonly<{
+  sync(): Promise<SyncReport>;
+  /** Resolves once no sync is running (at once if none is). */
+  idle(): Promise<void>;
+}>;
 
 /** One sync at a time: a second caller while one runs gets the same result. */
 export function createSyncer(deps: SyncDeps): Syncer {
@@ -134,5 +145,12 @@ export function createSyncer(deps: SyncDeps): Syncer {
       });
       return running;
     },
+    idle: () =>
+      running === null
+        ? Promise.resolve()
+        : running.then(
+            () => undefined,
+            () => undefined,
+          ),
   };
 }

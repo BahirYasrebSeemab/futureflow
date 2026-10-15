@@ -3,6 +3,7 @@ import { randomBytes } from 'node:crypto';
 import type { Api, Today } from '@/lib/api/client';
 import type { AppServices } from '@/lib/app';
 import { makeIds } from '@/lib/ids';
+import type { Locator } from '@/lib/location';
 import type { SecretStore } from '@/lib/secrets';
 import { migrate } from '@/lib/store/migrations';
 import { sqliteStore } from '@/lib/store/sqlite-store';
@@ -87,10 +88,13 @@ export const PAIRED = {
   device_id: '01920000-0000-7000-8000-0000000000d1',
 };
 
+const OFFLINE = { ok: false, error: { kind: 'network' } } as const;
+
 /** Real store (node:sqlite) and syncer, with a scripted API and memory secrets. */
 export async function testServices(
   api: Partial<Api> = {},
   secrets: Record<string, string> = {},
+  options: { locator?: Locator } = {},
 ): Promise<AppServices> {
   const db = nodeSqlDb();
   await migrate(db);
@@ -103,6 +107,15 @@ export async function testServices(
       data: { added: events.map((e) => e.id), ignored: [], rejected: [] },
     }),
     pullLedger: async (since) => ({ ok: true, data: { events: [], next: since } }),
+    getPlan: async () => ({ ok: true, data: null }),
+    getRoadmap: async () => ({ ok: true, data: null }),
+    savePlan: async () => OFFLINE,
+    proposePlan: async () => OFFLINE,
+    lockPlan: async () => OFFLINE,
+    declareBadDay: async () => OFFLINE,
+    declareAway: async () => OFFLINE,
+    sendAwayVerdict: async () => OFFLINE,
+    decideVerdict: async () => OFFLINE,
     ...api,
   };
   const now = () => NOW;
@@ -112,6 +125,7 @@ export async function testServices(
     secrets: memorySecrets(secrets),
     ids: makeIds((n) => new Uint8Array(randomBytes(n))),
     syncer: createSyncer({ api: fullApi, store, now }),
+    locator: options.locator ?? { coarse: async () => null },
     now,
     apiUrl: 'https://api.test',
   };

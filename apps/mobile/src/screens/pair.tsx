@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { KeyboardAvoidingView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useBottomPadding } from '@/components/bottom-padding';
 import { Button } from '@/components/button';
 import { useApp } from '@/lib/app';
 import { localOffsetMinutes } from '@/lib/format';
@@ -10,6 +11,7 @@ import { radius, space, usePalette } from '@/theme';
 export function PairScreen() {
   const { services, setPaired } = useApp();
   const c = usePalette();
+  const bottomPadding = useBottomPadding();
   const [code, setCode] = useState('');
   const [name, setName] = useState('My phone');
   const [busy, setBusy] = useState(false);
@@ -19,18 +21,23 @@ export function PairScreen() {
     if (busy) return;
     setBusy(true);
     setError(null);
-    const outcome = await pairDevice(
-      {
-        api: services.api,
-        secrets: services.secrets,
-        newToken: services.ids.newDeviceToken,
-        utcOffsetMinutes: () => localOffsetMinutes(services.now()),
-      },
-      { code, deviceName: name },
-    );
-    setBusy(false);
-    if (outcome.ok) setPaired(outcome.deviceId);
-    else setError(outcome.message);
+    try {
+      const outcome = await pairDevice(
+        {
+          api: services.api,
+          secrets: services.secrets,
+          newToken: services.ids.newDeviceToken,
+          utcOffsetMinutes: () => localOffsetMinutes(services.now()),
+        },
+        { code, deviceName: name },
+      );
+      if (outcome.ok) setPaired(outcome.deviceId);
+      else setError(outcome.message);
+    } catch {
+      setError('Could not save the pairing on this phone. Try again.');
+    } finally {
+      setBusy(false);
+    }
   };
 
   const input = [
@@ -40,7 +47,10 @@ export function PairScreen() {
   return (
     <SafeAreaView style={[styles.fill, { backgroundColor: c.background }]}>
       <KeyboardAvoidingView behavior="height" style={styles.fill}>
-        <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          contentContainerStyle={[styles.body, bottomPadding]}
+          keyboardShouldPersistTaps="handled"
+        >
           <Text accessibilityRole="header" style={[styles.title, { color: c.text }]}>
             Pair this phone
           </Text>

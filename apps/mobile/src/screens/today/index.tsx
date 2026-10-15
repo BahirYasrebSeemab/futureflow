@@ -1,4 +1,4 @@
-import { Link } from 'expo-router';
+import { Link, router } from 'expo-router';
 import {
   ActivityIndicator,
   RefreshControl,
@@ -8,29 +8,54 @@ import {
   View,
 } from 'react-native';
 import { Banner } from '@/components/banner';
+import { useBottomPadding } from '@/components/bottom-padding';
 import { Button } from '@/components/button';
 import { useApp } from '@/lib/app';
 import { formatDayLabel, formatDuration, formatTime, localOffsetMinutes } from '@/lib/format';
+import type { Today } from '@/lib/api/client';
 import type { SyncReport } from '@/lib/store/types';
 import { space, usePalette } from '@/theme';
-import { TaskRow } from './task-row';
+import { TaskRow, type TaskMode } from './task-row';
+import { useDayActions } from './use-day-actions';
 import { useToday } from './use-today';
 
-const DAY_KIND: Readonly<Record<string, string>> = { bad: 'Bad day', away: 'Away' };
+type DayRecord = NonNullable<Today['dayRecord']>;
+
+function dayCaption(record: DayRecord | null): string | null {
+  if (record === null) return null;
+  if (record.kind === 'bad') return 'Bad day: 2-minute versions count';
+  if (record.kind === 'away') return `Away: ${record.away?.place ?? ''}`;
+  return null;
+}
+
+function modeFor(record: DayRecord | null, taskId: string): TaskMode {
+  if (record?.kind === 'bad') return 'small';
+  if (record?.kind === 'away' && !(record.away?.keptTaskIds ?? []).includes(taskId)) {
+    return 'excused';
+  }
+  return 'full';
+}
 
 /** Null when the last sync worked; otherwise why the screen shows saved data. */
 function staleNotice(report: SyncReport | null, savedAt: number): string | null {
   if (report === null || report.status === 'ok' || report.status === 'unauthorized') return null;
-  const reason = report.status === 'offline' ? 'Offline.' : 'The server had a problem.';
+  const reason =
+    report.status === 'offline'
+      ? 'Offline.'
+      : report.status === 'invalid_response'
+        ? 'This app is out of date for the server. Update the app.'
+        : 'The server had a problem.';
   return `${reason} Showing what was saved at ${formatTime(savedAt, localOffsetMinutes(savedAt))}.`;
 }
 
 export function TodayScreen() {
   const c = usePalette();
+  const bottomPadding = useBottomPadding();
   const { forgetPairing } = useApp();
-  const { loaded, syncing, tried, saved, ledgerComplete, balanceSeconds, lastSync, refresh } =
-    useToday();
+  const view = useToday();
+  const { loaded, syncing, tried, saved, ledgerComplete, balanceSeconds, lastSync, refresh } = view;
   const center = [styles.center, { backgroundColor: c.background }];
+  const actions = useDayActions(saved?.today.day ?? '', refresh);
 
   if (lastSync?.status === 'unauthorized') {
     return (
@@ -60,7 +85,9 @@ export function TodayScreen() {
           Can&apos;t load today
         </Text>
         <Text style={[styles.muted, { color: c.muted }]}>
-          Check the connection, then try again.
+          {lastSync?.status === 'invalid_response'
+            ? 'Update the app, then try again.'
+            : 'Check the connection, then try again.'}
         </Text>
         <Button testID="retry" label="Retry" onPress={() => void refresh()} />
       </View>
@@ -69,31 +96,63 @@ export function TodayScreen() {
 
   const { today } = saved;
   const notice = staleNotice(lastSync, saved.savedAt);
-  const dayKind = today.dayRecord ? DAY_KIND[today.dayRecord.kind] : undefined;
+  const record = today.dayRecord;
+  const caption = dayCaption(record);
   const tasks = today.plan?.tasks ?? [];
   return (
     <ScrollView
       style={{ backgroundColor: c.background }}
-      contentContainerStyle={styles.body}
+      contentContainerStyle={[styles.body, bottomPadding]}
       refreshControl={<RefreshControl refreshing={syncing} onRefresh={() => void refresh()} />}
     >
       {notice !== null && <Banner tone="warning" message={notice} />}
+      {actions.message !== null && <Banner tone="warning" message={actions.message} />}
       <View style={styles.hero}>
         <Text style={[styles.caption, { color: c.muted }]}>Time left</Text>
         <Text testID="balance" style={[styles.balance, { color: c.text }]}>
           {formatDuration(balanceSeconds)}
         </Text>
         <Text style={[styles.muted, { color: c.muted }]}>
-          Earned today {formatDuration(today.earnedTodaySeconds)}
+          Earned today {formatDuration(view.earnedSeconds)}
         </Text>
+        <Text style={[styles.muted, { color: c.muted }]}>
+          Daily allowance {formatDuration(view.allowanceSeconds)}
+        </Text>
+      </View>
+      <View style={styles.actions}>
+        <View style={styles.action}>
+          <Button
+            testID="open-plan"
+            label="Plan"
+            variant="secondary"
+            onPress={() => router.push('/plan')}
+          />
+        </View>
+        <View style={styles.action}>
+          <Button
+            testID="open-away"
+            label="Away"
+            variant="secondary"
+            onPress={() => router.push('/away')}
+          />
+        </View>
+        {(record === null || record.kind === 'normal') && (
+          <View style={styles.action}>
+            <Button
+              testID="bad-day"
+              label="Bad day"
+              variant="secondary"
+              disabled={actions.busy}
+              onPress={actions.declareBadDay}
+            />
+          </View>
+        )}
       </View>
       <View style={styles.dayRow}>
         <Text accessibilityRole="header" style={[styles.heading, { color: c.text }]}>
           {formatDayLabel(today.day)}
         </Text>
-        {dayKind !== undefined && (
-          <Text style={[styles.caption, { color: c.muted }]}>{dayKind}</Text>
-        )}
+        {caption !== null && <Text style={[styles.caption, { color: c.muted }]}>{caption}</Text>}
       </View>
       {tasks.length === 0 ? (
         <View style={styles.empty}>
@@ -107,13 +166,23 @@ export function TodayScreen() {
           {today.plan?.status === 'draft' && (
             <Text style={[styles.caption, { color: c.muted }]}>Draft plan, not locked yet</Text>
           )}
-          {tasks.map((task) => (
-            <TaskRow
-              key={task.id}
-              task={task}
-              verdict={today.verdicts.find((v) => v.taskId === task.id)}
-            />
-          ))}
+          {tasks.map((task) => {
+            const verdict = today.verdicts.find((v) => v.taskId === task.id);
+            const mode = modeFor(record, task.id);
+            const canDecide =
+              today.plan?.status === 'locked' &&
+              verdict?.outcome === 'pending' &&
+              mode !== 'excused';
+            return (
+              <TaskRow
+                key={task.id}
+                task={task}
+                verdict={verdict}
+                mode={mode}
+                onDecide={canDecide ? (outcome) => actions.decide(task.id, outcome) : undefined}
+              />
+            );
+          })}
         </View>
       )}
       <Link
@@ -148,6 +217,8 @@ const styles = StyleSheet.create({
     gap: space.sm,
   },
   heading: { fontSize: 20, fontWeight: '600' },
+  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
+  action: { flexGrow: 1, flexBasis: 100 },
   empty: { gap: space.xs },
   emptyTitle: { fontSize: 17, fontWeight: '600' },
   list: { gap: space.sm },

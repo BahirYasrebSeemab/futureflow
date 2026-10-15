@@ -11,6 +11,7 @@
     "expo-constants": "~57.0.21",
     "expo-crypto": "~57.0.4",
     "expo-linking": "~57.0.12",
+    "expo-location": "~57.0.21",
     "expo-router": "~57.0.26",
     "expo-secure-store": "~57.0.4",
     "expo-sqlite": "~57.0.4",
@@ -55,7 +56,8 @@
     "collectCoverageFrom": [
       "src/**/*.{ts,tsx}",
       "!src/app/**",
-      "!src/lib/services.ts"
+      "!src/lib/services.ts",
+      "!src/lib/location.ts"
     ],
     "coverageThreshold": {
       "global": {

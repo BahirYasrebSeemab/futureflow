@@ -7,8 +7,11 @@ export class StartupError extends Error {
 const URL_SHAPE = /^(https?):\/\/([A-Za-z0-9.-]+)(:\d{1,5})?(\/[A-Za-z0-9._~\-/]*)?$/;
 const LOCAL_HOSTS: ReadonlySet<string> = new Set(['localhost', '127.0.0.1', '10.0.2.2']);
 
-/** Reads EXPO_PUBLIC_API_URL: https, or plain http only for the emulator and local hosts. */
-export function parseApiUrl(raw: string | undefined): string {
+/**
+ * Reads EXPO_PUBLIC_API_URL: https, or plain http to a local host only when the build allows
+ * cleartext (development and the CI emulator build). Elsewhere Android would block it silently.
+ */
+export function parseApiUrl(raw: string | undefined, options: { allowHttp: boolean }): string {
   const value = raw?.trim() ?? '';
   if (value === '') {
     throw new StartupError(
@@ -20,7 +23,7 @@ export function parseApiUrl(raw: string | undefined): string {
     throw new StartupError('The server address in this build is not a valid URL.');
   }
   const [, scheme, host = '', port = '', path = ''] = match;
-  if (scheme === 'http' && !LOCAL_HOSTS.has(host)) {
+  if (scheme === 'http' && !(options.allowHttp && LOCAL_HOSTS.has(host))) {
     throw new StartupError('The server address must use https.');
   }
   return `${scheme}://${host}${port}${path.replace(/\/+$/, '')}`;
