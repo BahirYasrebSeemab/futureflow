@@ -69,6 +69,12 @@ appId: com.bahiryasreb.futureflow
 - tapOn:
     id: 'skip-placement'
 - extendedWaitUntil:
+    visible: 'Worked example.*'
+    timeout: 20000
+- takeScreenshot: 06b-worked-example
+- tapOn:
+    id: 'skip-example'
+- extendedWaitUntil:
     visible:
       id: 'problem-prompt'
     timeout: 20000
@@ -83,3 +89,18 @@ appId: com.bahiryasreb.futureflow
     visible: 'Not quite.*'
     timeout: 20000
 - takeScreenshot: 08-feedback
+- scroll
+- scroll
+- tapOn:
+    id: 'open-mocks'
+- extendedWaitUntil:
+    visible:
+      id: 'mock-L0'
+    timeout: 20000
+- takeScreenshot: 09-mocks
+- tapOn:
+    id: 'mock-L0'
+- extendedWaitUntil:
+    visible: 'Question 1 of.*'
+    timeout: 20000
+- takeScreenshot: 10-mock-question
