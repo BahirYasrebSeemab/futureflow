@@ -33,9 +33,10 @@ appId: com.bahiryasreb.futureflow
     visible: 'From your roadmap'
     timeout: 20000
 - takeScreenshot: 04-plan-draft
-- scrollUntilVisible:
-    element:
-      id: 'lock-plan'
+# scrollUntilVisible misjudged the fully visible Lock button on this emulator, so scroll to the end.
+- scroll
+- scroll
+- scroll
 - tapOn:
     id: 'lock-plan'
 - tapOn: '(?i)^lock$'
