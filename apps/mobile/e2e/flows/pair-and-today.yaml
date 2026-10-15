@@ -2,6 +2,12 @@ appId: com.bahiryasreb.futureflow
 ---
 - launchApp:
     clearState: true
+# A slow CI emulator sometimes shows "<system app> isn't responding" over our app: wait it out.
+- runFlow:
+    when:
+      visible: ".*isn't responding.*"
+    commands:
+      - tapOn: 'Wait'
 - extendedWaitUntil:
     visible: 'Pair this phone'
     timeout: 30000
