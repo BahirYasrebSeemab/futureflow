@@ -1,4 +1,4 @@
-import type { BankProblem, MathAttempt } from '@futureflow/contracts';
+import type { BankProblem, CoachMessage, MathAttempt } from '@futureflow/contracts';
 import type { LedgerEvent } from '@futureflow/core';
 import type { MockResult, PlacementState, TopicProgress } from '../math/engine';
 import type { Today } from '../api/client';
@@ -73,6 +73,10 @@ export interface LocalStore {
   bankCursor(): Promise<number>;
   unusedBankProblem(topicId: string, difficulty: number): Promise<BankProblem | null>;
   markBankUsed(id: string): Promise<void>;
+  /** Upserts by id; `next` moves the server cursor when given. */
+  saveCoachMessages(messages: readonly CoachMessage[], next?: number): Promise<void>;
+  coachThread(): Promise<CoachMessage[]>;
+  coachCursor(): Promise<number>;
   placement(): Promise<PlacementRecord | null>;
   savePlacement(record: PlacementRecord): Promise<void>;
   /** Drops everything that came from the server; keeps unsent and refused events (ADR 0011). */

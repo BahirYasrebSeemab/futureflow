@@ -1,5 +1,10 @@
 import {
   type AwayRequestSchema,
+  CoachMessageSchema,
+  CoachPageSchema,
+  type GithubLinkRequestSchema,
+  GithubLinkSchema,
+  type ReadingLogSchema,
   BankProblemSchema,
   type AwayVerdictRequestSchema,
   DayRecordSchema,
@@ -29,6 +34,15 @@ export type Roadmap = z.infer<typeof RoadmapSchema>;
 export type ProposeResult = z.infer<typeof ProposeResponseSchema>;
 export type AwayRequest = z.input<typeof AwayRequestSchema>;
 export type AwayVerdictRequest = z.input<typeof AwayVerdictRequestSchema>;
+
+export type CoachMessage = z.infer<typeof CoachMessageSchema>;
+export type GithubLink = z.infer<typeof GithubLinkSchema>;
+export type ReadingLog = z.input<typeof ReadingLogSchema>;
+export type GithubLinkRequest = z.input<typeof GithubLinkRequestSchema>;
+
+const ReadingSavedSchema = z.object({ id: z.string(), created: z.boolean() });
+const CoachExchangeSchema = z.object({ message: CoachMessageSchema, reply: CoachMessageSchema });
+const DeletedSchema = z.object({ deleted: z.boolean() });
 
 const BankPageSchema = z.object({
   problems: z.array(BankProblemSchema),
@@ -80,7 +94,12 @@ type Envelope<T> =
   | { ok: true; data: T; error: null }
   | { ok: false; data: null; error: { code: string; message: string } };
 
-type Call = { method: 'GET' | 'POST' | 'PUT'; path: string; body?: unknown; auth?: boolean };
+type Call = {
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  path: string;
+  body?: unknown;
+  auth?: boolean;
+};
 
 async function request<S extends z.ZodType>(
   deps: ApiDeps,
@@ -201,6 +220,35 @@ export function createApi(deps: ApiDeps) {
         method: 'GET',
         path: `/v1/math/bank?since=${since}&limit=${limit}`,
       }),
+    sendReading: (log: ReadingLog) =>
+      request(deps, ReadingSavedSchema, { method: 'POST', path: '/v1/reading', body: log }),
+    coachMessages: (since: number, limit = 50) =>
+      request(deps, CoachPageSchema, {
+        method: 'GET',
+        path: `/v1/coach/messages?since=${since}&limit=${limit}`,
+      }),
+    sendCoachMessage: (body: { id: string; text: string }) =>
+      request(deps, CoachExchangeSchema, { method: 'POST', path: '/v1/coach/messages', body }),
+    saveRoadmap: (roadmap: Roadmap) =>
+      request(deps, RoadmapSchema, {
+        method: 'PUT',
+        path: '/v1/onboarding/roadmap',
+        body: roadmap,
+      }),
+    /** Nothing linked is not an error here: it answers null. */
+    getGithubLink: async (): Promise<ApiResult<GithubLink | null>> => {
+      const result = await request(deps, GithubLinkSchema, {
+        method: 'GET',
+        path: '/v1/github/link',
+      });
+      const missing =
+        !result.ok && result.error.kind === 'rejected' && result.error.code === 'not_found';
+      return missing ? { ok: true, data: null } : result;
+    },
+    /** The token goes only here: the phone never stores it. */
+    linkGithub: (body: GithubLinkRequest) =>
+      request(deps, GithubLinkSchema, { method: 'PUT', path: '/v1/github/link', body }),
+    unlinkGithub: () => request(deps, DeletedSchema, { method: 'DELETE', path: '/v1/github/link' }),
     getRoadmap: () =>
       request(deps, RoadmapSchema.nullable(), { method: 'GET', path: '/v1/onboarding/roadmap' }),
   };

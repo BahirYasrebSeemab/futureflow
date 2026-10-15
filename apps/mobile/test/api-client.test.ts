@@ -299,3 +299,92 @@ test('getBank reads accepted word problems from the cursor', async () => {
   expect(await api.getBank(4)).toEqual({ ok: true, data: { problems: [], next: 4 } });
   expect(calls[0]?.url).toBe('https://api.test/v1/math/bank?since=4&limit=50');
 });
+
+const coachMsg = (id: string, role: 'owner' | 'coach') => ({
+  id,
+  role,
+  kind: 'chat' as const,
+  text: 'hi',
+  day: '2026-10-14',
+  createdAt: 1,
+});
+const link = {
+  login: 'bahir',
+  repos: ['bahir/futureflow'],
+  status: 'ok' as const,
+  unreadableRepos: [],
+};
+const reading = {
+  id: '01920000-0000-7000-8000-0000000000f1',
+  day: '2026-10-14',
+  title: 'Clean Code',
+  source: 'book' as const,
+  pages: 20,
+  summary: 'Names should reveal intent.',
+};
+
+type P4dCase = [string, (a: Api) => Promise<unknown>, string, string, unknown, unknown];
+const p4dCases: P4dCase[] = [
+  [
+    'sendReading',
+    (a) => a.sendReading(reading),
+    'POST',
+    '/v1/reading',
+    reading,
+    { id: reading.id, created: true },
+  ],
+  [
+    'coachMessages',
+    (a) => a.coachMessages(3),
+    'GET',
+    '/v1/coach/messages?since=3&limit=50',
+    undefined,
+    { messages: [coachMsg('m1', 'coach')], next: 4 },
+  ],
+  [
+    'sendCoachMessage',
+    (a) => a.sendCoachMessage({ id: 'm2', text: 'hi' }),
+    'POST',
+    '/v1/coach/messages',
+    { id: 'm2', text: 'hi' },
+    { message: coachMsg('m2', 'owner'), reply: coachMsg('m3', 'coach') },
+  ],
+  [
+    'linkGithub',
+    (a) => a.linkGithub({ token: 't'.repeat(30), repos: ['bahir/futureflow'] }),
+    'PUT',
+    '/v1/github/link',
+    { token: 't'.repeat(30), repos: ['bahir/futureflow'] },
+    link,
+  ],
+  [
+    'unlinkGithub',
+    (a) => a.unlinkGithub(),
+    'DELETE',
+    '/v1/github/link',
+    undefined,
+    { deleted: true },
+  ],
+];
+
+test.each(p4dCases)('%s calls %s %s', async (_name, call, method, path, body, data) => {
+  const { api, calls } = setup(async () => jsonResponse(200, okBody(data)));
+  expect(await call(api)).toEqual({ ok: true, data });
+  expect(calls[0]?.init.method).toBe(method);
+  expect(calls[0]?.url).toBe(`https://api.test${path}`);
+  const sent = calls[0]?.init.body;
+  expect(sent === undefined ? undefined : JSON.parse(String(sent))).toEqual(body);
+});
+
+test('saveRoadmap puts the roadmap; getGithubLink answers null when nothing is linked', async () => {
+  const roadmap = {
+    identities: [{ id: '01920000-0000-7000-8000-00000000c001', title: 'Engineer', why: 'Build' }],
+    skills: [],
+    milestones: [],
+  };
+  const put = setup(async () => jsonResponse(200, okBody(roadmap)));
+  expect(await put.api.saveRoadmap(roadmap)).toEqual({ ok: true, data: roadmap });
+  expect(put.calls[0]?.init.method).toBe('PUT');
+  const none = setup(async () => jsonResponse(404, errBody('not_found', 'Not found.')));
+  expect(await none.api.getGithubLink()).toEqual({ ok: true, data: null });
+});

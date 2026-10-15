@@ -18,6 +18,8 @@ const MIGRATIONS: readonly string[] = [
      score REAL NOT NULL, result TEXT NOT NULL);
    CREATE TABLE math_bank (id TEXT PRIMARY KEY, seq INTEGER NOT NULL, topic_id TEXT NOT NULL,
      difficulty INTEGER NOT NULL, problem TEXT NOT NULL, used INTEGER NOT NULL DEFAULT 0);`,
+  // 4: the coach thread, readable offline (P4d)
+  `CREATE TABLE coach_messages (id TEXT PRIMARY KEY, created_at INTEGER NOT NULL, message TEXT NOT NULL);`,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;
