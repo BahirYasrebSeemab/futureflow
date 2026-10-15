@@ -38,6 +38,7 @@ const PlacementSchema = z.object({
   done: z.boolean(),
 });
 
+const mathTaskKey = (taskId: string) => `math_task_passed:${taskId}`;
 const awayCheckKey = (day: string) => `away_check:${day}`;
 
 const KEY = {
@@ -272,6 +273,11 @@ export function sqliteStore(db: SqlDb): LocalStore {
           problemKey,
           at,
         );
+      }),
+    mathTaskDone: async (taskId: string) => (await getKv(mathTaskKey(taskId))) !== null,
+    markMathTaskDone: (taskId: string) =>
+      write(async () => {
+        await setKv(mathTaskKey(taskId), '1');
       }),
     placement: async () =>
       (await readJson(KEY.placement, PlacementSchema)) as PlacementRecord | null,

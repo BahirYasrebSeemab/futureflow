@@ -60,6 +60,9 @@ export interface LocalStore {
   markAttemptsSent(ids: readonly string[]): Promise<void>;
   hasSeen(problemKey: string): Promise<boolean>;
   markSeen(problemKey: string, at: number): Promise<void>;
+  /** A math task this phone already passed (or found decided): never sent again. */
+  mathTaskDone(taskId: string): Promise<boolean>;
+  markMathTaskDone(taskId: string): Promise<void>;
   placement(): Promise<PlacementRecord | null>;
   savePlacement(record: PlacementRecord): Promise<void>;
   /** Drops everything that came from the server; keeps unsent and refused events (ADR 0011). */
