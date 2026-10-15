@@ -159,6 +159,12 @@ export function MathScreen() {
           </View>
         </>
       )}
+      <Button
+        testID="open-mocks"
+        label="Mock exams"
+        variant="secondary"
+        onPress={() => router.push('/mocks')}
+      />
     </ScrollView>
   );
 }
