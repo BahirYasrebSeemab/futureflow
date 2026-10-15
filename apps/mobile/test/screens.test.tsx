@@ -9,6 +9,7 @@ import {
 import { Alert, AppState, type AppStateStatus } from 'react-native';
 import type { ApiResult, Today } from '@/lib/api/client';
 import { AppProvider, type AppServices } from '@/lib/app';
+import { saveHome } from '@/lib/away';
 import { StartupError } from '@/lib/config';
 import { DiagnosticsScreen } from '@/screens/diagnostics';
 import { PairScreen } from '@/screens/pair';
@@ -528,8 +529,9 @@ test('an away day is measured after the sync, with the fresh day', async () => {
       sendAwayVerdict,
     },
     PAIRED,
-    { locator: { coarse: async () => ({ lat: 45.5, lon: -73.56 }) } },
+    { locator: { coarse: async () => ({ lat: 45.5, lon: -73.56 }) } }, // Montreal
   );
+  await saveHome(services.secrets, { lat: 43.65, lon: -79.38 }); // Toronto
   await services.store.saveAwayWindow({
     id: '01920000-0000-7000-8000-0000000000e1',
     from: '2026-10-14',
@@ -539,7 +541,11 @@ test('an away day is measured after the sync, with the fresh day', async () => {
   await services.store.saveToday({ today: sampleToday({ day: '2026-10-13' }), savedAt: 0 });
   mount(ready(services));
   await waitFor(() => expect(sendAwayVerdict).toHaveBeenCalledTimes(1));
-  expect(sendAwayVerdict.mock.calls[0]![1]).toEqual({ day: '2026-10-14', verified: 'unknown' });
+  expect(sendAwayVerdict.mock.calls[0]![1]).toEqual({
+    day: '2026-10-14',
+    verified: 'yes',
+    distanceKm: 500,
+  });
 });
 
 test('after a cancelled away day the Bad day button is back', async () => {

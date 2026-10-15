@@ -9,6 +9,12 @@ import type { LocalStore } from './store/types';
 export const AWAY_MIN_KM = 25;
 export const HOME_KEY = 'home_location';
 export const CHECK_EVERY_MS = 3_600_000;
+/**
+ * Grace period (owner's choice, ADR 0012): before this local hour only "away" is reported, so a
+ * check at home before leaving on a same-day trip can't cancel the day. From then until the day
+ * boundary, being found at home (or no fix) counts again.
+ */
+export const GRACE_UNTIL_HOUR = 20;
 const EARTH_KM = 6371;
 const MAX_KM = 20_000;
 const rad = (deg: number) => (deg * Math.PI) / 180;
@@ -32,6 +38,12 @@ export function awayVerdict(home: Coords | null, here: Coords | null): AwayVerdi
     verified: d >= AWAY_MIN_KM ? 'yes' : 'no',
     distanceKm: Math.min(MAX_KM, Math.round(d / 10) * 10),
   };
+}
+
+/** Local hours from the day boundary (04:00) up to GRACE_UNTIL_HOUR; 00:00–03:59 is after it. */
+function inGracePeriod(now: number, offsetMinutes: number, boundaryHour: number): boolean {
+  const hour = new Date(now + offsetMinutes * 60_000).getUTCHours();
+  return hour >= boundaryHour && hour < GRACE_UNTIL_HOUR;
 }
 
 export async function readHome(secrets: SecretStore): Promise<Coords | null> {
@@ -69,13 +81,19 @@ export async function checkAway(deps: AwayDeps, today: Today): Promise<'sent' | 
   // Only measure for the day it is now: a snapshot from yesterday would judge yesterday by today's place.
   const now = deps.now();
   const offset = deps.utcOffsetMinutes?.() ?? localOffsetMinutes(now);
-  if (day !== dayKeyFor(now, offset, DEFAULT_RULES.dayBoundaryHour)) return 'skipped';
+  const boundary = DEFAULT_RULES.dayBoundaryHour;
+  if (day !== dayKeyFor(now, offset, boundary)) return 'skipped';
   const window = (await deps.store.awayWindows()).find((w) => w.from <= day && day <= w.to);
   if (window === undefined) return 'skipped';
   const last = await deps.store.lastAwayCheck(day);
   if (last !== null && deps.now() - last < CHECK_EVERY_MS) return 'skipped';
 
   const verdict = awayVerdict(await readHome(deps.secrets), await deps.locator.coarse());
+  if (verdict.verified !== 'yes' && inGracePeriod(now, offset, boundary)) {
+    // Not away yet: wait (the check is remembered, so it runs again in an hour).
+    await deps.store.saveAwayCheck(day, now);
+    return 'skipped';
+  }
   const result = await deps.api.sendAwayVerdict(window.id, { day, ...verdict });
   if (!result.ok) return 'skipped';
   await deps.store.saveAwayCheck(day, deps.now());

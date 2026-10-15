@@ -72,8 +72,10 @@ test('the request carries no coordinates, only the rounded distance', async () =
   expect(JSON.stringify(sent)).not.toMatch(/45\.5|73\.5|43\.6|79\.3/);
 });
 
-test('home sends no', async () => {
-  const { deps, sent } = await setup(NEAR);
+const EVENING = Date.UTC(2026, 9, 14, 21); // 21:00, after the grace period
+
+test('home sends no in the evening', async () => {
+  const { deps, sent } = await setup(NEAR, EVENING);
   await saveHome(deps.secrets, TORONTO);
   await deps.store.saveAwayWindow(WINDOW);
   await checkAway(deps, awayToday);
@@ -82,13 +84,13 @@ test('home sends no', async () => {
   ]);
 });
 
-test('refused permission sends unknown, once per hour', async () => {
-  const { deps, sent } = await setup(null);
+test('refused permission sends unknown in the evening, once per hour', async () => {
+  const { deps, sent } = await setup(null, EVENING);
   await deps.store.saveAwayWindow(WINDOW);
   await checkAway(deps, awayToday);
   await checkAway(deps, awayToday);
   expect(sent).toEqual([{ id: WINDOW.id, body: { day: '2026-10-14', verified: 'unknown' } }]);
-  await checkAway({ ...deps, now: () => NOW + 3_600_000 }, awayToday);
+  await checkAway({ ...deps, now: () => EVENING + 3_600_000 }, awayToday);
   expect(sent).toHaveLength(2);
 });
 
@@ -100,7 +102,7 @@ test('nothing is checked on a normal day or without a saved window', async () =>
 });
 
 test('a failed send is retried next time', async () => {
-  const { deps } = await setup(MONTREAL);
+  const { deps } = await setup(MONTREAL, Date.UTC(2026, 9, 14, 21));
   await deps.store.saveAwayWindow(WINDOW);
   const failing = {
     ...deps,
@@ -150,4 +152,63 @@ test('a day already confirmed away is not measured again', async () => {
   });
   expect(await checkAway(deps, confirmed)).toBe('skipped');
   expect(sent).toEqual([]);
+});
+
+describe('grace period: before 20:00 only being away counts', () => {
+  const MORNING = Date.UTC(2026, 9, 14, 9);
+
+  test('at home in the morning sends nothing, but the check is remembered', async () => {
+    const { deps, sent } = await setup(NEAR, MORNING);
+    await saveHome(deps.secrets, TORONTO);
+    await deps.store.saveAwayWindow(WINDOW);
+    expect(await checkAway(deps, awayToday)).toBe('skipped');
+    expect(sent).toEqual([]);
+    expect(await deps.store.lastAwayCheck('2026-10-14')).toBe(MORNING);
+  });
+
+  test('no location fix in the morning sends nothing', async () => {
+    const { deps, sent } = await setup(null, MORNING);
+    await deps.store.saveAwayWindow(WINDOW);
+    expect(await checkAway(deps, awayToday)).toBe('skipped');
+    expect(sent).toEqual([]);
+  });
+
+  test('away in the morning is sent at once', async () => {
+    const { deps, sent } = await setup(MONTREAL, MORNING);
+    await saveHome(deps.secrets, TORONTO);
+    await deps.store.saveAwayWindow(WINDOW);
+    expect(await checkAway(deps, awayToday)).toBe('sent');
+    expect(sent).toEqual([
+      { id: WINDOW.id, body: { day: '2026-10-14', verified: 'yes', distanceKm: 500 } },
+    ]);
+  });
+
+  test('at home at 20:00 sends no', async () => {
+    const { deps, sent } = await setup(NEAR, Date.UTC(2026, 9, 14, 20));
+    await saveHome(deps.secrets, TORONTO);
+    await deps.store.saveAwayWindow(WINDOW);
+    await checkAway(deps, awayToday);
+    expect(sent).toEqual([
+      { id: WINDOW.id, body: { day: '2026-10-14', verified: 'no', distanceKm: 0 } },
+    ]);
+  });
+
+  test('03:00 still belongs to the same day, after its grace period', async () => {
+    const { deps, sent } = await setup(NEAR, Date.UTC(2026, 9, 15, 3));
+    await saveHome(deps.secrets, TORONTO);
+    await deps.store.saveAwayWindow(WINDOW);
+    await checkAway(deps, awayToday);
+    expect(sent).toEqual([
+      { id: WINDOW.id, body: { day: '2026-10-14', verified: 'no', distanceKm: 0 } },
+    ]);
+  });
+
+  test('the grace period follows local time', async () => {
+    // 22:00 UTC is 18:00 in Toronto (UTC-4): still inside the grace period.
+    const { deps, sent } = await setup(NEAR, Date.UTC(2026, 9, 14, 22));
+    await saveHome(deps.secrets, TORONTO);
+    await deps.store.saveAwayWindow(WINDOW);
+    await checkAway({ ...deps, utcOffsetMinutes: () => -240 }, awayToday);
+    expect(sent).toEqual([]);
+  });
 });

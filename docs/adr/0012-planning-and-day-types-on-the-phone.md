@@ -30,7 +30,12 @@ never leaving the phone**. The judge's verdicts stay `pending` until its accurac
   - No permission or no fix sends `unknown`, which counts toward the 2 unverified away days a month.
   - **Once a day is confirmed away (`yes`), it stays away** (owner's choice, 2026-10-15). Coming
     home that evening, or a later check without a fix, never undoes it. A `no` still cancels a
-    day the phone has not yet seen away, such as a check at home before leaving. The rule lives in
+    day the phone has not yet seen away, but only from 20:00 local time.
+  - **Grace period** (owner's choice, 2026-10-15): before 20:00 local time only `yes` is sent. A
+    check at home, or without a fix, waits, so a same-day trip that starts in the afternoon
+    survives a morning check at home. From 20:00 until the 04:00 day boundary, `no` and `unknown`
+    are sent again. A day the owner never left is still cancelled, just not before evening.
+    The phone decides this, because only the phone knows its local time and position. The rule lives in
     `core` (`applyAwayVerification`), so the server enforces it.
 - **Owner decisions:** a task the judge left `pending` shows the judge's suggestion and two
   buttons. "I did it" warns that it pays the task's time. Nothing is decided silently.
