@@ -65,3 +65,24 @@ test('edits are immutable; a rest day can be set and cleared', () => {
   expect('restWeekday' in editSkill(rested, id(2), { restWeekday: null }).skills[0]!).toBe(false);
   expect(editMilestone(r, id(3), { done: true }).milestones[0]?.done).toBe(true);
 });
+
+test('text longer than the server allows is a problem', () => {
+  let r = filled();
+  r = editIdentity(r, id(1), { title: 'x'.repeat(81), why: 'y'.repeat(501) });
+  r = editSkill(r, id(2), { name: 'n'.repeat(81), rubric: 'r'.repeat(501) });
+  r = editMilestone(r, id(3), { title: 'm'.repeat(121) });
+  expect(roadmapProblems(r)).toEqual([
+    'Identity titles fit in 80 characters.',
+    'Each why fits in 500 characters.',
+    'Skill names fit in 80 characters.',
+    'Each judging note fits in 500 characters.',
+    'Milestone titles fit in 120 characters.',
+  ]);
+  expect(RoadmapSchema.safeParse(r).success).toBe(false);
+});
+
+test('length is measured on trimmed text, as the server does', () => {
+  const r = editIdentity(filled(), id(1), { title: `  ${'x'.repeat(80)}  ` });
+  expect(roadmapProblems(r)).toEqual([]);
+  expect(RoadmapSchema.safeParse(r).success).toBe(true);
+});

@@ -6,6 +6,15 @@ const MAX_IDENTITIES = 3;
 const MAX_SKILLS = 12;
 const MAX_MILESTONES = 100;
 
+/** Longest text the server accepts (RoadmapSchema), counted after trimming. */
+export const TEXT_LIMITS = {
+  identityTitle: 80,
+  why: 500,
+  skillName: 80,
+  rubric: 500,
+  milestoneTitle: 120,
+} as const;
+
 export const emptyRoadmap = (): Roadmap => ({ identities: [], skills: [], milestones: [] });
 
 export const addIdentity = (r: Roadmap, id: string): Roadmap => ({
@@ -92,6 +101,7 @@ export const removeMilestone = (r: Roadmap, id: string): Roadmap => ({
 });
 
 const blank = (text: string) => text.trim() === '';
+const tooLong = (text: string, limit: number) => text.trim().length > limit;
 
 /** What would make the server refuse the roadmap (RoadmapSchema), in plain words, once each. */
 export function roadmapProblems(r: Roadmap): string[] {
@@ -101,6 +111,14 @@ export function roadmapProblems(r: Roadmap): string[] {
     [r.identities.some((i) => blank(i.title)), 'Give each identity a title.'],
     [r.identities.some((i) => blank(i.why)), 'Say why each identity matters.'],
     [
+      r.identities.some((i) => tooLong(i.title, TEXT_LIMITS.identityTitle)),
+      `Identity titles fit in ${TEXT_LIMITS.identityTitle} characters.`,
+    ],
+    [
+      r.identities.some((i) => tooLong(i.why, TEXT_LIMITS.why)),
+      `Each why fits in ${TEXT_LIMITS.why} characters.`,
+    ],
+    [
       r.identities.some(
         (i) => i.deadline !== undefined && !DayKeySchema.safeParse(i.deadline).success,
       ),
@@ -109,8 +127,20 @@ export function roadmapProblems(r: Roadmap): string[] {
     [r.skills.length > MAX_SKILLS, `Up to ${MAX_SKILLS} skills.`],
     [r.skills.some((s) => blank(s.name)), 'Name each skill.'],
     [r.skills.some((s) => blank(s.rubric)), 'Say how each skill is judged.'],
+    [
+      r.skills.some((s) => tooLong(s.name, TEXT_LIMITS.skillName)),
+      `Skill names fit in ${TEXT_LIMITS.skillName} characters.`,
+    ],
+    [
+      r.skills.some((s) => tooLong(s.rubric, TEXT_LIMITS.rubric)),
+      `Each judging note fits in ${TEXT_LIMITS.rubric} characters.`,
+    ],
     [r.milestones.length > MAX_MILESTONES, `Up to ${MAX_MILESTONES} milestones.`],
     [r.milestones.some((m) => blank(m.title)), 'Name each milestone.'],
+    [
+      r.milestones.some((m) => tooLong(m.title, TEXT_LIMITS.milestoneTitle)),
+      `Milestone titles fit in ${TEXT_LIMITS.milestoneTitle} characters.`,
+    ],
   ];
   return checks.filter(([failed]) => failed).map(([, message]) => message);
 }

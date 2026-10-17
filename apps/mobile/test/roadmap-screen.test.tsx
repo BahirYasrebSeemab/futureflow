@@ -97,3 +97,23 @@ test('removing an identity removes its skills', async () => {
   fireEvent.press(screen.getByTestId('remove-identity-0'));
   expect(screen.queryByDisplayValue('Coding')).toBeNull();
 });
+
+test('after a failed load there is no editor to save over the server roadmap', async () => {
+  const getRoadmap = jest
+    .fn<ReturnType<Api['getRoadmap']>, []>()
+    .mockResolvedValueOnce({ ok: false, error: { kind: 'network' } })
+    .mockResolvedValueOnce({ ok: true, data: saved });
+  await open({ getRoadmap });
+  expect(await screen.findByText('Loading the roadmap needs a connection.')).toBeTruthy();
+  expect(screen.queryByTestId('add-identity')).toBeNull();
+  expect(screen.queryByTestId('save-roadmap')).toBeNull();
+  fireEvent.press(screen.getByTestId('retry-roadmap'));
+  expect(await screen.findByDisplayValue('Engineer')).toBeTruthy();
+});
+
+test('text fields stop at the server limits', async () => {
+  await open({});
+  fireEvent.press(await screen.findByTestId('add-identity'));
+  expect(await screen.findByTestId('identity-title-0')).toHaveProp('maxLength', 80);
+  expect(screen.getByTestId('identity-why-0')).toHaveProp('maxLength', 500);
+});

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Banner } from '@/components/banner';
 import { useBottomPadding } from '@/components/bottom-padding';
@@ -17,6 +17,7 @@ import {
   removeMilestone,
   removeSkill,
   roadmapProblems,
+  TEXT_LIMITS,
 } from '@/lib/roadmap-draft';
 import { radius, space, usePalette } from '@/theme';
 
@@ -36,22 +37,30 @@ export function RoadmapScreen() {
   const { services } = useApp();
   const [saved, setSaved] = useState<Roadmap | null>(null);
   const [draft, setDraft] = useState<Roadmap>(emptyRoadmap());
-  const [loaded, setLoaded] = useState(false);
+  const [load, setLoad] = useState<'loading' | 'failed' | 'ready'>('loading');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
 
-  useEffect(() => {
-    void (async () => {
-      const result = await services.api.getRoadmap();
-      if (result.ok && result.data !== null) {
-        setSaved(result.data);
-        setDraft(result.data);
-      } else if (!result.ok) {
-        setMessage({ ok: false, text: 'Loading the roadmap needs a connection.' });
-      }
-      setLoaded(true);
-    })();
+  // Saving replaces the whole server roadmap, so the editor only opens once it has loaded.
+  const fetchRoadmap = useCallback(async () => {
+    setLoad('loading');
+    setMessage(null);
+    const result = await services.api.getRoadmap();
+    if (!result.ok) {
+      setMessage({ ok: false, text: 'Loading the roadmap needs a connection.' });
+      setLoad('failed');
+      return;
+    }
+    if (result.data !== null) {
+      setSaved(result.data);
+      setDraft(result.data);
+    }
+    setLoad('ready');
   }, [services]);
+
+  useEffect(() => {
+    void fetchRoadmap();
+  }, [fetchRoadmap]);
 
   const problems = roadmapProblems(draft);
   const changed = JSON.stringify(saved ?? emptyRoadmap()) !== JSON.stringify(draft);
@@ -92,6 +101,7 @@ export function RoadmapScreen() {
     label: string,
     value: string,
     onChange: (t: string) => void,
+    maxLength: number,
     multiline = false,
   ) => (
     <View style={styles.field}>
@@ -101,13 +111,22 @@ export function RoadmapScreen() {
         accessibilityLabel={label}
         value={value}
         onChangeText={onChange}
+        maxLength={maxLength}
         multiline={multiline}
         style={input}
       />
     </View>
   );
 
-  if (!loaded) return null;
+  if (load === 'loading') return null;
+  if (load === 'failed') {
+    return (
+      <View style={[styles.body, { flex: 1, backgroundColor: c.background }]}>
+        {message !== null && <Banner tone="warning" message={message.text} />}
+        <Button testID="retry-roadmap" label="Try again" onPress={() => void fetchRoadmap()} />
+      </View>
+    );
+  }
   return (
     <ScrollView
       style={{ backgroundColor: c.background }}
@@ -132,14 +151,19 @@ export function RoadmapScreen() {
           key={identity.id}
           style={[styles.card, { borderColor: c.border, backgroundColor: c.surface }]}
         >
-          {field(`identity-title-${i}`, 'I want to become', identity.title, (t) =>
-            setDraft((r) => editIdentity(r, identity.id, { title: t })),
+          {field(
+            `identity-title-${i}`,
+            'I want to become',
+            identity.title,
+            (t) => setDraft((r) => editIdentity(r, identity.id, { title: t })),
+            TEXT_LIMITS.identityTitle,
           )}
           {field(
             `identity-why-${i}`,
             'Why',
             identity.why,
             (t) => setDraft((r) => editIdentity(r, identity.id, { why: t })),
+            TEXT_LIMITS.why,
             true,
           )}
           {field(
@@ -147,15 +171,24 @@ export function RoadmapScreen() {
             'By (optional, like 2027-06-30)',
             identity.deadline ?? '',
             (t) => setDraft((r) => editIdentity(r, identity.id, { deadline: t === '' ? null : t })),
+            10,
           )}
           {draft.skills.map((skill, j) =>
             skill.identityId !== identity.id ? null : (
               <View key={skill.id} style={[styles.inner, { borderColor: c.border }]}>
-                {field(`skill-name-${j}`, 'Skill', skill.name, (t) =>
-                  setDraft((r) => editSkill(r, skill.id, { name: t })),
+                {field(
+                  `skill-name-${j}`,
+                  'Skill',
+                  skill.name,
+                  (t) => setDraft((r) => editSkill(r, skill.id, { name: t })),
+                  TEXT_LIMITS.skillName,
                 )}
-                {field(`skill-rubric-${j}`, 'How it is judged', skill.rubric, (t) =>
-                  setDraft((r) => editSkill(r, skill.id, { rubric: t })),
+                {field(
+                  `skill-rubric-${j}`,
+                  'How it is judged',
+                  skill.rubric,
+                  (t) => setDraft((r) => editSkill(r, skill.id, { rubric: t })),
+                  TEXT_LIMITS.rubric,
                 )}
                 <View style={styles.chips}>
                   {VERIFIERS.map(([value, label]) => (
@@ -197,8 +230,12 @@ export function RoadmapScreen() {
                   m.skillId !== skill.id ? null : (
                     <View key={m.id} style={styles.milestone}>
                       <View style={styles.grow}>
-                        {field(`milestone-title-${k}`, 'Milestone', m.title, (t) =>
-                          setDraft((r) => editMilestone(r, m.id, { title: t })),
+                        {field(
+                          `milestone-title-${k}`,
+                          'Milestone',
+                          m.title,
+                          (t) => setDraft((r) => editMilestone(r, m.id, { title: t })),
+                          TEXT_LIMITS.milestoneTitle,
                         )}
                       </View>
                       <Pressable
