@@ -1,0 +1,32 @@
+appId: com.bahiryasreb.futureflow
+---
+# Runs after pair-and-today.yaml, with the accessibility service on and today's time spent.
+- launchApp
+- runFlow:
+    when:
+      visible: ".*isn't responding.*"
+    commands:
+      - tapOn: 'Wait'
+# The sync on Today pulls the spend and hands the guard a balance of zero.
+- extendedWaitUntil:
+    visible:
+      id: 'balance'
+      text: '−.*'
+    timeout: 30000
+- tapOn:
+    id: 'open-more'
+- tapOn:
+    id: 'more-guard'
+- extendedWaitUntil:
+    visible: 'The guard is on'
+    timeout: 15000
+- takeScreenshot: 14-guard
+# Settings is blocked in the emulator build only, because every emulator has it.
+- launchApp:
+    appId: 'com.android.settings'
+- extendedWaitUntil:
+    visible: 'Out of time'
+    timeout: 20000
+- takeScreenshot: 15-shield
+- tapOn: 'Go home'
+- assertNotVisible: 'Out of time'
