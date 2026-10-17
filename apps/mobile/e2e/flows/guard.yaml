@@ -19,16 +19,6 @@ appId: com.bahiryasreb.futureflow
     id: 'open-more'
 - tapOn:
     id: 'more-guard'
-- extendedWaitUntil:
-    visible: 'The guard is on'
-    timeout: 15000
+# Maestro drives the phone through UI automation, which suppresses other accessibility services
+# while it is connected, so the guard reads "off" here. run.sh checks the shield after Maestro.
 - takeScreenshot: 14-guard
-# Settings is blocked in the emulator build only, because every emulator has it.
-- launchApp:
-    appId: 'com.android.settings'
-- extendedWaitUntil:
-    visible: 'Out of time'
-    timeout: 20000
-- takeScreenshot: 15-shield
-- tapOn: 'Go home'
-- assertNotVisible: 'Out of time'

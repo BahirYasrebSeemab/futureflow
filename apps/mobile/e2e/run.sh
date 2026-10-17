@@ -16,13 +16,39 @@ cd "$OUT"
 "$MAESTRO" test "$E2E/flows/pair-and-today.yaml" \
   --test-output-dir "$OUT/maestro" --format junit --output "$OUT/report.xml"
 
-# The guard: switch on its accessibility service (as the owner does in Settings), spend today's
-# time on the server so the next sync leaves none, then expect the shield over a blocked app.
+# The guard: spend today's time on the server so the next sync leaves none, let the app sync, then
+# expect the shield over a blocked app.
+SERVICE=com.bahiryasreb.futureflow/expo.modules.usageguard.UsageGuardService
+guard_on() {
+  adb shell settings put secure enabled_accessibility_services "$SERVICE"
+  adb shell settings put secure accessibility_enabled 1
+}
+guard_state() {
+  echo "enabled services: $(adb shell settings get secure enabled_accessibility_services | tr -d '\r')"
+  adb shell dumpsys accessibility | grep -iE 'futureflow|bound services|enabled services' || true
+}
 # Force-stopping an app switches its accessibility service off, so stop it first and never again.
 adb shell am force-stop com.bahiryasreb.futureflow
-adb shell settings put secure enabled_accessibility_services \
-  com.bahiryasreb.futureflow/expo.modules.usageguard.UsageGuardService
-adb shell settings put secure accessibility_enabled 1
+guard_on
 "$E2E/spend-today.sh"
 "$MAESTRO" test "$E2E/flows/guard.yaml" \
   --test-output-dir "$OUT/maestro-guard" --format junit --output "$OUT/report-guard.xml"
+
+# Maestro's UI automation suppresses other accessibility services while connected: stop its driver,
+# switch the guard back on, then open Settings (blocked in this build) and look for the shield.
+adb shell am force-stop dev.mobile.maestro || true
+adb shell am force-stop dev.mobile.maestro.test || true
+guard_on
+sleep 5
+guard_state
+adb shell am start -W -n com.android.settings/.Settings
+sleep 5
+adb exec-out screencap -p > "$OUT/15-shield.png"
+top=$(adb shell dumpsys activity activities | grep -E 'topResumedActivity|mResumedActivity' | head -1)
+echo "top activity: $top"
+if ! echo "$top" | grep -q ShieldActivity; then
+  guard_state
+  echo "The shield did not cover Settings"
+  exit 1
+fi
+echo "The shield covers Settings"
