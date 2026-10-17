@@ -14,13 +14,19 @@ P4d gives them phone screens. Spec §9.2 requires a distress guardrail.
   on the phone and reused on retry, so a log is never counted twice. Today or yesterday only.
   The judge scores it tonight; the verdict shows on Today.
 - **Coach chat:**
-  - The thread is cached in SQLite, so it reads offline.
+  - The thread is cached in SQLite, so it reads offline. It is cleared when the pairing is
+    forgotten, because chats can hold hard moments; the server sends it again after re-pairing.
   - Nightly reviews appear in the same thread, labelled.
   - **When the coach can't answer** (503, network, anything), the phone shows a fixed line,
     never AI text: the supportive message, **9-8-8** (Suicide Crisis Helpline, Canada, 24/7) and
     **9-1-1**. The owner's message stays with a retry that reuses its id.
+  - "Unanswered" is worked out from the thread (an owner message with no reply pointing at it),
+    so the retry and the safety line come back after leaving the screen.
+  - The server keeps one reply per message; a retry that overlaps a slow first send gets that
+    same reply.
 - **Roadmap onboarding** is a form (identities → skills → milestones), validated on the phone
-  against `RoadmapSchema`. Removing an identity or skill removes what hangs off it. The spec's
+  against `RoadmapSchema`, lengths included. Saving replaces the whole server roadmap, so the
+  editor opens only after the roadmap has loaded. Removing an identity or skill removes what hangs off it. The spec's
   conversational onboarding (coach-proposed skills, guard checklist) comes later.
 - **GitHub:**
   - The token goes to `PUT /github/link` once. It is never stored on the phone and the field is
@@ -32,5 +38,5 @@ P4d gives them phone screens. Spec §9.2 requires a distress guardrail.
 
 ## Consequences
 
-- An unanswered coach message is kept only while the chat screen is open.
+- A failed send the server never stored is kept only while the chat screen is open.
 - Onboarding is less guided than the spec's conversation until coach proposals land.

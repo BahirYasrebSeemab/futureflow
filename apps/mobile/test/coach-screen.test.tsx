@@ -12,6 +12,7 @@ const msg = (
   text: string,
   createdAt: number,
   kind: 'chat' | 'review' = 'chat',
+  replyTo?: string,
 ) => ({
   id,
   role,
@@ -19,6 +20,14 @@ const msg = (
   text,
   day: '2026-10-14',
   createdAt,
+  ...(replyTo === undefined ? {} : { replyTo }),
+});
+const answered = (body: { id: string; text: string }, reply: string, replyId = `r-${body.id}`) => ({
+  ok: true as const,
+  data: {
+    message: msg(body.id, 'owner', body.text, 10),
+    reply: msg(replyId, 'coach', reply, 11, 'chat', body.id),
+  },
 });
 const unavailable: ApiResult<never> = {
   ok: false,
@@ -54,13 +63,9 @@ function send(text: string) {
 }
 
 test('a reply is shown and cached', async () => {
-  const sendCoachMessage = jest.fn(async (body: { id: string; text: string }) => ({
-    ok: true as const,
-    data: {
-      message: msg(body.id, 'owner', body.text, 10),
-      reply: msg('r1', 'coach', 'Do the 2-minute version first.', 11),
-    },
-  }));
+  const sendCoachMessage = jest.fn(async (body: { id: string; text: string }) =>
+    answered(body, 'Do the 2-minute version first.'),
+  );
   const services = await open({ sendCoachMessage });
   await screen.findByTestId('coach-input');
   send('I keep putting off the math set.');
@@ -81,20 +86,53 @@ test.each([
     expect(screen.getByTestId('coach-unavailable')).toHaveTextContent(/9-1-1/);
     expect(screen.getByText('Everything feels pointless today.')).toBeTruthy();
     expect(screen.getByText('Not answered yet')).toBeTruthy();
+    expect(screen.queryByText('The coach cannot answer right now.')).toBeNull();
   },
 );
+
+test('a thrown error shows the crisis line and keeps the message', async () => {
+  await open({
+    sendCoachMessage: async () => {
+      throw new Error('boom');
+    },
+  });
+  await screen.findByTestId('coach-input');
+  send('Is anyone there?');
+  expect(await screen.findByTestId('coach-unavailable')).toHaveTextContent(/9-8-8/);
+  expect(screen.getByText('Not answered yet')).toBeTruthy();
+});
+
+test('an unanswered message synced from the server keeps its retry and the crisis line', async () => {
+  await open({}, async (s) => {
+    await s.store.saveCoachMessages([msg('a', 'owner', 'Sent before the coach failed', 1)]);
+  });
+  expect(await screen.findByText('Sent before the coach failed')).toBeTruthy();
+  expect(screen.getByText('Not answered yet')).toBeTruthy();
+  expect(screen.getByTestId('retry-a')).toBeTruthy();
+  expect(screen.getByTestId('coach-unavailable')).toHaveTextContent(/9-8-8/);
+});
+
+test('an answered message does not hide another that is still unanswered', async () => {
+  const sendCoachMessage = jest
+    .fn()
+    .mockImplementationOnce(async () => unavailable)
+    .mockImplementation(async (body: { id: string; text: string }) => answered(body, 'Got it.'));
+  await open({ sendCoachMessage });
+  await screen.findByTestId('coach-input');
+  send('First');
+  await screen.findByTestId('coach-unavailable');
+  send('Second');
+  expect(await screen.findByText('Got it.')).toBeTruthy();
+  const first = sendCoachMessage.mock.calls[0]![0] as { id: string };
+  expect(screen.getByTestId(`retry-${first.id}`)).toBeTruthy();
+  expect(screen.getByTestId('coach-unavailable')).toBeTruthy();
+});
 
 test('retry reuses the id', async () => {
   const sendCoachMessage = jest
     .fn()
     .mockImplementationOnce(async () => unavailable)
-    .mockImplementation(async (body: { id: string; text: string }) => ({
-      ok: true,
-      data: {
-        message: msg(body.id, 'owner', body.text, 10),
-        reply: msg('r2', 'coach', 'Here now.', 11),
-      },
-    }));
+    .mockImplementation(async (body: { id: string; text: string }) => answered(body, 'Here now.'));
   await open({ sendCoachMessage });
   await screen.findByTestId('coach-input');
   send('Hello?');

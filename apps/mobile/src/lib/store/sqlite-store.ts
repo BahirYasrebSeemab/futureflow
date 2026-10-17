@@ -404,6 +404,7 @@ export function sqliteStore(db: SqlDb): LocalStore {
       write(async () => {
         await db.withTransactionAsync(async () => {
           await db.execAsync('DELETE FROM ledger');
+          await db.execAsync('DELETE FROM coach_messages');
           await db.runAsync(
             'DELETE FROM kv WHERE key IN (SELECT value FROM json_each(?))',
             JSON.stringify(SERVER_KEYS),

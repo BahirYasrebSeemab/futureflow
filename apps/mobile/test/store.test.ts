@@ -266,7 +266,7 @@ const msg = (id: string, createdAt: number) => ({
   createdAt,
 });
 
-test('the coach thread is cached in order, upserted, and its cursor resets on re-pair', async () => {
+test('the coach thread is cached in order, upserted, and cleared with the server copy', async () => {
   const { store } = await open();
   expect([await store.coachThread(), await store.coachCursor()]).toEqual([[], 0]);
   await store.saveCoachMessages([msg('b', 2), msg('a', 1)], 5);
@@ -277,5 +277,6 @@ test('the coach thread is cached in order, upserted, and its cursor resets on re
   ]);
   expect(await store.coachCursor()).toBe(5);
   await store.clearServerCopy();
-  expect([(await store.coachThread()).length, await store.coachCursor()]).toEqual([2, 0]);
+  // Chats can hold hard moments; they leave the phone with the pairing and re-sync after it.
+  expect([await store.coachThread(), await store.coachCursor()]).toEqual([[], 0]);
 });

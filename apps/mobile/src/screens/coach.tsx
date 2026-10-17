@@ -20,14 +20,22 @@ const MAX_PAGES = 20;
 
 type Unanswered = { id: string; text: string };
 
+/** Owner chat messages with no coach reply yet: the server keeps them even when the AI fails. */
+function unansweredIn(thread: readonly CoachMessage[]): Unanswered[] {
+  const replied = new Set(thread.flatMap((m) => (m.replyTo === undefined ? [] : [m.replyTo])));
+  return thread
+    .filter((m) => m.role === 'owner' && m.kind === 'chat' && !replied.has(m.id))
+    .map(({ id, text }) => ({ id, text }));
+}
+
 export function CoachScreen() {
   const c = usePalette();
   const bottomPadding = useBottomPadding();
   const { services } = useApp();
   const [thread, setThread] = useState<CoachMessage[]>([]);
-  const [unanswered, setUnanswered] = useState<Unanswered[]>([]);
+  // Failed sends the server may not have stored; once synced they come from the thread instead.
+  const [unsent, setUnsent] = useState<Unanswered[]>([]);
   const [text, setText] = useState('');
-  const [failed, setFailed] = useState(false);
   const busy = useRef(false);
   const [sending, setSending] = useState(false);
 
@@ -49,6 +57,9 @@ export function CoachScreen() {
     }, [services, reload]),
   );
 
+  const keepUnsent = (message: Unanswered) =>
+    setUnsent((list) => (list.some((m) => m.id === message.id) ? list : [...list, message]));
+
   const deliver = async (message: Unanswered) => {
     if (busy.current) return;
     busy.current = true;
@@ -56,21 +67,16 @@ export function CoachScreen() {
     try {
       const result = await services.api.sendCoachMessage(message);
       if (!result.ok) {
-        setFailed(true);
-        setUnanswered((list) =>
-          list.some((m) => m.id === message.id) ? list : [...list, message],
-        );
+        keepUnsent(message);
         return;
       }
       await services.store.saveCoachMessages([result.data.message, result.data.reply]);
-      setUnanswered((list) => list.filter((m) => m.id !== message.id));
-      setFailed(false);
+      setUnsent((list) => list.filter((m) => m.id !== message.id));
       await reload();
     } catch (error) {
       const name = error instanceof Error ? error.name : 'unknown';
       console.error(JSON.stringify({ event: 'coach_send_failed', name }));
-      setFailed(true);
-      setUnanswered((list) => (list.some((m) => m.id === message.id) ? list : [...list, message]));
+      keepUnsent(message);
     } finally {
       busy.current = false;
       setSending(false);
@@ -95,6 +101,8 @@ export function CoachScreen() {
           borderWidth: 1,
         },
   ];
+  const inThread = new Set(thread.map((m) => m.id));
+  const unanswered = [...unansweredIn(thread), ...unsent.filter((m) => !inThread.has(m.id))];
   const pendingIds = new Set(unanswered.map((m) => m.id));
   return (
     <ScrollView
@@ -142,7 +150,7 @@ export function CoachScreen() {
           />
         </View>
       ))}
-      {failed && (
+      {unanswered.length > 0 && (
         <Text
           testID="coach-unavailable"
           accessibilityLiveRegion="polite"
