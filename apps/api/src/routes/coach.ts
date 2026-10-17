@@ -60,5 +60,8 @@ export const coachRoutes = new Hono<AppEnv>()
       createdAt: deps.now(),
     };
     await deps.repos.coach.addCoachMessage(reply);
-    return ok(c, { message, reply }, 201);
+    // A retry overlapping a slow first send also reaches the AI; reply_to is unique, so only one
+    // reply is kept. Both answer with the stored one, so the phone never caches a phantom.
+    const stored = (await deps.repos.coach.replyTo(id)) ?? reply;
+    return ok(c, { message, reply: stored }, 201);
   });

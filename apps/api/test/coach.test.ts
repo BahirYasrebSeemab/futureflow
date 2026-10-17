@@ -81,4 +81,30 @@ describe('coach chat', () => {
     expect([retry.status, again.status]).toEqual([201, 200]);
     expect(page.body.data.messages.map((m) => m.role)).toEqual(['owner', 'coach']);
   });
+
+  it('a retry that overlaps a slow first send returns the one stored reply', async () => {
+    let release = () => {};
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    const { app, token, send } = await setup((n) => {
+      const body = geminiReply(n === 1 ? 'First answer.' : 'Second answer.');
+      return { ...body, text: async () => (await gate, body.text()) };
+    });
+    const id = uuidv7();
+
+    const slow = send('hello', id);
+    const retry = send('hello', id);
+    release();
+    const [a, b] = await Promise.all([slow, retry]);
+    const page = await call<{ messages: { id: string; role: string }[] }>(
+      app,
+      'GET',
+      '/v1/coach/messages',
+      { token },
+    );
+
+    const stored = page.body.data.messages.filter((m) => m.role === 'coach');
+    expect(stored).toHaveLength(1);
+    expect(a.body.data.reply).toEqual(b.body.data.reply);
+    expect((a.body.data.reply as unknown as { id: string }).id).toBe(stored[0]?.id);
+  });
 });
