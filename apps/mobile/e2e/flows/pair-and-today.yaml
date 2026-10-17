@@ -16,6 +16,11 @@ appId: com.bahiryasreb.futureflow
     id: 'setup-code'
 - inputText: 'e2e-setup-code-0123456789'
 - hideKeyboard
+- runFlow:
+    when:
+      visible: ".*isn't responding.*"
+    commands:
+      - tapOn: 'Wait'
 - tapOn:
     id: 'pair-button'
 - extendedWaitUntil:

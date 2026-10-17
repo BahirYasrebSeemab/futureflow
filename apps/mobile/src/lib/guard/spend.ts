@@ -21,7 +21,7 @@ function nextBoundary(at: number): number {
 function parts(session: SpendSession): { day: string; end: number; ms: number }[] {
   const out: { day: string; end: number; ms: number }[] = [];
   const end = session.start + session.ms;
-  for (let from = session.start; from < end; ) {
+  for (let from = session.start; from < end;) {
     const to = Math.min(end, nextBoundary(from));
     out.push({ day: currentDayKey(from), end: to, ms: to - from });
     from = to;

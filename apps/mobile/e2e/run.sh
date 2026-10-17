@@ -9,6 +9,9 @@ mkdir -p "$OUT"
 # Keep Maestro's own run folder (screenshots, logs) in the artifact, even when a flow fails.
 trap 'cp -r "$HOME/.maestro/tests" "$OUT/maestro-tests" 2> /dev/null || true' EXIT
 adb install -r "$APK"
+# A slow emulator's own apps (often the launcher) freeze and raise "isn't responding" dialogs over
+# ours; testing builds can hide them.
+adb shell settings put global hide_error_dialogs 1
 cd "$OUT"
 "$MAESTRO" test "$E2E/flows/pair-and-today.yaml" \
   --test-output-dir "$OUT/maestro" --format junit --output "$OUT/report.xml"
