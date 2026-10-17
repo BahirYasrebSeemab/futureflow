@@ -256,3 +256,27 @@ test('pairing again re-downloads the bank from the start', async () => {
   await store.clearServerCopy();
   expect(await store.bankCursor()).toBe(0);
 });
+
+const msg = (id: string, createdAt: number) => ({
+  id,
+  role: 'coach' as const,
+  kind: 'chat' as const,
+  text: `t-${id}`,
+  day: '2026-10-14',
+  createdAt,
+});
+
+test('the coach thread is cached in order, upserted, and cleared with the server copy', async () => {
+  const { store } = await open();
+  expect([await store.coachThread(), await store.coachCursor()]).toEqual([[], 0]);
+  await store.saveCoachMessages([msg('b', 2), msg('a', 1)], 5);
+  await store.saveCoachMessages([{ ...msg('a', 1), text: 'edited' }]);
+  expect((await store.coachThread()).map((m) => [m.id, m.text])).toEqual([
+    ['a', 'edited'],
+    ['b', 't-b'],
+  ]);
+  expect(await store.coachCursor()).toBe(5);
+  await store.clearServerCopy();
+  // Chats can hold hard moments; they leave the phone with the pairing and re-sync after it.
+  expect([await store.coachThread(), await store.coachCursor()]).toEqual([[], 0]);
+});

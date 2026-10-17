@@ -1,6 +1,8 @@
 import {
   type BankProblem,
   BankProblemSchema,
+  type CoachMessage,
+  CoachMessageSchema,
   DayKeySchema,
   LedgerEventSchema,
   type MathAttempt,
@@ -51,9 +53,17 @@ const KEY = {
   awayWindows: 'away_windows',
   placement: 'placement',
   bankCursor: 'bank_cursor',
+  coachCursor: 'coach_cursor',
 } as const;
 /** What came from the server; the rest of kv (away windows, check times) is the phone's own. */
-const SERVER_KEYS = [KEY.cursor, KEY.complete, KEY.today, KEY.lastSync, KEY.bankCursor] as const;
+const SERVER_KEYS = [
+  KEY.cursor,
+  KEY.complete,
+  KEY.today,
+  KEY.lastSync,
+  KEY.bankCursor,
+  KEY.coachCursor,
+] as const;
 
 /** expo-sqlite transactions are not exclusive, so writes take turns instead of nesting. */
 function createQueue() {
@@ -350,6 +360,35 @@ export function sqliteStore(db: SqlDb): LocalStore {
       write(async () => {
         await db.runAsync('UPDATE math_bank SET used = 1 WHERE id = ?', id);
       }),
+    saveCoachMessages: (messages: readonly CoachMessage[], next?: number) =>
+      write(async () => {
+        await db.withTransactionAsync(async () => {
+          for (const m of messages) {
+            await db.runAsync(
+              `INSERT INTO coach_messages (id, created_at, message) VALUES (?, ?, ?)
+               ON CONFLICT(id) DO UPDATE SET message = excluded.message`,
+              m.id,
+              m.createdAt,
+              JSON.stringify(m),
+            );
+          }
+          if (next !== undefined) await setKv(KEY.coachCursor, String(next));
+        });
+      }),
+    async coachThread() {
+      const rows = await db.getAllAsync<{ message: string }>(
+        'SELECT message FROM coach_messages ORDER BY created_at, rowid',
+      );
+      return rows.flatMap((row) => {
+        try {
+          const parsed = CoachMessageSchema.safeParse(JSON.parse(row.message));
+          return parsed.success ? [parsed.data] : [];
+        } catch {
+          return [];
+        }
+      });
+    },
+    coachCursor: async () => Number((await getKv(KEY.coachCursor)) ?? 0),
     mathTaskDone: async (taskId: string) => (await getKv(mathTaskKey(taskId))) !== null,
     markMathTaskDone: (taskId: string) =>
       write(async () => {
@@ -365,6 +404,7 @@ export function sqliteStore(db: SqlDb): LocalStore {
       write(async () => {
         await db.withTransactionAsync(async () => {
           await db.execAsync('DELETE FROM ledger');
+          await db.execAsync('DELETE FROM coach_messages');
           await db.runAsync(
             'DELETE FROM kv WHERE key IN (SELECT value FROM json_each(?))',
             JSON.stringify(SERVER_KEYS),

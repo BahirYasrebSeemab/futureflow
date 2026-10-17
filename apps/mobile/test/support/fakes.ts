@@ -116,6 +116,13 @@ export async function testServices(
     declareAway: async () => OFFLINE,
     sendAwayVerdict: async () => OFFLINE,
     decideVerdict: async () => OFFLINE,
+    sendReading: async () => OFFLINE,
+    coachMessages: async (since) => ({ ok: true, data: { messages: [], next: since } }),
+    sendCoachMessage: async () => OFFLINE,
+    saveRoadmap: async () => OFFLINE,
+    getGithubLink: async () => ({ ok: true, data: null }),
+    linkGithub: async () => OFFLINE,
+    unlinkGithub: async () => OFFLINE,
     getBank: async (since) => ({ ok: true, data: { problems: [], next: since } }),
     pushMathAttempts: async (attempts) => ({
       ok: true,

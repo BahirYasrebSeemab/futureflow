@@ -104,3 +104,31 @@ appId: com.bahiryasreb.futureflow
     visible: 'Question 1 of.*'
     timeout: 20000
 - takeScreenshot: 10-mock-question
+- back
+- tapOn: '(?i)^leave$'
+- back
+- back
+- tapOn:
+    id: 'open-coach'
+- tapOn:
+    id: 'coach-input'
+- inputText: 'How do I start today?'
+- hideKeyboard
+- tapOn:
+    id: 'coach-send'
+# CI's Worker has no AI key, so the coach can't answer: the fixed safety line must show.
+- extendedWaitUntil:
+    visible:
+      id: 'coach-unavailable'
+    timeout: 30000
+- takeScreenshot: 11-coach-unavailable
+- back
+- tapOn:
+    id: 'open-more'
+- takeScreenshot: 12-more
+- tapOn:
+    id: 'more-roadmap'
+- extendedWaitUntil:
+    visible: 'Software engineer'
+    timeout: 20000
+- takeScreenshot: 13-roadmap
