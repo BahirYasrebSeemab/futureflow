@@ -214,7 +214,9 @@ test('returning to the app syncs again', async () => {
   );
   mount(ready(services));
   expect(await screen.findByText('Fractions practice')).toBeTruthy();
-  const onChange = listen.mock.calls.at(-1)?.[1] as (state: AppStateStatus) => void;
+  // Every listener hears the change, as on a phone (Today and the guard status both listen).
+  const onChange = (state: AppStateStatus) =>
+    listen.mock.calls.forEach(([, listener]) => (listener as (s: AppStateStatus) => void)(state));
   await act(async () => onChange('background'));
   await act(async () => onChange('active'));
   await waitFor(() => expect(syncs).toBe(2));

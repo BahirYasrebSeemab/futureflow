@@ -8,6 +8,7 @@ import {
   View,
 } from 'react-native';
 import { Banner } from '@/components/banner';
+import { useGuardStatus } from '@/lib/guard/use-guard-status';
 import { useBottomPadding } from '@/components/bottom-padding';
 import { Button } from '@/components/button';
 import { useApp } from '@/lib/app';
@@ -54,6 +55,7 @@ export function TodayScreen() {
   const bottomPadding = useBottomPadding();
   const { forgetPairing } = useApp();
   const view = useToday();
+  const guard = useGuardStatus();
   const { loaded, syncing, tried, saved, ledgerComplete, balanceSeconds, lastSync, refresh } = view;
   const center = [styles.center, { backgroundColor: c.background }];
   const actions = useDayActions(saved?.today.day ?? '', refresh);
@@ -108,6 +110,17 @@ export function TodayScreen() {
     >
       {notice !== null && <Banner tone="warning" message={notice} />}
       {actions.message !== null && <Banner tone="warning" message={actions.message} />}
+      {guard?.available === true && !guard.enabled && (
+        <Banner
+          tone="warning"
+          message="The guard is off"
+          action={{
+            testID: 'open-guard',
+            label: 'Turn it on',
+            onPress: () => router.push('/guard'),
+          }}
+        />
+      )}
       <View style={styles.hero}>
         <Text style={[styles.caption, { color: c.muted }]}>Time left</Text>
         <Text testID="balance" style={[styles.balance, { color: c.text }]}>
