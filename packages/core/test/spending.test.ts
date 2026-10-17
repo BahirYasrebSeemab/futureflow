@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_RULES as R } from '../src/rules';
-import { expireDay, expireFromBalances, spend, unlock } from '../src/spending';
+import { expireDay, expireFromBalances, lateSpendCredit, spend, unlock } from '../src/spending';
 import { ctx, ev } from './fixtures';
 
 const TEN_MIN_MS = 600_000;
@@ -121,5 +121,53 @@ describe('expireFromBalances', () => {
   it('expires nothing when either is zero or negative', () => {
     expect(expireFromBalances(0, 500, ctx())).toBeNull();
     expect(expireFromBalances(300, -50, ctx())).toBeNull();
+  });
+});
+
+describe('lateSpendCredit', () => {
+  const day = (spent: number) => [
+    ev({ kind: 'base_grant', seconds: 900 }),
+    ev({ kind: 'expire', seconds: -900 }),
+    ev({ id: 'late', kind: 'usage_spend', seconds: -spent }),
+  ];
+  const late = (events: ReturnType<typeof day>) => events.find((e) => e.id === 'late')!;
+
+  it('gives back time the day already expired, so late-night spend is not charged twice', () => {
+    const events = day(600);
+    expect(lateSpendCredit(events, late(events), ctx({ day: '2026-10-08' }))).toEqual({
+      id: 'new-1',
+      day: '2026-10-08',
+      at: 1_000,
+      kind: 'correction',
+      seconds: 600,
+      refId: 'late',
+      reason: 'late_spend',
+    });
+  });
+
+  it('gives back no more than the day expired', () => {
+    const events = day(1_200);
+    expect(lateSpendCredit(events, late(events), ctx())).toMatchObject({ seconds: 900 });
+  });
+
+  it('counts what earlier late spend already took back', () => {
+    const events = [
+      ...day(600),
+      ev({ kind: 'correction', seconds: 700, refId: 'other', reason: 'late_spend' }),
+    ];
+    expect(lateSpendCredit(events, late(events), ctx())).toMatchObject({ seconds: 200 });
+  });
+
+  it('is nothing before the day expired, or once given', () => {
+    const open = [
+      ev({ kind: 'base_grant', seconds: 900 }),
+      ev({ id: 'late', kind: 'usage_spend', seconds: -60 }),
+    ];
+    expect(lateSpendCredit(open, open[1]!, ctx())).toBeNull();
+    const events = [
+      ...day(600),
+      ev({ kind: 'correction', seconds: 600, refId: 'late', reason: 'late_spend' }),
+    ];
+    expect(lateSpendCredit(events, late(events), ctx())).toBeNull();
   });
 });
