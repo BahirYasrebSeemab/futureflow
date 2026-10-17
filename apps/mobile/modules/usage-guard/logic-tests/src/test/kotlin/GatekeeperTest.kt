@@ -37,4 +37,16 @@ class GatekeeperTest {
     assertEquals(Verdict.IGNORE, verdict(null))
     assertEquals(Verdict.IGNORE, verdict(""))
   }
+
+  @Test
+  fun `share sheets and permission dialogs keep the session open`() {
+    for (pkg in listOf(
+      "android",
+      "com.android.intentresolver",
+      "com.android.permissioncontroller",
+      "com.google.android.permissioncontroller",
+    )) {
+      assertEquals(Verdict.IGNORE, verdict(pkg), pkg)
+    }
+  }
 }

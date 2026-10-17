@@ -24,8 +24,11 @@ class UsageGuardModule : Module() {
     }
 
     AsyncFunction("pendingSpend") {
+      // The service may not be back after a reboot: restore first, so an old session is dropped.
+      val boot = GuardClock.bootId(context)
+      val elapsed = SystemClock.elapsedRealtime()
       GuardStore.transact(context) {
-          it.pending(System.currentTimeMillis(), SystemClock.elapsedRealtime())
+          it.restore(boot, elapsed).pending(System.currentTimeMillis(), elapsed, boot)
         }
         .map {
           mapOf("seq" to it.seq.toDouble(), "start" to it.startWall.toDouble(), "ms" to it.ms.toDouble())

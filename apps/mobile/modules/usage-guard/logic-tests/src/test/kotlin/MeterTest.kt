@@ -62,8 +62,8 @@ class MeterTest {
   @Test
   fun `an open session from another boot is dropped`() {
     val m = Meter().enter(0, 0, "boot-1")
-    assertNull(m.restore("boot-2").open)
-    assertEquals(m.open, m.restore("boot-1").open)
+    assertNull(m.restore("boot-2", 10).open)
+    assertEquals(m.open, m.restore("boot-1", 10).open)
   }
 
   @Test
@@ -76,7 +76,7 @@ class MeterTest {
 
   @Test
   fun `pending splits an open session so long sessions report`() {
-    val (m, sessions) = Meter().enter(0, 0, "b").pending(60_000, 60_000)
+    val (m, sessions) = Meter().enter(0, 0, "b").pending(60_000, 60_000, "b")
     assertEquals(listOf(Session(1, 0, 60_000)), sessions)
     assertEquals(OpenSession(60_000, 60_000, "b"), m.open)
     assertEquals(570_000, m.commit(1, 600, DAY).remainingMs(90_000, DAY, sameDay))
@@ -85,6 +85,31 @@ class MeterTest {
   @Test
   fun `pending without an open session returns what is closed`() {
     val m = Meter().enter(0, 0, "b").leave(1_000)
-    assertEquals(m.sessions, m.pending(5_000, 5_000).second)
+    assertEquals(m.sessions, m.pending(5_000, 5_000, "b").second)
+  }
+
+  @Test
+  fun `after a reboot the module charges nothing for the old session`() {
+    // The service may not be back yet: the app's own pending call restores first.
+    val (m, sessions) = Meter().enter(0, 100_000, "old").restore("new", 5_000).pending(10_000, 5_000, "new")
+    assertEquals(emptyList<Session>(), sessions)
+    assertNull(m.open)
+  }
+
+  @Test
+  fun `a session that started later than now on the monotonic clock is from another boot`() {
+    assertNull(Meter().enter(0, 100_000, "b").restore("b", 50_000).open)
+  }
+
+  @Test
+  fun `pending reopens with the current boot`() {
+    val (m, _) = Meter().enter(0, 0, "b").pending(60_000, 60_000, "b2")
+    assertEquals("b2", m.open?.bootId)
+  }
+
+  @Test
+  fun `a reconnecting service forgets the open session`() {
+    // Nobody knows when the old service died, so its open session can't be measured.
+    assertNull(Meter().enter(0, 0, "b").forgetOpen().open)
   }
 }

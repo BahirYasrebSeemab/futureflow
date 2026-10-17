@@ -51,7 +51,8 @@ class UsageGuardService : AccessibilityService() {
     super.onServiceConnected()
     neverBlocked = NEVER_BLOCKED_BASE + listOfNotNull(packageName, defaultDialer(), defaultSms())
     ignored = IGNORED_BASE + inputMethods()
-    GuardStore.update(this) { it.restore(GuardClock.bootId(this)) }
+    // Nobody knows when an earlier service stopped, so a session it left open can't be measured.
+    GuardStore.update(this) { it.forgetOpen() }
     val filter =
       IntentFilter().apply {
         addAction(Intent.ACTION_SCREEN_OFF)
