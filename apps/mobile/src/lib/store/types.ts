@@ -27,6 +27,10 @@ export interface LocalStore {
   enqueue(events: readonly LedgerEvent[]): Promise<void>;
   /** Oldest first, then in enqueue order (a reward before its repayment); all when no limit. */
   pending(limit?: number): Promise<LedgerEvent[]>;
+  /** Queues the guard's spend events and marks its sessions up to `seq` recorded, together. */
+  enqueueSpend(events: readonly LedgerEvent[], seq: number): Promise<void>;
+  /** The guard's last recorded session; it stays across re-pairing (it is the phone's own). */
+  spendSeq(): Promise<number>;
   /**
    * The server answered: `added` events move into the confirmed ledger (so the balance keeps them
    * even if the pull fails); `ignored` ones are dropped, because the server already holds its own copy.

@@ -1,6 +1,9 @@
 import { MAX_ATTEMPTS_PER_BATCH, MAX_EVENTS_PER_BATCH } from '@futureflow/contracts';
 import type { LedgerEvent } from '@futureflow/core';
 import type { Api, ApiFailure } from './api/client';
+import { spendEvents } from './guard/spend';
+import type { Guard } from './guard/types';
+import { projectBalance } from './ledger';
 import type { LocalStore, SyncReport, SyncStatus } from './store/types';
 
 export const PUSH_BATCH = MAX_EVENTS_PER_BATCH;
@@ -12,6 +15,8 @@ export type SyncDeps = Readonly<{
   api: Pick<Api, 'pushEvents' | 'pushMathAttempts' | 'today' | 'pullLedger' | 'getBank'>;
   store: LocalStore;
   now: () => number;
+  /** The native guard: its spend becomes events, and it learns the balance after each pull. */
+  guard?: Readonly<{ native: Guard; newId: () => string }>;
 }>;
 
 type Stop = Exclude<SyncStatus, 'ok'>;
@@ -142,8 +147,41 @@ async function pull(deps: SyncDeps): Promise<Pulled> {
   return { stop: null, pulled };
 }
 
+const logGuardFailure = (event: string, error: unknown) => {
+  const name = error instanceof Error ? error.name : 'unknown';
+  console.error(JSON.stringify({ event, name }));
+};
+
+/** Time spent in blocked apps joins the outbox first, so this same sync sends it. */
+async function collectSpend(deps: SyncDeps): Promise<void> {
+  if (deps.guard === undefined) return;
+  try {
+    const before = await deps.store.spendSeq();
+    const sessions = await deps.guard.native.pendingSpend();
+    const { events, seq } = spendEvents(sessions, before, deps.guard.newId);
+    if (seq > before) await deps.store.enqueueSpend(events, seq);
+  } catch (error) {
+    logGuardFailure('guard_spend_failed', error);
+  }
+}
+
+/**
+ * Only after a pull that reached the end is the balance today's: before that the guard keeps its
+ * own count (and falls back to the base allowance on a new day). Debt reaches it as no time left.
+ */
+async function commitBalance(deps: SyncDeps): Promise<void> {
+  if (deps.guard === undefined) return;
+  try {
+    const balance = projectBalance(await deps.store.confirmed(), await deps.store.pending());
+    await deps.guard.native.commit(await deps.store.spendSeq(), Math.max(0, balance));
+  } catch (error) {
+    logGuardFailure('guard_commit_failed', error);
+  }
+}
+
 /** Push, then today (it may write the base grant), then pull, so the pull brings the grant back. */
 export async function syncOnce(deps: SyncDeps): Promise<SyncReport> {
+  await collectSpend(deps);
   const sent = await push(deps);
   let status: SyncStatus = sent.stop ?? 'ok';
   let pulled = 0;
@@ -152,6 +190,7 @@ export async function syncOnce(deps: SyncDeps): Promise<SyncReport> {
     const page = await pull(deps);
     pulled = page.pulled;
     status = page.stop ?? 'ok';
+    if (status === 'ok') await commitBalance(deps);
   }
   // Attempts are a record for the server, not money: send them last, so a problem with them
   // never holds up today's plan or the ledger.

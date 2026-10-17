@@ -57,7 +57,8 @@
       "src/**/*.{ts,tsx}",
       "!src/app/**",
       "!src/lib/services.ts",
-      "!src/lib/location.ts"
+      "!src/lib/location.ts",
+      "!src/lib/guard/native.ts"
     ],
     "coverageThreshold": {
       "global": {

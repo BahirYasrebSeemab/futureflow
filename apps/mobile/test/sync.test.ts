@@ -10,7 +10,7 @@ import type {
 import { migrate } from '@/lib/store/migrations';
 import { sqliteStore } from '@/lib/store/sqlite-store';
 import { createSyncer, syncOnce, type SyncDeps } from '@/lib/sync';
-import { ledgerEvent, NOW, sampleToday } from './support/fakes';
+import { fakeGuard, ledgerEvent, NOW, sampleToday } from './support/fakes';
 import { nodeSqlDb } from './support/node-sql';
 
 type Script = {
@@ -340,4 +340,62 @@ test('a bank failure keeps the sync ok', async () => {
   jest.spyOn(console, 'error').mockImplementation(() => undefined);
   expect((await syncOnce(deps)).status).toBe('ok');
   expect(calls.bank).toEqual([0]);
+});
+
+describe('the guard', () => {
+  const spent = { seq: 4, start: NOW - 120_000, ms: 60_000 };
+  const grant = (seconds: number): ApiResult<LedgerPage> => ({
+    ok: true,
+    data: {
+      events: [{ ...ledgerEvent(90), kind: 'base_grant', seconds }],
+      next: 1,
+    },
+  });
+
+  test('spend is queued before the push and sent in the same sync', async () => {
+    const { deps, store, calls } = await setup();
+    const { guard } = fakeGuard({ sessions: [spent] });
+    await syncOnce({ ...deps, guard: { native: guard, newId: () => ledgerEvent(50).id } });
+    expect(calls.push).toEqual([1]);
+    expect(await store.spendSeq()).toBe(4);
+    expect((await store.confirmed()).map((e) => e.seconds)).toEqual([-60]);
+  });
+
+  test('the balance is committed after the pull, with the spend in it', async () => {
+    const { deps } = await setup({
+      pull: (since) => (since === 0 ? grant(900) : emptyPage(since)),
+    });
+    const { guard, calls } = fakeGuard({ sessions: [spent] });
+    await syncOnce({ ...deps, guard: { native: guard, newId: () => ledgerEvent(50).id } });
+    expect(calls.commit).toEqual([[4, 840]]);
+  });
+
+  test('debt is committed as no time left', async () => {
+    const { deps } = await setup({ pull: (since) => (since === 0 ? grant(30) : emptyPage(since)) });
+    const { guard, calls } = fakeGuard({ sessions: [spent] });
+    await syncOnce({ ...deps, guard: { native: guard, newId: () => ledgerEvent(50).id } });
+    expect(calls.commit).toEqual([[4, 0]]);
+  });
+
+  test("no commit unless this sync's pull reached the end of the ledger", async () => {
+    const { deps, store } = await setup({ push: () => failure({ kind: 'network' }) });
+    const { guard, calls } = fakeGuard({ sessions: [spent] });
+    await syncOnce({ ...deps, guard: { native: guard, newId: () => ledgerEvent(50).id } });
+    expect(calls.commit).toEqual([]);
+    expect([await store.spendSeq(), (await store.pending()).length]).toEqual([4, 1]);
+  });
+
+  test('a guard failure keeps the sync ok', async () => {
+    const { deps } = await setup();
+    const { guard } = fakeGuard({
+      pendingSpend: async () => {
+        throw new Error('module gone');
+      },
+      commit: async () => {
+        throw new Error('module gone');
+      },
+    });
+    const report = await syncOnce({ ...deps, guard: { native: guard, newId: () => 'x' } });
+    expect(report.status).toBe('ok');
+  });
 });

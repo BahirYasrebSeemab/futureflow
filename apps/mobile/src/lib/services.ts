@@ -5,6 +5,8 @@ import type { AppServices } from './app';
 import { createApi } from './api/client';
 import { parseApiUrl } from './config';
 import { makeIds } from './ids';
+import { nativeGuard } from './guard/native';
+import { BLOCKED_APPS } from './guard/types';
 import { expoLocator } from './location';
 import { TOKEN_KEY } from './pairing';
 import { secureSecrets } from './secrets';
@@ -27,13 +29,19 @@ export async function createServices(): Promise<AppServices> {
     getToken: () => secureSecrets.get(TOKEN_KEY),
   });
   const now = () => Date.now();
+  const ids = makeIds(getRandomBytes);
+  const guard = nativeGuard();
+  // CI's emulator also blocks Settings, so the flow can show the shield on an app it always has.
+  const extraBlocked: string[] = Constants.expoConfig?.extra?.e2eBlockedApps ?? [];
+  await guard.setBlockedApps([...BLOCKED_APPS.map(([pkg]) => pkg), ...extraBlocked], true);
   return {
     api,
     store,
     secrets: secureSecrets,
-    ids: makeIds(getRandomBytes),
-    syncer: createSyncer({ api, store, now }),
+    ids,
+    syncer: createSyncer({ api, store, now, guard: { native: guard, newId: ids.newId } }),
     locator: expoLocator,
+    guard,
     now,
     apiUrl,
   };

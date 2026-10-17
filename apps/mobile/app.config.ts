@@ -26,7 +26,7 @@ const config: ExpoConfig = {
       'android.permission.ACCESS_BACKGROUND_LOCATION',
     ],
   },
-  extra: { allowCleartext: isE2E },
+  extra: { allowCleartext: isE2E, e2eBlockedApps: isE2E ? ['com.android.settings'] : [] },
   plugins: [
     'expo-router',
     'expo-sqlite',
