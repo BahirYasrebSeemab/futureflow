@@ -21,4 +21,10 @@ fun classify(
   isGame: Boolean,
   neverBlocked: Set<String>,
   ignored: Set<String>,
-): Verdict = Verdict.ALLOWED
+): Verdict =
+  when {
+    pkg.isNullOrEmpty() || pkg in ignored -> Verdict.IGNORE
+    pkg in neverBlocked -> Verdict.ALLOWED
+    pkg in blocked || (blockGames && isGame) -> Verdict.BLOCKED
+    else -> Verdict.ALLOWED
+  }
