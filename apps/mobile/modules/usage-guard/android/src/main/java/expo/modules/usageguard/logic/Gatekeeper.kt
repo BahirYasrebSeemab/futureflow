@@ -11,8 +11,18 @@ val NEVER_BLOCKED_BASE: Set<String> =
     "com.android.server.telecom",
   )
 
-/** Windows that sit on top of an app without leaving it. Keyboards are added at runtime. */
-val IGNORED_BASE: Set<String> = setOf("com.android.systemui")
+/**
+ * Windows that sit on top of an app without leaving it: the status bar, share sheets ("android",
+ * the intent resolver) and permission dialogs. Keyboards are checked at runtime.
+ */
+val IGNORED_BASE: Set<String> =
+  setOf(
+    "com.android.systemui",
+    "android",
+    "com.android.intentresolver",
+    "com.android.permissioncontroller",
+    "com.google.android.permissioncontroller",
+  )
 
 fun classify(
   pkg: String?,

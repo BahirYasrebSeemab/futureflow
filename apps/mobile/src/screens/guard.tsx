@@ -57,7 +57,7 @@ export function GuardScreen() {
       <Text style={[styles.muted, { color: c.text }]}>{BLOCKED_NAMES.join(', ')}</Text>
       <Text style={[styles.muted, { color: c.muted }]}>
         Calls, messages and emergency apps are never blocked. Which apps you open stays on this
-        phone. Only minutes spent are sent.
+        phone: only the minutes you spent and when are sent.
       </Text>
     </ScrollView>
   );

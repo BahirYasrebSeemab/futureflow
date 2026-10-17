@@ -33,7 +33,13 @@ export async function createServices(): Promise<AppServices> {
   const guard = nativeGuard();
   // CI's emulator also blocks Settings, so the flow can show the shield on an app it always has.
   const extraBlocked: string[] = Constants.expoConfig?.extra?.e2eBlockedApps ?? [];
-  await guard.setBlockedApps([...BLOCKED_APPS.map(([pkg]) => pkg), ...extraBlocked], true);
+  try {
+    await guard.setBlockedApps([...BLOCKED_APPS.map(([pkg]) => pkg), ...extraBlocked], true);
+  } catch (error) {
+    // The app must still open; the guard keeps its last list.
+    const name = error instanceof Error ? error.name : 'unknown';
+    console.error(JSON.stringify({ event: 'guard_setup_failed', name }));
+  }
   return {
     api,
     store,

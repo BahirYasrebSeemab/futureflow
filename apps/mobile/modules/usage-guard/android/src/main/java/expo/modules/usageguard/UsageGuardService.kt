@@ -1,6 +1,7 @@
 package expo.modules.usageguard
 
 import android.accessibilityservice.AccessibilityService
+import android.app.KeyguardManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -39,10 +40,10 @@ class UsageGuardService : AccessibilityService() {
         when (intent.action) {
           // A phone left on Instagram with the screen off isn't spending time.
           Intent.ACTION_SCREEN_OFF -> stopCounting()
-          Intent.ACTION_USER_PRESENT -> {
-            ignored = IGNORED_BASE + inputMethods()
-            current?.let { onForeground(it) }
-          }
+          // Back on without a lock screen (within the lock delay, Smart Lock): the app in front is
+          // still in front, and no window event says so. With a lock, wait for the unlock.
+          Intent.ACTION_SCREEN_ON -> if (!isLocked()) resume()
+          Intent.ACTION_USER_PRESENT -> resume()
         }
       }
     }
@@ -56,6 +57,7 @@ class UsageGuardService : AccessibilityService() {
     val filter =
       IntentFilter().apply {
         addAction(Intent.ACTION_SCREEN_OFF)
+        addAction(Intent.ACTION_SCREEN_ON)
         addAction(Intent.ACTION_USER_PRESENT)
       }
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -78,7 +80,17 @@ class UsageGuardService : AccessibilityService() {
     super.onDestroy()
   }
 
+  private fun resume() {
+    ignored = IGNORED_BASE + inputMethods()
+    current?.let { onForeground(it) }
+  }
+
+  private fun isLocked(): Boolean =
+    (getSystemService(KEYGUARD_SERVICE) as? KeyguardManager)?.isKeyguardLocked ?: true
+
   private fun onForeground(pkg: String?) {
+    // A keyboard switched on after the service started is still a keyboard over the same app.
+    if (pkg != null && pkg !in ignored && pkg in inputMethods()) ignored = ignored + pkg
     val verdict =
       classify(
         pkg,
@@ -118,10 +130,13 @@ class UsageGuardService : AccessibilityService() {
     if (remaining <= 0) shield() else handler.postDelayed(recheck, remaining)
   }
 
+  /**
+   * Covers the blocked app straight away. Pressing Home first would trigger Android's app-switch
+   * protection, which can hold back the shield for seconds; the shield's own buttons go home.
+   */
   private fun shield() {
     stopCounting()
     current = null
-    performGlobalAction(GLOBAL_ACTION_HOME)
     startActivity(
       Intent(this, ShieldActivity::class.java)
         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION)

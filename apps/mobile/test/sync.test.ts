@@ -385,6 +385,19 @@ describe('the guard', () => {
     expect([await store.spendSeq(), (await store.pending()).length]).toEqual([4, 1]);
   });
 
+  test('no commit after a pull cut off before the end of the ledger', async () => {
+    let next = 0;
+    const { deps } = await setup({
+      pull: () => {
+        next += 500;
+        return { ok: true, data: { events: many(500), next } };
+      },
+    });
+    const { guard, calls } = fakeGuard({ sessions: [spent] });
+    await syncOnce({ ...deps, guard: { native: guard, newId: () => ledgerEvent(50).id } });
+    expect(calls.commit).toEqual([]);
+  });
+
   test('a guard failure keeps the sync ok', async () => {
     const { deps } = await setup();
     const { guard } = fakeGuard({

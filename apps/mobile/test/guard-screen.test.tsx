@@ -30,7 +30,8 @@ test('the guard is on: the screen says so and lists what it blocks', async () =>
   expect(await screen.findByTestId('guard-status')).toHaveTextContent('The guard is on');
   expect(screen.getByText(/Instagram/)).toBeTruthy();
   expect(screen.getByText(/Games/)).toBeTruthy();
-  expect(screen.getByText(/Only minutes spent are sent/)).toBeTruthy();
+  // Honest about what leaves: each session's length and time, never which app.
+  expect(screen.getByText(/the minutes you spent and when are sent/)).toBeTruthy();
   expect(screen.queryByTestId('guard-enable')).toBeNull();
 });
 

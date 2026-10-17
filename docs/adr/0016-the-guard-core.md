@@ -51,3 +51,9 @@ for development has no JDK and too little memory for Gradle, so Kotlin builds on
   - **P5c:** Chrome domains, the emergency unlock on the shield, `UsageStats` reconciliation, and
     choosing the blocked apps.
 - **A session's time is charged when the app syncs.** Until then, the meter enforces it locally.
+- **Late spend:** time spent late at night that syncs after the 04:00 rollover was already
+  covered by that day's leftover, which the rollover then expired. The server gives that overlap
+  back as a `correction` (`late_spend`, once per spend), so the time is charged once.
+- **Known gap:** picture-in-picture and split screen keep a blocked app visible after a window
+  change ends the session. Window events alone can't see this; P5c's `UsageStats` reconciliation
+  will.

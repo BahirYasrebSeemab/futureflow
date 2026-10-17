@@ -190,7 +190,8 @@ export async function syncOnce(deps: SyncDeps): Promise<SyncReport> {
     const page = await pull(deps);
     pulled = page.pulled;
     status = page.stop ?? 'ok';
-    if (status === 'ok') await commitBalance(deps);
+    // A pull cut off after MAX_ROUNDS ends without an error but short of today's balance.
+    if (status === 'ok' && (await deps.store.ledgerComplete())) await commitBalance(deps);
   }
   // Attempts are a record for the server, not money: send them last, so a problem with them
   // never holds up today's plan or the ledger.

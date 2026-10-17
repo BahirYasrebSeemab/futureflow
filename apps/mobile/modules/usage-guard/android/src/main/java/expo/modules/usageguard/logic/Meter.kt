@@ -32,8 +32,8 @@ data class Meter(
 
   /** Everything not yet committed. An open session is cut at now, so long sessions report too. */
   fun pending(wall: Long, elapsed: Long, bootId: String): Pair<Meter, List<Session>> {
-    val running = open ?: return this to sessions
-    val split = leave(elapsed).enter(wall, elapsed, running.bootId)
+    if (open == null) return this to sessions
+    val split = leave(elapsed).enter(wall, elapsed, bootId)
     return split to split.sessions
   }
 
@@ -45,11 +45,16 @@ data class Meter(
       sessions = sessions.filter { it.seq > watermark },
     )
 
-  /** After a reboot the monotonic clock restarts, so a session left open can't be measured. */
+  /**
+   * After a reboot the monotonic clock restarts, so a session left open can't be measured. A start
+   * later than now on that clock means another boot too, even if the boot id didn't change.
+   */
   fun restore(bootId: String, elapsed: Long): Meter =
-    if (open != null && open.bootId != bootId) copy(open = null) else this
+    if (open != null && (open.bootId != bootId || open.startElapsed > elapsed)) copy(open = null)
+    else this
 
-  fun forgetOpen(): Meter = this
+  /** A service that (re)connects can't know when the last one stopped, so it starts afresh. */
+  fun forgetOpen(): Meter = copy(open = null)
 
   /** On a day the app hasn't committed, the base allowance applies (spec §13.1). */
   fun remainingMs(elapsed: Long, day: Long, dayOf: (Long) -> Long): Long {
