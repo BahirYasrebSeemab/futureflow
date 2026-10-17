@@ -9,7 +9,7 @@ export const PULL_PAGE = MAX_EVENTS_PER_BATCH;
 export const MAX_ROUNDS = 20;
 
 export type SyncDeps = Readonly<{
-  api: Pick<Api, 'pushEvents' | 'pushMathAttempts' | 'today' | 'pullLedger'>;
+  api: Pick<Api, 'pushEvents' | 'pushMathAttempts' | 'today' | 'pullLedger' | 'getBank'>;
   store: LocalStore;
   now: () => number;
 }>;
@@ -99,6 +99,26 @@ async function pushAttempts(deps: SyncDeps): Promise<Stop | null> {
   return null;
 }
 
+const BANK_PAGE = 50;
+
+/** The word-problem bank is optional: a failure is logged and never changes the sync status. */
+async function pullBank(deps: SyncDeps): Promise<void> {
+  try {
+    for (let round = 0; round < MAX_ROUNDS; round++) {
+      const result = await deps.api.getBank(await deps.store.bankCursor(), BANK_PAGE);
+      if (!result.ok) {
+        console.error(JSON.stringify({ event: 'bank_pull_failed', kind: result.error.kind }));
+        return;
+      }
+      await deps.store.saveBankProblems(result.data.problems, result.data.next);
+      if (result.data.problems.length < BANK_PAGE) return;
+    }
+  } catch (error) {
+    const name = error instanceof Error ? error.name : 'unknown';
+    console.error(JSON.stringify({ event: 'bank_pull_failed', name }));
+  }
+}
+
 async function refreshToday(deps: SyncDeps): Promise<Stop | null> {
   const result = await deps.api.today();
   if (!result.ok) return stopFor(result.error);
@@ -136,6 +156,7 @@ export async function syncOnce(deps: SyncDeps): Promise<SyncReport> {
   // Attempts are a record for the server, not money: send them last, so a problem with them
   // never holds up today's plan or the ledger.
   if (status === 'ok') status = (await pushAttempts(deps)) ?? 'ok';
+  if (status === 'ok') await pullBank(deps);
   const report: SyncReport = {
     status,
     pushed: sent.pushed,

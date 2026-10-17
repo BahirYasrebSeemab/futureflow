@@ -1,5 +1,6 @@
 import {
   type AwayRequestSchema,
+  BankProblemSchema,
   type AwayVerdictRequestSchema,
   DayRecordSchema,
   envelope,
@@ -28,6 +29,12 @@ export type Roadmap = z.infer<typeof RoadmapSchema>;
 export type ProposeResult = z.infer<typeof ProposeResponseSchema>;
 export type AwayRequest = z.input<typeof AwayRequestSchema>;
 export type AwayVerdictRequest = z.input<typeof AwayVerdictRequestSchema>;
+
+const BankPageSchema = z.object({
+  problems: z.array(BankProblemSchema),
+  next: z.number().int().nonnegative(),
+});
+export type BankPage = z.infer<typeof BankPageSchema>;
 
 const AwayResponseSchema = z.object({ id: z.uuid(), days: z.array(DayRecordSchema) });
 
@@ -187,6 +194,12 @@ export function createApi(deps: ApiDeps) {
         method: 'POST',
         path: '/v1/math/attempts',
         body: { attempts },
+      }),
+    /** Accepted word problems after the cursor (the server never sends pending ones). */
+    getBank: (since: number, limit = 50) =>
+      request(deps, BankPageSchema, {
+        method: 'GET',
+        path: `/v1/math/bank?since=${since}&limit=${limit}`,
       }),
     getRoadmap: () =>
       request(deps, RoadmapSchema.nullable(), { method: 'GET', path: '/v1/onboarding/roadmap' }),

@@ -35,6 +35,10 @@ export type Served = Readonly<{
   /** Predicted success when served; above 0.90 the problem is practice and earns nothing. */
   expected: number;
   isReview: boolean;
+  /** Set when the problem is a word problem from the bank. */
+  bankId?: string;
+  /** The word problem's story, shown instead of the prompt; answers still follow the prompt. */
+  story?: string;
   learnerRating: number;
   itemRating: number;
 }>;

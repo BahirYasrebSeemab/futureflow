@@ -5,6 +5,7 @@ import { Button } from '@/components/button';
 import { MASTERY_STREAK, ONTARIO_GRAPH } from '@/lib/math/engine';
 import { radius, space, usePalette } from '@/theme';
 import { AnswerInput } from './answer-input';
+import { ExampleFlow } from './example';
 import { usePractice } from './use-practice';
 
 const topicTitle = (id: string) => ONTARIO_GRAPH.topics.find((t) => t.id === id)?.title ?? id;
@@ -49,6 +50,17 @@ export function MathScreen() {
     );
   }
 
+  if (p.phase === 'example' && p.served !== null) {
+    return (
+      <ExampleFlow
+        key={p.served.topicId}
+        topicId={p.served.topicId}
+        practicePrompt={p.served.problem.prompt}
+        onDone={p.finishExample}
+      />
+    );
+  }
+
   if (p.phase === 'finished' || p.served === null) {
     return (
       <View style={[styles.center, { backgroundColor: c.background }]}>
@@ -73,7 +85,7 @@ export function MathScreen() {
         {served.isReview && <Text style={[styles.caption, { color: c.accent }]}>Review</Text>}
       </View>
       <Text testID="problem-prompt" style={[styles.prompt, { color: c.text }]}>
-        {served.problem.prompt}
+        {served.story ?? served.problem.prompt}
       </Text>
       {!p.mastered && (
         <Text style={[styles.muted, { color: c.muted }]}>
@@ -152,6 +164,12 @@ export function MathScreen() {
           </View>
         </>
       )}
+      <Button
+        testID="open-mocks"
+        label="Mock exams"
+        variant="secondary"
+        onPress={() => router.push('/mocks')}
+      />
     </ScrollView>
   );
 }

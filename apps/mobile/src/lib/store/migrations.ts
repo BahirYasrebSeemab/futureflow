@@ -12,6 +12,12 @@ const MIGRATIONS: readonly string[] = [
    CREATE TABLE math_attempts (id TEXT PRIMARY KEY, day TEXT NOT NULL, at INTEGER NOT NULL,
      attempt TEXT NOT NULL, sent INTEGER NOT NULL DEFAULT 0);
    CREATE TABLE math_seen (problem_key TEXT PRIMARY KEY, at INTEGER NOT NULL);`,
+  // 3: worked examples, mock exams and the word-problem bank (P4c-2)
+  `CREATE TABLE math_examples (topic_id TEXT PRIMARY KEY, at INTEGER NOT NULL);
+   CREATE TABLE mock_results (id TEXT PRIMARY KEY, day TEXT NOT NULL, level TEXT NOT NULL,
+     score REAL NOT NULL, result TEXT NOT NULL);
+   CREATE TABLE math_bank (id TEXT PRIMARY KEY, seq INTEGER NOT NULL, topic_id TEXT NOT NULL,
+     difficulty INTEGER NOT NULL, problem TEXT NOT NULL, used INTEGER NOT NULL DEFAULT 0);`,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

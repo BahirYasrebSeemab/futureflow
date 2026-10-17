@@ -1,7 +1,7 @@
 import { fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 import type { Api, Today } from '@/lib/api/client';
 import { AppProvider, type AppServices } from '@/lib/app';
-import { answerText, ONTARIO_GRAPH, type TopicProgress } from '@/lib/math/engine';
+import { answerText, DEFAULT_REGISTRY, ONTARIO_GRAPH, type TopicProgress } from '@/lib/math/engine';
 import { displayAnswer } from '@/lib/math/display';
 import { serveProblem } from '@/lib/math/practice';
 import { AwayScreen } from '@/screens/away';
@@ -50,6 +50,7 @@ async function open(api: Partial<Api> = {}, url = '/math'): Promise<AppServices>
 
 async function startPractice() {
   fireEvent.press(await screen.findByTestId('skip-placement'));
+  fireEvent.press(await screen.findByTestId('skip-example'));
   return screen.findByTestId('problem-prompt');
 }
 
@@ -270,6 +271,7 @@ test('placement: wrong answers walk down to the first topic, then practice start
   expect(await services.store.placement()).toMatchObject({ done: true });
   expect((await services.store.attemptsOn(DAY)).length).toBeGreaterThan(0);
   fireEvent.press(screen.getByTestId('go-practice'));
+  fireEvent.press(await screen.findByTestId('skip-example'));
   expect(await screen.findByTestId('problem-prompt')).toBeTruthy();
 });
 
@@ -290,4 +292,143 @@ test('time that pays back borrowed time says so', async () => {
   await startPractice();
   answer(answerText(first().problem.answer));
   expect(await screen.findByText('+3 min, paid toward borrowed time')).toBeTruthy();
+});
+
+test('a new topic opens with a worked example, then a faded one, then practice', async () => {
+  const services = await open();
+  fireEvent.press(await screen.findByTestId('skip-placement'));
+  expect(await screen.findByText(/^Worked example/)).toBeTruthy();
+  expect(screen.getByText(/^Answer: /)).toBeTruthy();
+  fireEvent.press(screen.getByTestId('try-faded'));
+  expect(await screen.findByText('Your turn: type the answer to the question')).toBeTruthy();
+  fireEvent.changeText(screen.getByTestId('answer-input'), '-999999');
+  fireEvent.press(screen.getByTestId('check-faded'));
+  expect(await screen.findByText(/^Not quite\. The answer is/)).toBeTruthy();
+  // Examples are learning, not practice: nothing is recorded or paid.
+  expect(await services.store.attemptsOn(DAY)).toEqual([]);
+  expect(await services.store.pending()).toEqual([]);
+  fireEvent.press(screen.getByTestId('start-practice'));
+  expect(await screen.findByTestId('problem-prompt')).toHaveTextContent(first().problem.prompt);
+  expect(await services.store.exampleSeen(first().topicId)).toBe(true);
+});
+
+test('examples are shown once per topic', async () => {
+  const services = await open();
+  await services.store.markExampleSeen(first().topicId, 1);
+  fireEvent.press(await screen.findByTestId('skip-placement'));
+  expect(await screen.findByTestId('problem-prompt')).toBeTruthy();
+  expect(screen.queryByText(/^Worked example/)).toBeNull();
+});
+
+test('skip goes straight to practice', async () => {
+  const services = await open();
+  fireEvent.press(await screen.findByTestId('skip-placement'));
+  fireEvent.press(await screen.findByTestId('skip-example'));
+  expect(await screen.findByTestId('problem-prompt')).toBeTruthy();
+  expect(await services.store.exampleSeen(first().topicId)).toBe(true);
+});
+
+test('a review of a mastered topic skips the worked example', async () => {
+  const services = await testServices({}, PAIRED);
+  await services.syncer.sync();
+  await services.store.savePlacement({ state: { low: 1, high: 1, correctAtProbe: 0 }, done: true });
+  await services.store.saveMathProgress([
+    {
+      topicId: first().topicId,
+      rating: 1200,
+      streak: 5,
+      mastered: true,
+      reviewStage: 0,
+      nextReviewDay: DAY,
+    },
+  ]);
+  renderRouter(
+    {
+      _layout: () => (
+        <AppProvider load={async () => services}>
+          <RootStack />
+        </AppProvider>
+      ),
+      index: TodayScreen,
+      math: MathScreen,
+      'math-placement': PlacementScreen,
+    },
+    { initialUrl: '/math' },
+  );
+  expect(await screen.findByText('Review')).toBeTruthy();
+  expect(screen.queryByText(/^Worked example/)).toBeNull();
+});
+
+const STORY = 'Stickers cost a few cents each. How many cents in all?';
+function bankFor(prompt: string) {
+  const f = first();
+  return {
+    id: 'bank-1',
+    topicId: f.topicId,
+    difficulty: f.difficulty,
+    seed: 4242,
+    story: STORY,
+    prompt,
+    answer: {},
+    hints: [],
+    steps: [],
+    week: '2026-W42',
+    createdAt: 1,
+  };
+}
+const bankGenerated = () =>
+  DEFAULT_REGISTRY.get(first().topicId)!.generate(4242, first().difficulty);
+
+test('a verified bank problem is served with its story and earns like any other', async () => {
+  const services = await open();
+  await services.store.saveBankProblems([bankFor(bankGenerated().prompt)], 1);
+  await startPractice();
+  expect(screen.getByTestId('problem-prompt')).toHaveTextContent(STORY);
+  answer(answerText(bankGenerated().answer));
+  expect(await screen.findByText('+3 min')).toBeTruthy();
+  expect(await services.store.unusedBankProblem(first().topicId, first().difficulty)).toBeNull();
+});
+
+test('a mismatched bank problem is skipped', async () => {
+  const services = await open();
+  await services.store.saveBankProblems([bankFor('a different exercise')], 1);
+  expect(await startPractice()).toHaveTextContent(first().problem.prompt);
+  expect(await services.store.unusedBankProblem(first().topicId, first().difficulty)).toBeNull();
+});
+
+test('a wrong answer on a word problem shows the exercise answer, whatever the story says', async () => {
+  const services = await open();
+  await services.store.saveBankProblems([bankFor(bankGenerated().prompt)], 1);
+  await startPractice();
+  answer('-999999');
+  expect(
+    await screen.findByText(`Not quite. The answer is ${displayAnswer(bankGenerated())}`),
+  ).toBeTruthy();
+});
+
+test('a broken bank never blocks practice', async () => {
+  const services = await open();
+  const broken = {
+    ...services,
+    store: {
+      ...services.store,
+      unusedBankProblem: async () => {
+        throw new Error('disk');
+      },
+    },
+  };
+  jest.spyOn(console, 'error').mockImplementation(() => undefined);
+  // reopen with the broken store
+  renderRouter(
+    {
+      _layout: () => (
+        <AppProvider load={async () => broken}>
+          <RootStack />
+        </AppProvider>
+      ),
+      math: MathScreen,
+    },
+    { initialUrl: '/math' },
+  );
+  expect(await startPractice()).toBeTruthy();
 });

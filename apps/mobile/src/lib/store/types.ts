@@ -1,6 +1,6 @@
-import type { MathAttempt } from '@futureflow/contracts';
+import type { BankProblem, MathAttempt } from '@futureflow/contracts';
 import type { LedgerEvent } from '@futureflow/core';
-import type { PlacementState, TopicProgress } from '../math/engine';
+import type { MockResult, PlacementState, TopicProgress } from '../math/engine';
 import type { Today } from '../api/client';
 
 export type SavedToday = Readonly<{ today: Today; savedAt: number }>;
@@ -63,6 +63,16 @@ export interface LocalStore {
   /** A math task this phone already passed (or found decided): never sent again. */
   mathTaskDone(taskId: string): Promise<boolean>;
   markMathTaskDone(taskId: string): Promise<void>;
+  exampleSeen(topicId: string): Promise<boolean>;
+  markExampleSeen(topicId: string, at: number): Promise<void>;
+  /** A repeated id is ignored (one result per finished mock). */
+  saveMockResult(id: string, result: MockResult): Promise<void>;
+  mockResults(): Promise<MockResult[]>;
+  /** Stores a bank page and its cursor together. */
+  saveBankProblems(problems: readonly BankProblem[], next: number): Promise<void>;
+  bankCursor(): Promise<number>;
+  unusedBankProblem(topicId: string, difficulty: number): Promise<BankProblem | null>;
+  markBankUsed(id: string): Promise<void>;
   placement(): Promise<PlacementRecord | null>;
   savePlacement(record: PlacementRecord): Promise<void>;
   /** Drops everything that came from the server; keeps unsent and refused events (ADR 0011). */
