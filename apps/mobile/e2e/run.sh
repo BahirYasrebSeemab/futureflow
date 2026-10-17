@@ -18,6 +18,8 @@ cd "$OUT"
 
 # The guard: switch on its accessibility service (as the owner does in Settings), spend today's
 # time on the server so the next sync leaves none, then expect the shield over a blocked app.
+# Force-stopping an app switches its accessibility service off, so stop it first and never again.
+adb shell am force-stop com.bahiryasreb.futureflow
 adb shell settings put secure enabled_accessibility_services \
   com.bahiryasreb.futureflow/expo.modules.usageguard.UsageGuardService
 adb shell settings put secure accessibility_enabled 1

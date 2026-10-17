@@ -1,7 +1,9 @@
 appId: com.bahiryasreb.futureflow
 ---
 # Runs after pair-and-today.yaml, with the accessibility service on and today's time spent.
-- launchApp
+# No stop: Maestro's default force-stop would switch the accessibility service off again.
+- launchApp:
+    stopApp: false
 - runFlow:
     when:
       visible: ".*isn't responding.*"
