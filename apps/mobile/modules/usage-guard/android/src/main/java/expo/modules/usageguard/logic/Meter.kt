@@ -72,6 +72,12 @@ data class Meter(
     if (open != null && (open.bootId != bootId || open.startElapsed > elapsed)) copy(open = null)
     else this
 
+  /** Time Android's usage log shows in blocked apps that the guard missed: closed sessions. */
+  fun addMissed(intervals: List<Interval>): Meter = this
+
+  /** What the guard has counted and not yet committed, on the wall clock, the open session to [now]. */
+  fun coveredWall(now: Long): List<Interval> = emptyList()
+
   /** A service that (re)connects can't know when the last one stopped, so it starts afresh. */
   fun forgetOpen(): Meter = copy(open = null)
 
