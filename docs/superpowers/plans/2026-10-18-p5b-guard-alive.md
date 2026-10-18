@@ -62,6 +62,7 @@
 ### Task 1: Doze-aware gaps and the batch endpoint (core, contracts, API)
 
 **Files:**
+
 - `packages/contracts/src/api.ts`: `HeartbeatSchema` gains `guardSinceUptimeSeconds` (int ≥ 0, nullable, optional); new `HeartbeatBatchSchema` and `HeartbeatBatchResponseSchema`.
 - `packages/core/src/guard.ts` and `test/guard.test.ts`: `Beat.guardSinceUptimeSeconds?: number | null`, and the Doze rule.
 - `apps/api/migrations/0006_heartbeat_since.sql`: the new column, plus a unique index on `(device_id, boot_id, at)`.
@@ -102,6 +103,7 @@
 ### Task 3: Android glue (heartbeat, watchdog, boot, foreground service, token vault, health)
 
 **Files:**
+
 - `build.gradle` (`androidx.work:work-runtime-ktx`)
 - `AndroidManifest.xml`: permissions `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_SPECIAL_USE`, `POST_NOTIFICATIONS`, `RECEIVE_BOOT_COMPLETED`, `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` and `INTERNET`; the service and the receiver
 - `strings.xml`
@@ -131,6 +133,7 @@
 ### Task 4: JS: the token hand-off and the checklist
 
 **Files:**
+
 - `src/lib/guard/types.ts`: `GuardStatus` gains `connected`, `foreground`, `notifications`, `batteryUnrestricted`, `xiaomi`; `Guard` gains `link`, `unlink`, `openSettings(kind)` and `requestNotifications`
 - `native.ts`: `requestNotifications` uses `PermissionsAndroid` on Android 13+, otherwise opens the settings
 - `src/lib/app.tsx`: links when paired, unlinks when unpaired, failures logged by name
