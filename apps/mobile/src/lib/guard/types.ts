@@ -16,6 +16,12 @@ export type GuardStatus = Readonly<{
   xiaomi: boolean;
 }>;
 
+/** The phone's monotonic clock: unlock waits are measured on it (spec §6.5). */
+export type GuardClock = Readonly<{ elapsed: number; bootId: string }>;
+
+/** A launcher app, for the picker. Never sent anywhere. */
+export type InstalledApp = Readonly<{ package: string; label: string }>;
+
 export type GuardSettings = 'accessibility' | 'notifications' | 'battery' | 'autostart';
 
 /** The native guard (spec §7): it enforces the balance on blocked apps and counts time spent. */
@@ -24,8 +30,16 @@ export interface Guard {
   setBlockedApps(packages: readonly string[], blockGames: boolean): Promise<void>;
   /** Time spent and not yet committed; an open session is cut at now. */
   pendingSpend(): Promise<SpendSession[]>;
-  /** Sessions up to `watermark` are recorded as events; `balanceSeconds` already counts them. */
-  commit(watermark: number, balanceSeconds: number): Promise<void>;
+  /**
+   * Sessions up to `watermark` are recorded as events; `balanceSeconds` already counts them and
+   * the unlocks in `included`.
+   */
+  commit(watermark: number, balanceSeconds: number, included: readonly string[]): Promise<void>;
+  /** An emergency unlock's time, known to the guard at once and offline. */
+  grant(unlockId: string, seconds: number): Promise<void>;
+  /** Null where there is no native guard. */
+  clock(): Promise<GuardClock | null>;
+  installedApps(): Promise<InstalledApp[]>;
   openSettings(kind: GuardSettings): Promise<void>;
   /** Asks Android to allow notifications; true once they are allowed. */
   requestNotifications(): Promise<boolean>;
@@ -61,6 +75,9 @@ export const noGuard: Guard = {
   setBlockedApps: async () => {},
   pendingSpend: async () => [],
   commit: async () => {},
+  grant: async () => {},
+  clock: async () => null,
+  installedApps: async () => [],
   openSettings: async () => {},
   requestNotifications: async () => false,
   link: async () => {},

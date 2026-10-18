@@ -142,7 +142,7 @@ describe('review fixes', () => {
     const tablet = await pairDevice(app, { code: 'second-setup-code-0123456789' });
     const rewardA = event({ kind: 'task_reward', seconds: 1200, refId: 'task-1' });
     await post(app, phone.token, [
-      event({ kind: 'unlock_borrow', seconds: 600 }),
+      event({ kind: 'unlock_borrow', seconds: 600, reason: 'a reason of twenty-plus chars' }),
       rewardA,
       event({ kind: 'borrow_repay', seconds: -600, refId: rewardA.id }),
     ]);
@@ -173,5 +173,67 @@ describe('review fixes', () => {
     ]);
 
     expect(sync.body.data.added).toContain(repay.id);
+  });
+});
+
+describe('emergency unlocks from the phone', () => {
+  const unlock = (over: Partial<LedgerEvent> = {}) =>
+    event({
+      kind: 'unlock_borrow',
+      seconds: 600,
+      reason: 'my sister needs the group chat',
+      ...over,
+    });
+
+  it('rejects an unlock whose reason is under 20 characters', async () => {
+    const app = makeApp();
+    const { token } = await pairDevice(app);
+    const short = unlock({ reason: '  too short, sorry  ' });
+    const sync = await post(app, token, [short]);
+    expect(sync.body.data).toEqual({
+      added: [],
+      ignored: [],
+      rejected: [{ id: short.id, reason: 'unlock_reason' }],
+    });
+  });
+
+  it('allows two unlocks a day and rejects the third, across batches and inside one', async () => {
+    const app = makeApp();
+    const { token } = await pairDevice(app);
+    const first = unlock();
+    const [second, third] = [unlock(), unlock()];
+    const otherDay = unlock({ day: '2026-10-08' });
+
+    await post(app, token, [first]);
+    const sync = await post(app, token, [second, third, otherDay]);
+
+    expect(sync.body.data).toEqual({
+      added: [second.id, otherDay.id],
+      ignored: [],
+      rejected: [{ id: third.id, reason: 'unlock_limit' }],
+    });
+  });
+
+  it('acknowledges a resent unlock as already there, not as over the limit', async () => {
+    const app = makeApp();
+    const { token } = await pairDevice(app);
+    const [a, b] = [unlock(), unlock()];
+    await post(app, token, [a, b]);
+    const again = await post(app, token, [b]);
+    expect(again.body.data).toEqual({ added: [], ignored: [b.id], rejected: [] });
+  });
+});
+
+describe('emergency unlock size', () => {
+  it('rejects an unlock that is not exactly the 10-minute grant', async () => {
+    const app = makeApp();
+    const { token } = await pairDevice(app);
+    const long = event({
+      kind: 'unlock_borrow',
+      seconds: 1200,
+      reason: 'my sister needs the group chat',
+    });
+    const sync = await post(app, token, [long]);
+    expect(sync.body.data.rejected).toEqual([{ id: long.id, reason: 'unlock_amount' }]);
   });
 });

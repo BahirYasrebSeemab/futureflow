@@ -13,7 +13,11 @@ export function nativeGuard(): Guard {
     status: async () => ({ available: true, ...(await native.status()) }),
     setBlockedApps: (packages, blockGames) => native.setBlockedApps([...packages], blockGames),
     pendingSpend: () => native.pendingSpend(),
-    commit: (watermark, balanceSeconds) => native.commit(watermark, balanceSeconds),
+    commit: (watermark, balanceSeconds, included) =>
+      native.commit(watermark, balanceSeconds, [...included]),
+    grant: (id, seconds) => native.grant(id, seconds),
+    clock: () => native.clock(),
+    installedApps: () => native.installedApps(),
     openSettings: (kind) => native.openSettings(kind),
     requestNotifications: () => requestNotifications(native),
     link: (apiUrl, token) => native.link(apiUrl, token),

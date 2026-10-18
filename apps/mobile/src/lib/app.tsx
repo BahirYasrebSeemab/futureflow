@@ -29,6 +29,10 @@ export type AppServices = Readonly<{
   guard: Guard;
   now: () => number;
   apiUrl: string;
+  /** Blocked on top of the owner's list: Settings in the emulator build, nothing elsewhere. */
+  extraBlocked: readonly string[];
+  /** 600 in every store build; the emulator build waits a few seconds. */
+  unlockWaitSeconds: number;
 }>;
 
 type AppValue = Readonly<{

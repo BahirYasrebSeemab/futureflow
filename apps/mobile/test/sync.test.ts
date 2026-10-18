@@ -1,3 +1,5 @@
+import { currentDayKey } from '@/lib/format';
+import { DEFAULT_BLOCKLIST } from '@/lib/guard/blocklist';
 import type { LedgerEvent } from '@futureflow/core';
 import type {
   ApiFailure,
@@ -368,6 +370,66 @@ describe('the guard', () => {
     const { guard, calls } = fakeGuard({ sessions: [spent] });
     await syncOnce({ ...deps, guard: { native: guard, newId: () => ledgerEvent(50).id } });
     expect(calls.commit).toEqual([[4, 840]]);
+  });
+
+  test('the commit names every unlock its balance includes: pulled and just pushed', async () => {
+    const pulled = { ...ledgerEvent(91), kind: 'unlock_borrow' as const, seconds: 600 };
+    const queued = { ...ledgerEvent(92), kind: 'unlock_borrow' as const, seconds: 600 };
+    const { deps, store } = await setup({
+      pull: (since) =>
+        since === 0 ? { ok: true, data: { events: [pulled], next: 1 } } : emptyPage(since),
+    });
+    await store.enqueue([queued]);
+    const { guard, calls } = fakeGuard();
+    await syncOnce({ ...deps, guard: { native: guard, newId: () => ledgerEvent(50).id } });
+    expect(calls.included).toEqual([[pulled.id, queued.id].sort()]);
+  });
+
+  test('each sync gives the guard the blocklist that applies today, with the extra apps', async () => {
+    const { deps, store } = await setup();
+    const today = currentDayKey(NOW);
+    await store.saveBlocklist({
+      current: { apps: ['a', 'b'], games: true },
+      pending: { apps: ['a'], games: false, from: today },
+    });
+    const { guard, calls } = fakeGuard();
+    await syncOnce({
+      ...deps,
+      guard: { native: guard, newId: () => ledgerEvent(50).id, extraBlocked: ['x'] },
+    });
+    expect(calls.blocked).toEqual([[['a', 'x'], false]]);
+    expect(await store.blocklist()).toEqual({
+      current: { apps: ['a'], games: false },
+      pending: null,
+    });
+  });
+
+  test("a pending unblock waits for the server's day too, so moving the clock forward doesn't apply it", async () => {
+    const tomorrow = '2099-01-01';
+    const { deps, store } = await setup({ today: () => failure({ kind: 'network' }) });
+    await store.saveToday({ today: sampleToday(), savedAt: NOW });
+    await store.saveBlocklist({
+      current: { apps: ['a', 'b'], games: true },
+      pending: { apps: ['a'], games: true, from: sampleToday().day },
+    });
+    const ahead = { ...deps, now: () => Date.parse(`${tomorrow}T12:00:00Z`) };
+    const { guard, calls } = fakeGuard();
+    await syncOnce({ ...ahead, guard: { native: guard, newId: () => ledgerEvent(50).id } });
+    expect(calls.blocked.at(-1)).toEqual([['a'], true]);
+    await store.saveBlocklist({
+      current: { apps: ['a', 'b'], games: true },
+      pending: { apps: ['a'], games: true, from: '2098-12-31' },
+    });
+    const { guard: g2, calls: c2 } = fakeGuard();
+    await syncOnce({ ...ahead, guard: { native: g2, newId: () => ledgerEvent(51).id } });
+    expect(c2.blocked.at(-1)).toEqual([['a', 'b'], true]);
+  });
+
+  test('with nothing chosen yet, the guard blocks the default apps and games', async () => {
+    const { deps } = await setup();
+    const { guard, calls } = fakeGuard();
+    await syncOnce({ ...deps, guard: { native: guard, newId: () => ledgerEvent(50).id } });
+    expect(calls.blocked).toEqual([[[...DEFAULT_BLOCKLIST.apps], true]]);
   });
 
   test('debt is committed as no time left', async () => {

@@ -28,7 +28,13 @@ export const LedgerQuerySchema = z.object({
 export const LedgerSyncResultSchema = z.object({
   added: z.array(z.uuid()),
   ignored: z.array(z.uuid()),
-  rejected: z.array(z.object({ id: z.uuid(), reason: z.literal('future_timestamp') })),
+  /** Never retried: a clock far ahead, or an unlock that breaks the rule (spec §6.1). */
+  rejected: z.array(
+    z.object({
+      id: z.uuid(),
+      reason: z.enum(['future_timestamp', 'unlock_reason', 'unlock_limit', 'unlock_amount']),
+    }),
+  ),
 });
 
 export const LedgerPageSchema = z.object({

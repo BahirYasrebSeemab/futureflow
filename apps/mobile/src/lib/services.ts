@@ -1,3 +1,4 @@
+import { DEFAULT_RULES } from '@futureflow/core';
 import Constants from 'expo-constants';
 import { getRandomBytes } from 'expo-crypto';
 import { openDatabaseAsync } from 'expo-sqlite';
@@ -6,7 +7,7 @@ import { createApi } from './api/client';
 import { parseApiUrl } from './config';
 import { makeIds } from './ids';
 import { nativeGuard } from './guard/native';
-import { BLOCKED_APPS } from './guard/types';
+import { applyBlocklist, blocklistDay } from './guard/apply-blocklist';
 import { expoLocator } from './location';
 import { TOKEN_KEY } from './pairing';
 import { secureSecrets } from './secrets';
@@ -34,7 +35,7 @@ export async function createServices(): Promise<AppServices> {
   // CI's emulator also blocks Settings, so the flow can show the shield on an app it always has.
   const extraBlocked: string[] = Constants.expoConfig?.extra?.e2eBlockedApps ?? [];
   try {
-    await guard.setBlockedApps([...BLOCKED_APPS.map(([pkg]) => pkg), ...extraBlocked], true);
+    await applyBlocklist(store, guard, await blocklistDay(store, now()), extraBlocked);
   } catch (error) {
     // The app must still open; the guard keeps its last list.
     const name = error instanceof Error ? error.name : 'unknown';
@@ -45,10 +46,19 @@ export async function createServices(): Promise<AppServices> {
     store,
     secrets: secureSecrets,
     ids,
-    syncer: createSyncer({ api, store, now, guard: { native: guard, newId: ids.newId } }),
+    syncer: createSyncer({
+      api,
+      store,
+      now,
+      guard: { native: guard, newId: ids.newId, extraBlocked },
+    }),
     locator: expoLocator,
     guard,
     now,
     apiUrl,
+    // Only the emulator build sets this (to a few seconds); every other build waits the full rule.
+    extraBlocked,
+    unlockWaitSeconds:
+      Constants.expoConfig?.extra?.e2eUnlockWaitSeconds ?? DEFAULT_RULES.unlockWaitSeconds,
   };
 }

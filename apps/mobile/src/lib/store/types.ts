@@ -23,6 +23,9 @@ export type AwayWindowRef = Readonly<{ id: string; from: string; to: string }>;
 
 /** The phone's own data: unsent events, refused events, the server-confirmed ledger and small values. */
 /** Xiaomi steps on the Guard screen. */
+import type { BlocklistState } from '../guard/blocklist';
+import type { UnlockWait } from '../unlock';
+
 export type GuardStep = 'battery' | 'autostart' | 'recents';
 
 export interface LocalStore {
@@ -37,6 +40,17 @@ export interface LocalStore {
   /** Guard steps Android can't report, ticked by the owner; the phone's own, kept on re-pairing. */
   guardSteps(): Promise<GuardStep[]>;
   markGuardStep(step: GuardStep, done: boolean): Promise<void>;
+  /** An emergency unlock's wait in progress; the phone's own, kept on re-pairing. */
+  unlockWait(): Promise<UnlockWait | null>;
+  saveUnlockWait(wait: UnlockWait | null): Promise<void>;
+  /**
+   * Uses up the finished wait and queues its unlock in one transaction; false (and nothing
+   * queued) when there is no wait, so one wait never pays for two unlocks.
+   */
+  enqueueUnlock(event: LedgerEvent): Promise<boolean>;
+  /** The owner's blocklist; null until they change it (the defaults apply). Kept on re-pairing. */
+  blocklist(): Promise<BlocklistState | null>;
+  saveBlocklist(state: BlocklistState): Promise<void>;
   /**
    * The server answered: `added` events move into the confirmed ledger (so the balance keeps them
    * even if the pull fails); `ignored` ones are dropped, because the server already holds its own copy.

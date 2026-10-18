@@ -7,9 +7,12 @@ import android.content.Intent
 import android.net.Uri
 import android.os.SystemClock
 import android.provider.Settings
+import android.provider.Telephony
+import android.telecom.TelecomManager
 import expo.modules.kotlin.exception.Exceptions
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
+import expo.modules.usageguard.logic.NEVER_BLOCKED_BASE
 
 /** The app's side of the guard: the block list in, spent time out, the balance back in. */
 class UsageGuardModule : Module() {
@@ -46,12 +49,40 @@ class UsageGuardModule : Module() {
         }
     }
 
-    AsyncFunction("commit") { watermark: Double, balanceSeconds: Double ->
+    AsyncFunction("commit") { watermark: Double, balanceSeconds: Double, included: List<String> ->
       GuardStore.update(context) {
-        it.commit(watermark.toLong(), balanceSeconds.toLong(), GuardClock.today())
+        it.commit(watermark.toLong(), balanceSeconds.toLong(), GuardClock.today(), included.toSet())
       }
       GuardForegroundService.poke()
       Unit
+    }
+
+    // An emergency unlock's time, at once and offline; the next commit that includes it drops it.
+    AsyncFunction("grant") { id: String, seconds: Double ->
+      GuardStore.update(context) { it.grant(id, GuardClock.today(), seconds.toLong()) }
+      GuardForegroundService.poke()
+      Unit
+    }
+
+    // The monotonic clock, so the unlock wait can't be shortened by changing the time.
+    AsyncFunction("clock") {
+      mapOf(
+        "elapsed" to SystemClock.elapsedRealtime().toDouble(),
+        "bootId" to GuardClock.bootId(context),
+      )
+    }
+
+    // Launcher apps for the picker. The list stays on the phone (spec §13.3).
+    AsyncFunction("installedApps") {
+      val pm = context.packageManager
+      val launcher = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+      pm.queryIntentActivities(launcher, 0)
+        .map { it.activityInfo.packageName to it.loadLabel(pm).toString() }
+        // Future Flow, the dialer and the SMS app are never blocked, so they aren't offered.
+        .filter { (pkg, _) -> pkg !in neverOffered() }
+        .distinctBy { it.first }
+        .sortedBy { it.second.lowercase() }
+        .map { (pkg, label) -> mapOf("package" to pkg, "label" to label) }
     }
 
     // The heartbeat's own copy of the token, so it runs when React Native doesn't.
@@ -65,6 +96,13 @@ class UsageGuardModule : Module() {
 
     AsyncFunction("openSettings") { kind: String -> open(settingsIntent(kind)) }
   }
+
+  private fun neverOffered(): Set<String> =
+    setOfNotNull(
+      context.packageName,
+      (context.getSystemService(Context.TELECOM_SERVICE) as? TelecomManager)?.defaultDialerPackage,
+      Telephony.Sms.getDefaultSmsPackage(context),
+    ) + NEVER_BLOCKED_BASE
 
   private fun settingsIntent(kind: String): Intent {
     val pkg = context.packageName

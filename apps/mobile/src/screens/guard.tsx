@@ -1,13 +1,37 @@
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useBottomPadding } from '@/components/bottom-padding';
 import { Button } from '@/components/button';
 import { useApp } from '@/lib/app';
+import { currentDayKey } from '@/lib/format';
+import { DEFAULT_BLOCKLIST_STATE, effectiveBlocklist } from '@/lib/guard/blocklist';
 import { BLOCKED_APPS } from '@/lib/guard/types';
 import { useGuardStatus } from '@/lib/guard/use-guard-status';
 import { radius, space, usePalette } from '@/theme';
 import { GuardChecklist } from './guard-checklist';
 
-const BLOCKED_NAMES = [...new Set(BLOCKED_APPS.map(([, name]) => name)), 'Games'];
+/** What the guard blocks now, by name: the owner's apps, then games. */
+function useBlockedNames(): string[] | null {
+  const { services } = useApp();
+  const [names, setNames] = useState<string[] | null>(null);
+  useFocusEffect(
+    useCallback(() => {
+      void (async () => {
+        const stored = (await services.store.blocklist()) ?? DEFAULT_BLOCKLIST_STATE;
+        const { current } = effectiveBlocklist(stored, currentDayKey(services.now()));
+        const installed = await services.guard.installedApps();
+        const label = (pkg: string) =>
+          installed.find((a) => a.package === pkg)?.label ??
+          BLOCKED_APPS.find(([p]) => p === pkg)?.[1] ??
+          pkg;
+        const apps = [...new Set(current.apps.map(label))];
+        setNames(current.games ? [...apps, 'Games'] : apps);
+      })();
+    }, [services]),
+  );
+  return names;
+}
 
 /** Whether the guard runs, how to turn it on, and what it blocks (spec §7). */
 export function GuardScreen() {
@@ -15,6 +39,7 @@ export function GuardScreen() {
   const bottomPadding = useBottomPadding();
   const { services } = useApp();
   const { status, refresh } = useGuardStatus();
+  const blocked = useBlockedNames();
   if (status === null) return null;
 
   // Android can stop the service and leave it listed as on: then nothing is blocked either.
@@ -70,7 +95,15 @@ export function GuardScreen() {
       )}
       {status.available && <GuardChecklist status={status} refresh={refresh} />}
       <Text style={[styles.label, { color: c.muted }]}>Blocked</Text>
-      <Text style={[styles.muted, { color: c.text }]}>{BLOCKED_NAMES.join(', ')}</Text>
+      <Text testID="blocked-names" style={[styles.muted, { color: c.text }]}>
+        {blocked === null ? '' : blocked.length === 0 ? 'Nothing' : blocked.join(', ')}
+      </Text>
+      <Button
+        testID="change-blocked"
+        variant="secondary"
+        label="Change"
+        onPress={() => router.push('/blocked-apps')}
+      />
       <Text style={[styles.muted, { color: c.muted }]}>
         Calls, messages and emergency apps are never blocked. Which apps you open stays on this
         phone: only the minutes you spent and when are sent.

@@ -1,8 +1,10 @@
 import { MAX_ATTEMPTS_PER_BATCH, MAX_EVENTS_PER_BATCH } from '@futureflow/contracts';
-import type { LedgerEvent } from '@futureflow/core';
+import { addDays, type LedgerEvent } from '@futureflow/core';
 import type { Api, ApiFailure } from './api/client';
 import { spendEvents } from './guard/spend';
 import type { Guard } from './guard/types';
+import { currentDayKey } from './format';
+import { applyBlocklist, blocklistDay } from './guard/apply-blocklist';
 import { projectBalance } from './ledger';
 import type { LocalStore, SyncReport, SyncStatus } from './store/types';
 
@@ -15,8 +17,11 @@ export type SyncDeps = Readonly<{
   api: Pick<Api, 'pushEvents' | 'pushMathAttempts' | 'today' | 'pullLedger' | 'getBank'>;
   store: LocalStore;
   now: () => number;
-  /** The native guard: its spend becomes events, and it learns the balance after each pull. */
-  guard?: Readonly<{ native: Guard; newId: () => string }>;
+  /**
+   * The native guard: it gets today's blocklist, its spend becomes events, and it learns the
+   * balance after each pull. `extraBlocked` is the emulator build's Settings.
+   */
+  guard?: Readonly<{ native: Guard; newId: () => string; extraBlocked?: readonly string[] }>;
 }>;
 
 type Stop = Exclude<SyncStatus, 'ok'>;
@@ -71,7 +76,10 @@ async function sendBatch(deps: SyncDeps, batch: readonly LedgerEvent[]): Promise
     return { stop: 'invalid_response', pushed: 0, buried: 0 };
   }
   await deps.store.settle(added, ignored);
-  if (refused.length > 0) await deps.store.bury(refused, 'future_timestamp', deps.now());
+  for (const reason of new Set(rejected.map((r) => r.reason))) {
+    const ids = rejected.filter((r) => r.reason === reason).map((r) => r.id);
+    await deps.store.bury(ids, reason, deps.now());
+  }
   return { stop: null, pushed: added.length + ignored.length, buried: refused.length };
 }
 
@@ -153,6 +161,18 @@ const logGuardFailure = (event: string, error: unknown) => {
 };
 
 /** Time spent in blocked apps joins the outbox first, so this same sync sends it. */
+/** A pending unblock applies once its day has come, even if the app wasn't opened at 04:00. */
+async function refreshBlocklist(deps: SyncDeps): Promise<void> {
+  if (deps.guard === undefined) return;
+  try {
+    const { native, extraBlocked } = deps.guard;
+    const day = await blocklistDay(deps.store, deps.now());
+    await applyBlocklist(deps.store, native, day, extraBlocked);
+  } catch (error) {
+    logGuardFailure('guard_blocklist_failed', error);
+  }
+}
+
 async function collectSpend(deps: SyncDeps): Promise<void> {
   if (deps.guard === undefined) return;
   try {
@@ -172,8 +192,16 @@ async function collectSpend(deps: SyncDeps): Promise<void> {
 async function commitBalance(deps: SyncDeps): Promise<void> {
   if (deps.guard === undefined) return;
   try {
-    const balance = projectBalance(await deps.store.confirmed(), await deps.store.pending());
-    await deps.guard.native.commit(await deps.store.spendSeq(), Math.max(0, balance));
+    const [confirmed, pending] = [await deps.store.confirmed(), await deps.store.pending()];
+    const balance = projectBalance(confirmed, pending);
+    // The guard drops the unlocks this balance already has, so each counts once.
+    // Grants older than yesterday are gone from the guard already; naming them would only grow.
+    const since = addDays(currentDayKey(deps.now()), -1);
+    const unlocks = [...confirmed, ...pending].filter(
+      (e) => e.kind === 'unlock_borrow' && e.day >= since,
+    );
+    const included = [...new Set(unlocks.map((e) => e.id))];
+    await deps.guard.native.commit(await deps.store.spendSeq(), Math.max(0, balance), included);
   } catch (error) {
     logGuardFailure('guard_commit_failed', error);
   }
@@ -197,6 +225,8 @@ export async function syncOnce(deps: SyncDeps): Promise<SyncReport> {
   // never holds up today's plan or the ledger.
   if (status === 'ok') status = (await pushAttempts(deps)) ?? 'ok';
   if (status === 'ok') await pullBank(deps);
+  // Last, so a day the server just turned is known; offline it still runs on the saved day.
+  await refreshBlocklist(deps);
   const report: SyncReport = {
     status,
     pushed: sent.pushed,

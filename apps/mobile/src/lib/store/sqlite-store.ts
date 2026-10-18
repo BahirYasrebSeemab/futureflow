@@ -22,6 +22,19 @@ import type {
   SyncReport,
 } from './types';
 
+const UnlockWaitSchema = z.object({
+  reason: z.string(),
+  startedAt: z.number(),
+  startElapsed: z.number(),
+  bootId: z.string(),
+});
+
+const BlocklistSchema = z.object({ apps: z.array(z.string()), games: z.boolean() });
+const BlocklistStateSchema = z.object({
+  current: BlocklistSchema,
+  pending: BlocklistSchema.extend({ from: z.string() }).nullable(),
+});
+
 const SavedTodaySchema = z.object({ today: TodaySchema, savedAt: z.number().int() });
 const SyncReportSchema = z.object({
   status: z.enum(['ok', 'offline', 'server_error', 'unauthorized', 'invalid_response']),
@@ -63,6 +76,8 @@ const KEY = {
   coachCursor: 'coach_cursor',
   spendSeq: 'guard_spend_seq',
   guardSteps: 'guard_steps',
+  unlockWait: 'unlock_wait',
+  blocklist: 'blocklist',
 } as const;
 /** What came from the server; the rest of kv (away windows, check times) is the phone's own. */
 const SERVER_KEYS = [
@@ -148,6 +163,27 @@ export function sqliteStore(db: SqlDb): LocalStore {
       }),
     spendSeq: async () => Number((await getKv(KEY.spendSeq)) ?? 0),
     guardSteps: async () => readSteps(await getKv(KEY.guardSteps)),
+    unlockWait: () => readJson(KEY.unlockWait, UnlockWaitSchema),
+    enqueueUnlock: (event) =>
+      write(async () => {
+        const valid = LedgerEventSchema.parse(event);
+        let taken = false;
+        await db.withTransactionAsync(async () => {
+          if ((await getKv(KEY.unlockWait)) === null) return;
+          await insertOutbox([valid]);
+          await db.runAsync('DELETE FROM kv WHERE key = ?', KEY.unlockWait);
+          taken = true;
+        });
+        return taken;
+      }),
+    saveUnlockWait: (wait) =>
+      write(async () => {
+        if (wait === null) await db.runAsync('DELETE FROM kv WHERE key = ?', KEY.unlockWait);
+        else await setKv(KEY.unlockWait, JSON.stringify(wait));
+      }),
+    blocklist: () => readJson(KEY.blocklist, BlocklistStateSchema),
+    saveBlocklist: (state) =>
+      write(() => setKv(KEY.blocklist, JSON.stringify(state)).then(() => undefined)),
     markGuardStep: (step, done) =>
       write(async () => {
         const steps = new Set(readSteps(await getKv(KEY.guardSteps)));

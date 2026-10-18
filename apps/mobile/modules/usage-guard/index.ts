@@ -16,8 +16,11 @@ export type UsageGuardNative = {
   setBlockedApps(packages: string[], blockGames: boolean): Promise<void>;
   /** Spent time not yet committed; an open session is cut at now. */
   pendingSpend(): Promise<NativeSpendSession[]>;
-  /** Sessions up to `watermark` are recorded; `balanceSeconds` already counts them. */
-  commit(watermark: number, balanceSeconds: number): Promise<void>;
+  /** Sessions up to `watermark` and the unlocks in `included` are in `balanceSeconds`. */
+  commit(watermark: number, balanceSeconds: number, included: string[]): Promise<void>;
+  grant(id: string, seconds: number): Promise<void>;
+  clock(): Promise<{ elapsed: number; bootId: string }>;
+  installedApps(): Promise<{ package: string; label: string }[]>;
   openSettings(kind: 'accessibility' | 'notifications' | 'battery' | 'autostart'): Promise<void>;
   /** The heartbeat's own copy of the server address and device token, sealed in the Keystore. */
   link(apiUrl: string, token: string): Promise<void>;

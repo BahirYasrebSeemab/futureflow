@@ -311,3 +311,59 @@ test('an unreadable guard-steps value reads as nothing ticked', async () => {
   await store.markGuardStep('recents', true);
   expect(await store.guardSteps()).toEqual(['recents']);
 });
+
+test('an unlock wait is kept until cleared, also across re-pairing', async () => {
+  const { store } = await open();
+  expect(await store.unlockWait()).toBeNull();
+  const wait = {
+    reason: 'my sister needs the group chat',
+    startedAt: 1,
+    startElapsed: 2,
+    bootId: '7',
+  };
+  await store.saveUnlockWait(wait);
+  await store.clearServerCopy();
+  expect(await store.unlockWait()).toEqual(wait);
+  await store.saveUnlockWait(null);
+  expect(await store.unlockWait()).toBeNull();
+});
+
+test("the blocklist is the phone's own: kept across re-pairing", async () => {
+  const { store } = await open();
+  expect(await store.blocklist()).toBeNull();
+  const state = {
+    current: { apps: ['com.instagram.android'], games: true },
+    pending: { apps: [], games: true, from: '2026-10-19' },
+  };
+  await store.saveBlocklist(state);
+  await store.clearServerCopy();
+  expect(await store.blocklist()).toEqual(state);
+});
+
+test('unreadable unlock-wait and blocklist values read as nothing stored', async () => {
+  const { store, db } = await open();
+  await db.runAsync("INSERT INTO kv (key, value) VALUES ('unlock_wait', '{\"reason\":1}')");
+  await db.runAsync("INSERT INTO kv (key, value) VALUES ('blocklist', 'not json')");
+  expect(await store.unlockWait()).toBeNull();
+  expect(await store.blocklist()).toBeNull();
+});
+
+test('taking the unlock wait queues the unlock and clears the wait together, once', async () => {
+  const { store } = await open();
+  const event = {
+    ...ledgerEvent(1),
+    kind: 'unlock_borrow' as const,
+    seconds: 600,
+    reason: 'x'.repeat(20),
+  };
+  expect(await store.enqueueUnlock(event)).toBe(false);
+  await store.saveUnlockWait({
+    reason: 'x'.repeat(20),
+    startedAt: 1,
+    startElapsed: 2,
+    bootId: '7',
+  });
+  expect(await store.enqueueUnlock(event)).toBe(true);
+  expect(await store.enqueueUnlock({ ...event, id: ledgerEvent(2).id })).toBe(false);
+  expect([(await store.pending()).length, await store.unlockWait()]).toEqual([1, null]);
+});

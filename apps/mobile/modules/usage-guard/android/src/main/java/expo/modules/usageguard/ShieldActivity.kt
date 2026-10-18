@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.Typeface
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.view.Gravity
@@ -61,6 +62,12 @@ class ShieldActivity : Activity() {
         setOnClickListener { goHome() }
       }
     )
+    root.addView(
+      Button(this).apply {
+        setText(R.string.guard_shield_unlock)
+        setOnClickListener { openUnlock() }
+      }
+    )
     setContentView(root)
 
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -79,6 +86,16 @@ class ShieldActivity : Activity() {
     packageManager.getLaunchIntentForPackage(packageName)?.let {
       startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     }
+    finish()
+  }
+
+  /** The reason and the 10-minute wait live in the app (spec §7 "Emergency unlock"). */
+  private fun openUnlock() {
+    startActivity(
+      Intent(Intent.ACTION_VIEW, Uri.parse("futureflow://unlock"))
+        .setPackage(packageName)
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    )
     finish()
   }
 

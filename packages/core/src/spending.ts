@@ -29,6 +29,22 @@ export type UnlockRequest = Readonly<{ reason: string; waitStartedAt: number }>;
 
 export type UnlockError = 'reason_too_short' | 'daily_limit_reached' | 'wait_not_finished';
 
+/**
+ * The parts of the unlock rule anyone can check after the fact: the reason and the daily limit.
+ * The phone checks them before unlocking and the server again when the event arrives; only the
+ * phone can see the wait.
+ */
+export function unlockAllowed(
+  dayEvents: readonly LedgerEvent[],
+  reason: string,
+  rules: Rules,
+): Exclude<UnlockError, 'wait_not_finished'> | null {
+  if (reason.trim().length < rules.unlockMinReasonLength) return 'reason_too_short';
+  const unlocksToday = dayEvents.filter((e) => e.kind === 'unlock_borrow').length;
+  if (unlocksToday >= rules.unlockMaxPerDay) return 'daily_limit_reached';
+  return null;
+}
+
 export function unlock(
   dayEvents: readonly LedgerEvent[],
   req: UnlockRequest,
@@ -36,10 +52,8 @@ export function unlock(
   rules: Rules,
 ): Result<LedgerEvent, UnlockError> {
   const reason = req.reason.trim();
-  if (reason.length < rules.unlockMinReasonLength) return err('reason_too_short');
-
-  const unlocksToday = dayEvents.filter((e) => e.kind === 'unlock_borrow').length;
-  if (unlocksToday >= rules.unlockMaxPerDay) return err('daily_limit_reached');
+  const refused = unlockAllowed(dayEvents, reason, rules);
+  if (refused !== null) return err(refused);
 
   if (ctx.at - req.waitStartedAt < rules.unlockWaitSeconds * MS_PER_SECOND) {
     return err('wait_not_finished');

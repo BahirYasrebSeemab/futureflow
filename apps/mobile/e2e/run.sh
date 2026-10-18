@@ -77,8 +77,34 @@ if [ "$beats" -eq 0 ]; then
 fi
 echo "Heartbeats with the guard on: $beats"
 
-# The checklist, opened through the app's link (Maestro would switch the guard off again).
-adb shell input keyevent KEYCODE_HOME
-adb shell am start -W -a android.intent.action.VIEW -d futureflow://guard com.bahiryasreb.futureflow
-sleep 5
+# The checklist and the picker, opened through the app's links (Maestro would switch the guard off).
+open_link() {
+  adb shell input keyevent KEYCODE_HOME
+  adb shell am start -W -a android.intent.action.VIEW -d "$1" com.bahiryasreb.futureflow
+  sleep 5
+}
+open_link futureflow://guard
 adb exec-out screencap -p > "$OUT/16-guard-checklist.png"
+open_link futureflow://blocked-apps
+adb exec-out screencap -p > "$OUT/19-blocked-apps.png"
+
+# Emergency unlock (P5c-1): Maestro gives a reason and waits out the (shortened) wait, then with
+# the guard back on, Settings opens without the shield.
+"$MAESTRO" test "$E2E/flows/unlock.yaml" \
+  --test-output-dir "$OUT/maestro-unlock" --format junit --output "$OUT/report-unlock.xml"
+adb shell am force-stop dev.mobile.maestro || true
+adb shell am force-stop dev.mobile.maestro.test || true
+guard_on
+sleep 5
+adb shell input keyevent KEYCODE_HOME
+adb shell am start -W -n com.android.settings/.Settings
+sleep 5
+adb exec-out screencap -p > "$OUT/20-after-unlock.png"
+top=$(adb shell dumpsys activity activities | grep -E 'topResumedActivity|mResumedActivity' | head -1)
+echo "top activity after the unlock: $top"
+if echo "$top" | grep -q ShieldActivity; then
+  guard_state
+  echo "The shield still covers Settings after an emergency unlock"
+  exit 1
+fi
+echo "After the unlock, Settings opens"

@@ -6,6 +6,7 @@ import { MAX_FUTURE_SKEW_MS } from '../http/day';
 import { valid } from '../http/validate';
 import { appendEvents } from '../ledger/append';
 import { creditLateSpend } from '../ledger/late-spend';
+import { screenUnlocks } from '../ledger/unlocks';
 
 export const ledgerRoutes = new Hono<AppEnv>()
   .post('/ledger/events', valid('json', LedgerEventBatchSchema), async (c) => {
@@ -14,10 +15,14 @@ export const ledgerRoutes = new Hono<AppEnv>()
     const { events } = c.req.valid('json');
 
     const inFuture = (at: number) => at > now + MAX_FUTURE_SKEW_MS;
-    const rejected = events
+    const ahead = events
       .filter((e) => inFuture(e.at))
       .map((e) => ({ id: e.id, reason: 'future_timestamp' as const }));
-    const candidates = events.filter((e) => !inFuture(e.at));
+    const timely = events.filter((e) => !inFuture(e.at));
+    const refusedUnlocks = await screenUnlocks(deps.repos.ledger, timely);
+    const refusedIds = new Set(refusedUnlocks.map((r) => r.id));
+    const rejected = [...ahead, ...refusedUnlocks];
+    const candidates = timely.filter((e) => !refusedIds.has(e.id));
 
     const added = await appendEvents(deps.repos.ledger, candidates, device.id, now);
     const addedSet = new Set(added);
