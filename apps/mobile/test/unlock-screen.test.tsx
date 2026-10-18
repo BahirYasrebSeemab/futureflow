@@ -112,3 +112,20 @@ test('without the native guard the screen says unlocks need the Android app', as
   expect(await screen.findByText(/needs the Android app/)).toBeTruthy();
   expect(screen.queryByTestId('unlock-reason')).toBeNull();
 });
+
+test('in debt, the screen says how much of the unlock the debt takes', async () => {
+  const { guard } = fakeGuard();
+  await open(guard, async (s) => {
+    await s.store.enqueue([{ ...ledgerEvent(1), kind: 'usage_spend' as const, seconds: -240 }]);
+  });
+  expect(await screen.findByTestId('unlock-debt')).toHaveTextContent(
+    'You owe 4 min, so this unlock leaves you 6 min.',
+  );
+});
+
+test('without debt there is no debt note', async () => {
+  const { guard } = fakeGuard();
+  await open(guard);
+  expect(await screen.findByTestId('unlock-reason')).toBeTruthy();
+  expect(screen.queryByTestId('unlock-debt')).toBeNull();
+});

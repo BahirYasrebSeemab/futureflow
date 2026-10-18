@@ -1,0 +1,27 @@
+appId: com.bahiryasreb.futureflow
+---
+# Runs after run.sh saw the shield. The emulator build waits 5 s instead of 10 minutes.
+- openLink: futureflow://unlock
+- runFlow:
+    when:
+      visible: ".*isn't responding.*"
+    commands:
+      - tapOn: 'Wait'
+- tapOn:
+    id: 'unlock-reason'
+- inputText: 'checking the emergency unlock on the emulator'
+- hideKeyboard
+- takeScreenshot: 17-unlock-reason
+- tapOn:
+    id: 'unlock-start'
+- extendedWaitUntil:
+    visible:
+      id: 'unlock-confirm'
+    timeout: 30000
+- tapOn:
+    id: 'unlock-confirm'
+- extendedWaitUntil:
+    visible:
+      id: 'unlock-done'
+    timeout: 15000
+- takeScreenshot: 18-unlocked

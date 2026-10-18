@@ -5,6 +5,7 @@ import { useBottomPadding } from '@/components/bottom-padding';
 import { Button } from '@/components/button';
 import { useApp, type AppServices } from '@/lib/app';
 import { currentDayKey } from '@/lib/format';
+import { projectBalance } from '@/lib/ledger';
 import { finishUnlock, startWait, waitLeftMs, type UnlockWait } from '@/lib/unlock';
 import { radius, space, usePalette } from '@/theme';
 
@@ -45,6 +46,8 @@ export function UnlockScreen() {
   );
   const [phase, setPhase] = useState<Phase>({ kind: 'loading' });
   const [reason, setReason] = useState('');
+  /** An unlock is a ledger event (spec §4.3): debt takes its share first. */
+  const [owed, setOwed] = useState(0);
 
   /** Where the wait stands now; a reboot starts it again with the same reason. */
   const check = useCallback(
@@ -70,6 +73,11 @@ export function UnlockScreen() {
   useEffect(() => {
     void (async () => {
       if ((await services.guard.clock()) === null) return setPhase({ kind: 'unavailable' });
+      const balance = projectBalance(
+        await services.store.confirmed(),
+        await services.store.pending(),
+      );
+      setOwed(Math.max(0, -balance));
       const used = (await todayEvents(services)).filter((e) => e.kind === 'unlock_borrow').length;
       if (used >= rules.unlockMaxPerDay) return setPhase({ kind: 'limit' });
       const wait = await services.store.unlockWait();
@@ -119,6 +127,13 @@ export function UnlockScreen() {
   const text = { color: c.text };
   const muted = { color: c.muted };
   const enough = reason.trim().length >= rules.unlockMinReasonLength;
+  const owedMinutes = Math.ceil(owed / 60);
+  const leavesMinutes = Math.max(0, Math.floor((rules.unlockGrantSeconds - owed) / 60));
+  const debtNote = owed > 0 && (phase.kind === 'form' || phase.kind === 'waiting') && (
+    <Text testID="unlock-debt" style={[styles.body15, { color: c.warningText }]}>
+      You owe {owedMinutes} min, so this unlock leaves you {leavesMinutes} min.
+    </Text>
+  );
   return (
     <ScrollView
       style={{ backgroundColor: c.background }}
@@ -127,6 +142,7 @@ export function UnlockScreen() {
       <Text accessibilityRole="header" style={[styles.heading, text]}>
         Emergency unlock
       </Text>
+      {debtNote}
       {phase.kind === 'unavailable' && (
         <Text style={[styles.body15, muted]}>Emergency unlock needs the Android app.</Text>
       )}

@@ -52,6 +52,9 @@ bun run --cwd apps/mobile test                 # Jest, with real SQL through nod
 - Staying alive: a foreground service shows the minutes left, and a native heartbeat (queued while
   offline, Doze-proof) tells the server "phone off" from "guard off"
   ([ADR 0017](docs/adr/0017-keeping-the-guard-alive.md)).
+- Emergency unlock from the shield (a reason, a 10-minute wait, 10 borrowed minutes, twice a day),
+  and a picker for the blocked apps where unblocking waits for the next day
+  ([ADR 0018](docs/adr/0018-unlock-and-picker.md)).
 - The phone bundle includes the math checker (CAS), so it's built only in CI or EAS. Never run
   `expo export` on a small machine.
 - CI bundles the app for Android. The `Android e2e` workflow pairs a release build with a local Worker
