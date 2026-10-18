@@ -101,3 +101,53 @@ describe('gaps that span days', () => {
     expect(after.body.data.phoneOffMinutes).toBe(24 * 60);
   });
 });
+
+describe('guard gaps from queued beats', () => {
+  it('beats queued while offline and sent late fill the silence they cover', async () => {
+    const { token, clock, beat, analyze, app } = await setup();
+    await beat(DAY9);
+    await analyze();
+    const queued = Array.from({ length: 12 }, (_, i) => ({
+      at: DAY9 + (i + 1) * 0.25 * H,
+      bootId: 'boot-1',
+      uptimeSeconds: 99_999 + (i + 1) * 900,
+      utcOffsetMinutes: 0,
+      guardEnabled: true,
+    }));
+    clock.now = DAY9 + 4 * H;
+    await call(app, 'POST', '/v1/heartbeats', { token, body: { beats: queued } });
+    const stored = await env.DB.prepare('SELECT COUNT(*) AS n FROM heartbeats').first('n');
+    expect([stored, await analyze()]).toEqual([13, 0]);
+  });
+
+  it('a Doze-delayed beat with the guard connected throughout is no gap; one after a reconnect is', async () => {
+    const { token, clock, analyze, app } = await setup();
+    const send = async (at: number, uptimeSeconds: number, since: number | null) => {
+      clock.now = at;
+      await call(app, 'POST', '/v1/heartbeats', {
+        token,
+        body: {
+          beats: [
+            {
+              at,
+              bootId: 'boot-1',
+              uptimeSeconds,
+              utcOffsetMinutes: 0,
+              guardEnabled: true,
+              guardSinceUptimeSeconds: since,
+            },
+          ],
+        },
+      });
+    };
+    await send(DAY9, 10_000, 100);
+    await send(DAY9 + 3 * H, 10_000 + 3 * 3600, 100); // held back by Doze
+    await send(DAY9 + 6 * H, 10_000 + 6 * 3600, 10_000 + 5 * 3600); // reconnected at hour 5
+    expect(await analyze()).toBe(1);
+
+    const day = await call<{ guardDisabledMinutes: number }>(app, 'GET', '/v1/guard/2026-10-09', {
+      token,
+    });
+    expect(day.body.data.guardDisabledMinutes).toBe(180);
+  });
+});

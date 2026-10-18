@@ -69,7 +69,8 @@ export interface DayRepo {
 }
 
 export interface TelemetryRepo {
-  addHeartbeat(deviceId: string, beat: Heartbeat, receivedAt: number): Promise<void>;
+  /** Inserts beats not stored yet (same boot and time); returns how many were new. */
+  addHeartbeats(deviceId: string, beats: readonly Heartbeat[], receivedAt: number): Promise<number>;
   /** False when a log with this id is already stored (it is never overwritten). */
   addReading(deviceId: string, log: ReadingLog, at: number): Promise<boolean>;
   /** Inserts attempts whose id is new; returns the ids written, in order. */

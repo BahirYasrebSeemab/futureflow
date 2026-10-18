@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  HeartbeatBatchSchema,
+  HeartbeatSchema,
+  MAX_HEARTBEAT_BATCH,
   AwayRequestSchema,
   AwayVerdictRequestSchema,
   LedgerQuerySchema,
@@ -145,5 +148,25 @@ describe('TodaySchema', () => {
       verdicts: [],
     };
     expect(TodaySchema.parse(today)).toEqual(today);
+  });
+});
+
+describe('HeartbeatSchema', () => {
+  const beat = { at: 1, bootId: '7', uptimeSeconds: 60, utcOffsetMinutes: 300, guardEnabled: true };
+
+  it('takes the guard-since uptime as a number, null, or absent', () => {
+    expect(HeartbeatSchema.safeParse(beat).success).toBe(true);
+    expect(HeartbeatSchema.safeParse({ ...beat, guardSinceUptimeSeconds: null }).success).toBe(
+      true,
+    );
+    expect(HeartbeatSchema.safeParse({ ...beat, guardSinceUptimeSeconds: 30 }).success).toBe(true);
+    expect(HeartbeatSchema.safeParse({ ...beat, guardSinceUptimeSeconds: -1 }).success).toBe(false);
+  });
+
+  it('batches 1 to 96 beats', () => {
+    const many = (n: number) => ({ beats: Array.from({ length: n }, () => beat) });
+    expect(HeartbeatBatchSchema.safeParse(many(0)).success).toBe(false);
+    expect(HeartbeatBatchSchema.safeParse(many(MAX_HEARTBEAT_BATCH)).success).toBe(true);
+    expect(HeartbeatBatchSchema.safeParse(many(MAX_HEARTBEAT_BATCH + 1)).success).toBe(false);
   });
 });

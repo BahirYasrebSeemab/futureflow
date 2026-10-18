@@ -1,21 +1,26 @@
 import type { TelemetryRepo } from '../../ports';
 
 export const d1Telemetry = (db: D1Database): TelemetryRepo => ({
-  async addHeartbeat(deviceId, beat, receivedAt) {
-    await db
-      .prepare(
-        `INSERT INTO heartbeats (device_id, at, boot_id, uptime_seconds, guard_enabled, received_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6)`,
-      )
-      .bind(
-        deviceId,
-        beat.at,
-        beat.bootId,
-        beat.uptimeSeconds,
-        beat.guardEnabled ? 1 : 0,
-        receivedAt,
-      )
-      .run();
+  async addHeartbeats(deviceId, beats, receivedAt) {
+    const insert = db.prepare(
+      `INSERT OR IGNORE INTO heartbeats
+         (device_id, at, boot_id, uptime_seconds, guard_enabled, guard_since_uptime, received_at)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)`,
+    );
+    const results = await db.batch(
+      beats.map((beat) =>
+        insert.bind(
+          deviceId,
+          beat.at,
+          beat.bootId,
+          beat.uptimeSeconds,
+          beat.guardEnabled ? 1 : 0,
+          beat.guardSinceUptimeSeconds ?? null,
+          receivedAt,
+        ),
+      ),
+    );
+    return results.reduce((n, r) => n + r.meta.changes, 0);
   },
 
   async addReading(deviceId, log, at) {
