@@ -53,6 +53,7 @@ describe('upkeep cron', () => {
           uptimeSeconds: up,
           utcOffsetMinutes: 0,
           guardEnabled: true,
+          guardSinceUptimeSeconds: up,
         },
       });
     }

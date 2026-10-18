@@ -32,6 +32,7 @@ class HeartbeatWorker(context: Context, params: WorkerParameters) : Worker(conte
         connected = GuardHealth.connected(),
         foregroundRunning = GuardForegroundService.running(),
         everEnabled = HeartbeatStore.everEnabled(context) && HeartbeatStore.linked(context),
+        downSince = HeartbeatStore.downSince(context),
         lastNudgeAt = HeartbeatStore.lastNudgeAt(context),
         now = now,
       )

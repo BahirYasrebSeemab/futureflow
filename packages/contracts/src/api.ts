@@ -71,8 +71,11 @@ export const HeartbeatSchema = z.object({
   uptimeSeconds: z.number().int().nonnegative(),
   utcOffsetMinutes: UtcOffsetSchema,
   guardEnabled: z.boolean(),
-  /** Uptime when the guard's service last connected; null when it isn't connected. */
-  guardSinceUptimeSeconds: z.number().int().nonnegative().nullable().optional(),
+  /**
+   * Uptime when the guard's service last connected; null when it isn't connected. Required: a
+   * stored null means "not running", so it can't also mean "not sent".
+   */
+  guardSinceUptimeSeconds: z.number().int().nonnegative().nullable(),
 });
 
 /** One day of beats at one per 15 minutes: what a phone queues while offline is sent in chunks. */

@@ -154,8 +154,8 @@ describe('TodaySchema', () => {
 describe('HeartbeatSchema', () => {
   const beat = { at: 1, bootId: '7', uptimeSeconds: 60, utcOffsetMinutes: 300, guardEnabled: true };
 
-  it('takes the guard-since uptime as a number, null, or absent', () => {
-    expect(HeartbeatSchema.safeParse(beat).success).toBe(true);
+  it('needs the guard-since uptime, as a number or null', () => {
+    expect(HeartbeatSchema.safeParse(beat).success).toBe(false);
     expect(HeartbeatSchema.safeParse({ ...beat, guardSinceUptimeSeconds: null }).success).toBe(
       true,
     );
@@ -164,7 +164,8 @@ describe('HeartbeatSchema', () => {
   });
 
   it('batches 1 to 96 beats', () => {
-    const many = (n: number) => ({ beats: Array.from({ length: n }, () => beat) });
+    const full = { ...beat, guardSinceUptimeSeconds: null };
+    const many = (n: number) => ({ beats: Array.from({ length: n }, () => full) });
     expect(HeartbeatBatchSchema.safeParse(many(0)).success).toBe(false);
     expect(HeartbeatBatchSchema.safeParse(many(MAX_HEARTBEAT_BATCH)).success).toBe(true);
     expect(HeartbeatBatchSchema.safeParse(many(MAX_HEARTBEAT_BATCH + 1)).success).toBe(false);

@@ -101,6 +101,28 @@ describe('analyzeBeats: Doze', () => {
   });
 });
 
+describe('analyzeBeats: switched on but not running', () => {
+  it('counts time after a beat with the guard switched on but not connected as "guard disabled"', () => {
+    const beats = [
+      beat(0, { guardSinceUptimeSeconds: 60 }),
+      beat(15, { guardSinceUptimeSeconds: null }),
+      beat(30, { guardSinceUptimeSeconds: null }),
+      beat(45, { guardSinceUptimeSeconds: 4500 }),
+    ];
+    expect(analyzeBeats(beats, DEFAULT_RULES)).toEqual([
+      { kind: 'guard_disabled', from: 15 * MIN, to: 45 * MIN },
+    ]);
+  });
+
+  it('a long silence after a not-connected beat is not excused by a later beat', () => {
+    const before = beat(0, { guardSinceUptimeSeconds: null });
+    const late = beat(180, { guardSinceUptimeSeconds: 60 });
+    expect(analyzeBeats([before, late], DEFAULT_RULES)).toEqual([
+      { kind: 'guard_disabled', from: 0, to: 180 * MIN },
+    ]);
+  });
+});
+
 describe('overlapMs', () => {
   it('measures how much of a window a kind of gap covers', () => {
     const gaps = [

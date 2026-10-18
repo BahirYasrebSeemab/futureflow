@@ -20,7 +20,15 @@ async function setup() {
     clock.now = at;
     await call(app, 'POST', '/v1/heartbeat', {
       token,
-      body: { at, bootId, uptimeSeconds, utcOffsetMinutes: 0, guardEnabled },
+      // Connected at this very beat: a long silence before it still counts.
+      body: {
+        at,
+        bootId,
+        uptimeSeconds,
+        utcOffsetMinutes: 0,
+        guardEnabled,
+        guardSinceUptimeSeconds: guardEnabled ? uptimeSeconds : null,
+      },
     });
   };
   const analyze = () => analyzeGuard(makeDeps(env, { now: () => clock.now }));
@@ -113,6 +121,7 @@ describe('guard gaps from queued beats', () => {
       uptimeSeconds: 99_999 + (i + 1) * 900,
       utcOffsetMinutes: 0,
       guardEnabled: true,
+      guardSinceUptimeSeconds: 60,
     }));
     clock.now = DAY9 + 4 * H;
     await call(app, 'POST', '/v1/heartbeats', { token, body: { beats: queued } });

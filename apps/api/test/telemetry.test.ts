@@ -9,6 +9,7 @@ const heartbeat = {
   uptimeSeconds: 3600,
   utcOffsetMinutes: 300,
   guardEnabled: true,
+  guardSinceUptimeSeconds: 60,
 };
 const reading = (over: object = {}) => ({
   id: uuidv7(),
