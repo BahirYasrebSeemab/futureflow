@@ -49,7 +49,7 @@ export const d1Upkeep = (db: D1Database): UpkeepRepo => ({
   async beatsFromCursor(deviceId, limit) {
     const { results } = await db
       .prepare(
-        `SELECT seq, at, boot_id, uptime_seconds, guard_enabled FROM heartbeats
+        `SELECT seq, at, boot_id, uptime_seconds, guard_enabled, guard_since_uptime FROM heartbeats
          WHERE device_id = ?1
            AND seq >= COALESCE((SELECT seq FROM guard_cursor WHERE device_id = ?1), 0)
          ORDER BY seq LIMIT ?2`,
@@ -61,6 +61,7 @@ export const d1Upkeep = (db: D1Database): UpkeepRepo => ({
         boot_id: string;
         uptime_seconds: number;
         guard_enabled: number;
+        guard_since_uptime: number | null;
       }>();
     return results.map((r) => ({
       seq: r.seq,
@@ -69,6 +70,7 @@ export const d1Upkeep = (db: D1Database): UpkeepRepo => ({
         bootId: r.boot_id,
         uptimeSeconds: r.uptime_seconds,
         guardEnabled: r.guard_enabled === 1,
+        guardSinceUptimeSeconds: r.guard_since_uptime,
       },
     }));
   },

@@ -1,0 +1,44 @@
+name: Guard compile
+
+# Compiles the guard's Kotlin against the real app, so an Android compile error shows in minutes
+# rather than in the 25-minute emulator run. Only when the module changes.
+on:
+  pull_request:
+    paths:
+      - 'apps/mobile/modules/usage-guard/**'
+      - '.github/workflows/guard-compile.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: guard-compile-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - run: bun install --frozen-lockfile
+      - name: Compile the usage-guard module
+        working-directory: apps/mobile
+        env:
+          E2E: '1'
+          EXPO_PUBLIC_API_URL: http://10.0.2.2:8787
+        run: |
+          bun x expo prebuild --platform android --no-install
+          cd android
+          project=$(./gradlew -q projects --no-daemon | grep -o "':[^']*usage-guard[^']*'" | head -1 | tr -d "'")
+          if [ -z "$project" ]; then ./gradlew -q projects --no-daemon; echo "usage-guard project not found"; exit 1; fi
+          echo "Compiling $project"
+          ./gradlew "$project:compileReleaseKotlin" "$project:processReleaseManifest" --no-daemon

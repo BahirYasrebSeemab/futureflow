@@ -291,3 +291,23 @@ test('spend events and their watermark are saved together', async () => {
   await store.clearServerCopy();
   expect(await store.spendSeq()).toBe(9);
 });
+
+test('guard steps the owner ticked stay ticked, also across re-pairing', async () => {
+  const { store } = await open();
+  expect(await store.guardSteps()).toEqual([]);
+  await store.markGuardStep('recents', true);
+  await store.markGuardStep('autostart', true);
+  await store.markGuardStep('recents', true);
+  expect(await store.guardSteps()).toEqual(['autostart', 'recents']);
+  await store.markGuardStep('autostart', false);
+  await store.clearServerCopy();
+  expect(await store.guardSteps()).toEqual(['recents']);
+});
+
+test('an unreadable guard-steps value reads as nothing ticked', async () => {
+  const { store, db } = await open();
+  await db.runAsync("INSERT INTO kv (key, value) VALUES ('guard_steps', '{not json')");
+  expect(await store.guardSteps()).toEqual([]);
+  await store.markGuardStep('recents', true);
+  expect(await store.guardSteps()).toEqual(['recents']);
+});

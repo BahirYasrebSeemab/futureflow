@@ -9,6 +9,7 @@ const heartbeat = {
   uptimeSeconds: 3600,
   utcOffsetMinutes: 300,
   guardEnabled: true,
+  guardSinceUptimeSeconds: 60,
 };
 const reading = (over: object = {}) => ({
   id: uuidv7(),
@@ -149,5 +150,71 @@ describe('heartbeat clock check', () => {
       body: { ...heartbeat, at: T0 + 300_000 },
     });
     expect([ahead.status, ahead.body.error?.code, edge.status]).toEqual([422, 'clock_ahead', 200]);
+  });
+});
+
+describe('POST /v1/heartbeats', () => {
+  type Batch = { added: number; rejected: number; serverTime: number };
+  const beats = (n: number, from = T0 - n * 900_000) =>
+    Array.from({ length: n }, (_, i) => ({
+      ...heartbeat,
+      at: from + i * 900_000,
+      uptimeSeconds: 3600 + i * 900,
+      guardSinceUptimeSeconds: 60,
+    }));
+
+  it('stores a batch with the guard-since uptime; a resend adds nothing', async () => {
+    const app = makeApp();
+    const { token } = await pairDevice(app);
+    const body = { beats: beats(3) };
+
+    const first = await call<Batch>(app, 'POST', '/v1/heartbeats', { token, body });
+    const again = await call<Batch>(app, 'POST', '/v1/heartbeats', { token, body });
+    const rows = await env.DB.prepare(
+      'SELECT uptime_seconds, guard_since_uptime FROM heartbeats ORDER BY at',
+    ).all();
+
+    expect([first.status, first.body.data]).toEqual([
+      201,
+      { added: 3, rejected: 0, serverTime: T0 },
+    ]);
+    expect([again.status, again.body.data.added]).toEqual([200, 0]);
+    expect(rows.results).toEqual([
+      { uptime_seconds: 3600, guard_since_uptime: 60 },
+      { uptime_seconds: 4500, guard_since_uptime: 60 },
+      { uptime_seconds: 5400, guard_since_uptime: 60 },
+    ]);
+  });
+
+  it('drops and counts a beat from the future, keeping the rest', async () => {
+    const app = makeApp();
+    const { token } = await pairDevice(app);
+    const body = { beats: [...beats(2), { ...heartbeat, at: T0 + 300_001 }] };
+    const reply = await call<Batch>(app, 'POST', '/v1/heartbeats', { token, body });
+    expect([reply.status, reply.body.data.added, reply.body.data.rejected]).toEqual([201, 2, 1]);
+  });
+
+  it('takes the UTC offset from the newest beat', async () => {
+    const app = makeApp();
+    const { token } = await pairDevice(app);
+    const [older, newer] = beats(2);
+    // Listed newest first: the offset follows time, not position.
+    const body = {
+      beats: [
+        { ...newer, utcOffsetMinutes: 60 },
+        { ...older, utcOffsetMinutes: 0 },
+      ],
+    };
+    await call(app, 'POST', '/v1/heartbeats', { token, body });
+    const me = await call<{ utcOffsetMinutes: number }>(app, 'GET', '/v1/device/me', { token });
+    expect(me.body.data.utcOffsetMinutes).toBe(60);
+  });
+
+  it('refuses an empty batch and one over 96 beats', async () => {
+    const app = makeApp();
+    const { token } = await pairDevice(app);
+    const empty = await call(app, 'POST', '/v1/heartbeats', { token, body: { beats: [] } });
+    const big = await call(app, 'POST', '/v1/heartbeats', { token, body: { beats: beats(97) } });
+    expect([empty.status, big.status]).toEqual([400, 400]);
   });
 });

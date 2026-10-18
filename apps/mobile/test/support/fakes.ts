@@ -1,5 +1,5 @@
 import type { SpendSession } from '@/lib/guard/spend';
-import { noGuard, type Guard } from '@/lib/guard/types';
+import { noGuard, type Guard, type GuardSettings, type GuardStatus } from '@/lib/guard/types';
 import type { LedgerEvent } from '@futureflow/core';
 import { randomBytes } from 'node:crypto';
 import type { Api, Today } from '@/lib/api/client';
@@ -150,26 +150,56 @@ export async function testServices(
 
 /** A guard that records what the app tells it; `sessions` is what it has counted. */
 export function fakeGuard(
-  overrides: Partial<Guard> & { sessions?: SpendSession[]; enabled?: boolean } = {},
+  overrides: Partial<Guard> & {
+    sessions?: SpendSession[];
+    enabled?: boolean;
+    /** Status fields to change (named apart from `Guard.status`, which overrides replace). */
+    state?: Partial<GuardStatus>;
+  } = {},
 ) {
+  const { sessions, enabled, state, ...methods } = overrides;
   const calls = {
     commit: [] as [number, number][],
     blocked: [] as [string[], boolean][],
-    opened: 0,
+    settings: [] as GuardSettings[],
+    linked: [] as [string, string][],
+    unlinked: 0,
+    notificationRequests: 0,
+  };
+  let status: GuardStatus = {
+    available: true,
+    enabled: enabled ?? true,
+    connected: enabled ?? true,
+    foreground: enabled ?? true,
+    notifications: true,
+    batteryUnrestricted: true,
+    xiaomi: false,
+    ...state,
   };
   const guard: Guard = {
-    status: async () => ({ available: true, enabled: overrides.enabled ?? true }),
+    status: async () => status,
     setBlockedApps: async (packages, blockGames) => {
       calls.blocked.push([[...packages], blockGames]);
     },
-    pendingSpend: async () => overrides.sessions ?? [],
+    pendingSpend: async () => sessions ?? [],
     commit: async (watermark, balance) => {
       calls.commit.push([watermark, balance]);
     },
-    openSettings: async () => {
-      calls.opened++;
+    openSettings: async (kind) => {
+      calls.settings.push(kind);
     },
-    ...overrides,
+    requestNotifications: async () => {
+      calls.notificationRequests++;
+      status = { ...status, notifications: true };
+      return true;
+    },
+    link: async (apiUrl, token) => {
+      calls.linked.push([apiUrl, token]);
+    },
+    unlink: async () => {
+      calls.unlinked++;
+    },
+    ...methods,
   };
   return { guard, calls };
 }

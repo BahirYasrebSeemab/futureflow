@@ -71,6 +71,24 @@ export const HeartbeatSchema = z.object({
   uptimeSeconds: z.number().int().nonnegative(),
   utcOffsetMinutes: UtcOffsetSchema,
   guardEnabled: z.boolean(),
+  /**
+   * Uptime when the guard's service last connected; null when it isn't connected. Required: a
+   * stored null means "not running", so it can't also mean "not sent".
+   */
+  guardSinceUptimeSeconds: z.number().int().nonnegative().nullable(),
+});
+
+/** One day of beats at one per 15 minutes: what a phone queues while offline is sent in chunks. */
+export const MAX_HEARTBEAT_BATCH = 96;
+
+export const HeartbeatBatchSchema = z.object({
+  beats: z.array(HeartbeatSchema).min(1).max(MAX_HEARTBEAT_BATCH),
+});
+
+export const HeartbeatBatchResponseSchema = z.object({
+  added: z.number().int().nonnegative(),
+  rejected: z.number().int().nonnegative(),
+  serverTime: z.number().int(),
 });
 
 export const ReadingLogSchema = z.object({
@@ -122,5 +140,6 @@ export const TodaySchema = z.object({
 });
 
 export type Heartbeat = z.infer<typeof HeartbeatSchema>;
+export type HeartbeatBatch = z.infer<typeof HeartbeatBatchSchema>;
 export type ReadingLog = z.infer<typeof ReadingLogSchema>;
 export type MathAttempt = z.infer<typeof MathAttemptSchema>;

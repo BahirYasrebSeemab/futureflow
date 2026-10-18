@@ -49,6 +49,9 @@ bun run --cwd apps/mobile test                 # Jest, with real SQL through nod
 - The guard: a Kotlin module (`modules/usage-guard`) blocks social apps and games with a native
   shield once the time runs out, and counts the minutes spent ([ADR 0016](docs/adr/0016-the-guard-core.md)).
   Its accounting is tested with JUnit in CI (`modules/usage-guard/logic-tests`).
+- Staying alive: a foreground service shows the minutes left, and a native heartbeat (queued while
+  offline, Doze-proof) tells the server "phone off" from "guard off"
+  ([ADR 0017](docs/adr/0017-keeping-the-guard-alive.md)).
 - The phone bundle includes the math checker (CAS), so it's built only in CI or EAS. Never run
   `expo export` on a small machine.
 - CI bundles the app for Android. The `Android e2e` workflow pairs a release build with a local Worker

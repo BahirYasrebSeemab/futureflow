@@ -62,6 +62,67 @@ describe('analyzeBeats', () => {
   });
 });
 
+describe('analyzeBeats: Doze', () => {
+  it('a beat held back by Doze is no gap when the guard stayed connected since before the last beat', () => {
+    const late = beat(180, { guardSinceUptimeSeconds: 60 });
+    expect(analyzeBeats([beat(0, { guardSinceUptimeSeconds: 60 }), late], DEFAULT_RULES)).toEqual(
+      [],
+    );
+  });
+
+  it('calls the silence "guard disabled" when the guard reconnected after the last beat', () => {
+    // beat(0) has uptime 3600 s; the guard came back at uptime 3600 + 90 min.
+    const late = beat(180, { guardSinceUptimeSeconds: 3600 + 90 * 60 });
+    expect(analyzeBeats([beat(0), late], DEFAULT_RULES)).toEqual([
+      { kind: 'guard_disabled', from: 0, to: 180 * MIN },
+    ]);
+  });
+
+  it('calls the silence "guard disabled" when the late beat has the guard disconnected', () => {
+    const late = beat(180, { guardSinceUptimeSeconds: null });
+    expect(analyzeBeats([beat(0), late], DEFAULT_RULES)).toEqual([
+      { kind: 'guard_disabled', from: 0, to: 180 * MIN },
+    ]);
+  });
+
+  it('does not excuse a silence after a beat that reported the guard off', () => {
+    const before = beat(0, { guardEnabled: false });
+    const late = beat(180, { guardSinceUptimeSeconds: 60 });
+    expect(analyzeBeats([before, late], DEFAULT_RULES)).toEqual([
+      { kind: 'guard_disabled', from: 0, to: 180 * MIN },
+    ]);
+  });
+
+  it('still calls a reboot "phone off", whatever the guard reports', () => {
+    const late = beat(600, { bootId: 'boot-2', uptimeSeconds: 120, guardSinceUptimeSeconds: 30 });
+    expect(analyzeBeats([beat(0), late], DEFAULT_RULES)).toEqual([
+      { kind: 'phone_off', from: 0, to: 600 * MIN },
+    ]);
+  });
+});
+
+describe('analyzeBeats: switched on but not running', () => {
+  it('counts time after a beat with the guard switched on but not connected as "guard disabled"', () => {
+    const beats = [
+      beat(0, { guardSinceUptimeSeconds: 60 }),
+      beat(15, { guardSinceUptimeSeconds: null }),
+      beat(30, { guardSinceUptimeSeconds: null }),
+      beat(45, { guardSinceUptimeSeconds: 4500 }),
+    ];
+    expect(analyzeBeats(beats, DEFAULT_RULES)).toEqual([
+      { kind: 'guard_disabled', from: 15 * MIN, to: 45 * MIN },
+    ]);
+  });
+
+  it('a long silence after a not-connected beat is not excused by a later beat', () => {
+    const before = beat(0, { guardSinceUptimeSeconds: null });
+    const late = beat(180, { guardSinceUptimeSeconds: 60 });
+    expect(analyzeBeats([before, late], DEFAULT_RULES)).toEqual([
+      { kind: 'guard_disabled', from: 0, to: 180 * MIN },
+    ]);
+  });
+});
+
 describe('overlapMs', () => {
   it('measures how much of a window a kind of gap covers', () => {
     const gaps = [

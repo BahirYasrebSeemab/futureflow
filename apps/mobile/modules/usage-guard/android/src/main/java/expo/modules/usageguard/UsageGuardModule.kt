@@ -1,8 +1,10 @@
 package expo.modules.usageguard
 
+import android.content.ActivityNotFoundException
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.SystemClock
 import android.provider.Settings
 import expo.modules.kotlin.exception.Exceptions
@@ -17,7 +19,16 @@ class UsageGuardModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("UsageGuard")
 
-    AsyncFunction("status") { mapOf("enabled" to isServiceEnabled(context)) }
+    AsyncFunction("status") {
+      mapOf(
+        "enabled" to GuardHealth.enabled(context),
+        "connected" to GuardHealth.connected(),
+        "foreground" to GuardForegroundService.running(),
+        "notifications" to GuardHealth.notificationsAllowed(context),
+        "batteryUnrestricted" to GuardHealth.batteryUnrestricted(context),
+        "xiaomi" to GuardHealth.xiaomi(),
+      )
+    }
 
     AsyncFunction("setBlockedApps") { packages: List<String>, blockGames: Boolean ->
       GuardStore.setBlocked(context, packages.toSet(), blockGames)
@@ -39,21 +50,65 @@ class UsageGuardModule : Module() {
       GuardStore.update(context) {
         it.commit(watermark.toLong(), balanceSeconds.toLong(), GuardClock.today())
       }
+      GuardForegroundService.poke()
       Unit
     }
 
-    AsyncFunction("openSettings") {
-      context.startActivity(
-        Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-      )
+    // The heartbeat's own copy of the token, so it runs when React Native doesn't.
+    AsyncFunction("link") { apiUrl: String, token: String ->
+      HeartbeatStore.link(context, apiUrl, token)
+      HeartbeatWorker.schedule(context)
+      HeartbeatWorker.beatNow(context)
+    }
+
+    AsyncFunction("unlink") { HeartbeatStore.unlink(context) }
+
+    AsyncFunction("openSettings") { kind: String -> open(settingsIntent(kind)) }
+  }
+
+  private fun settingsIntent(kind: String): Intent {
+    val pkg = context.packageName
+    return when (kind) {
+      "notifications" ->
+        Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, pkg)
+      "battery" ->
+        if (GuardHealth.xiaomi()) {
+          Intent()
+            .setComponent(ComponentName(MIUI_POWER, "$MIUI_POWER.ui.HiddenAppsConfigActivity"))
+            .putExtra("package_name", pkg)
+            .putExtra("package_label", context.applicationInfo.loadLabel(context.packageManager))
+        } else {
+          Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:$pkg"))
+        }
+      "autostart" ->
+        Intent()
+          .setComponent(
+            ComponentName(MIUI_SECURITY, "com.miui.permcenter.autostart.AutoStartManagementActivity")
+          )
+      else -> Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
     }
   }
 
-  private fun isServiceEnabled(context: Context): Boolean {
-    val me = ComponentName(context, UsageGuardService::class.java)
-    val enabled =
-      Settings.Secure.getString(context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
-        ?: return false
-    return enabled.split(':').any { ComponentName.unflattenFromString(it) == me }
+  /** Vendor screens move between versions: when one is missing, App info is the way there. */
+  private fun open(intent: Intent) {
+    try {
+      context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    } catch (e: ActivityNotFoundException) {
+      openAppInfo()
+    } catch (e: SecurityException) {
+      openAppInfo()
+    }
+  }
+
+  private fun openAppInfo() {
+    context.startActivity(
+      Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    )
+  }
+
+  private companion object {
+    const val MIUI_POWER = "com.miui.powerkeeper"
+    const val MIUI_SECURITY = "com.miui.securitycenter"
   }
 }

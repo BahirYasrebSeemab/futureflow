@@ -1,4 +1,9 @@
-import { HeartbeatSchema, MathAttemptBatchSchema, ReadingLogSchema } from '@futureflow/contracts';
+import {
+  HeartbeatBatchSchema,
+  HeartbeatSchema,
+  MathAttemptBatchSchema,
+  ReadingLogSchema,
+} from '@futureflow/contracts';
 import { Hono } from 'hono';
 import type { AppEnv } from '../env';
 import { deviceToday, isWithinDays, MAX_FUTURE_SKEW_MS } from '../http/day';
@@ -12,9 +17,31 @@ export const telemetryRoutes = new Hono<AppEnv>()
     const now = deps.now();
     // A beat from the future would invent gaps (spec §6.5: reject events well in the future).
     if (beat.at > now + MAX_FUTURE_SKEW_MS) return fail(c, 'clock_ahead');
-    await deps.repos.telemetry.addHeartbeat(device.id, beat, now);
+    await deps.repos.telemetry.addHeartbeats(device.id, [beat], now);
     await deps.repos.devices.setUtcOffset(device.id, beat.utcOffsetMinutes);
     return ok(c, { serverTime: now });
+  })
+  // Beats the phone queued while offline, oldest first. A beat from the future is dropped, not
+  // failed, so the phone's queue always drains; a resend after a lost answer adds nothing.
+  .post('/heartbeats', valid('json', HeartbeatBatchSchema), async (c) => {
+    const { deps, device } = c.var;
+    const now = deps.now();
+    const { beats } = c.req.valid('json');
+    const fine = beats.filter((b) => b.at <= now + MAX_FUTURE_SKEW_MS);
+    const added =
+      fine.length > 0 ? await deps.repos.telemetry.addHeartbeats(device.id, fine, now) : 0;
+    const newest = fine.reduce<(typeof fine)[number] | undefined>(
+      (last, b) => (last === undefined || b.at >= last.at ? b : last),
+      undefined,
+    );
+    if (newest !== undefined) {
+      await deps.repos.devices.setUtcOffset(device.id, newest.utcOffsetMinutes);
+    }
+    return ok(
+      c,
+      { added, rejected: beats.length - fine.length, serverTime: now },
+      added > 0 ? 201 : 200,
+    );
   })
   .post('/reading', valid('json', ReadingLogSchema), async (c) => {
     const { deps, device } = c.var;

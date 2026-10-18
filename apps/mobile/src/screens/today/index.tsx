@@ -55,7 +55,7 @@ export function TodayScreen() {
   const bottomPadding = useBottomPadding();
   const { forgetPairing } = useApp();
   const view = useToday();
-  const guard = useGuardStatus();
+  const { status: guard } = useGuardStatus();
   const { loaded, syncing, tried, saved, ledgerComplete, balanceSeconds, lastSync, refresh } = view;
   const center = [styles.center, { backgroundColor: c.background }];
   const actions = useDayActions(saved?.today.day ?? '', refresh);
@@ -110,13 +110,13 @@ export function TodayScreen() {
     >
       {notice !== null && <Banner tone="warning" message={notice} />}
       {actions.message !== null && <Banner tone="warning" message={actions.message} />}
-      {guard?.available === true && !guard.enabled && (
+      {guard?.available === true && (!guard.enabled || !guard.connected) && (
         <Banner
           tone="warning"
-          message="The guard is off"
+          message={guard.enabled ? "The guard isn't running" : 'The guard is off'}
           action={{
             testID: 'open-guard',
-            label: 'Turn it on',
+            label: guard.enabled ? 'Fix it' : 'Turn it on',
             onPress: () => router.push('/guard'),
           }}
         />

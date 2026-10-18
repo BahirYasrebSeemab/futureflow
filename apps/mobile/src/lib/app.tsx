@@ -14,7 +14,7 @@ import { StartupError } from './config';
 import type { Ids } from './ids';
 import type { Guard } from './guard/types';
 import type { Locator } from './location';
-import { forgetPairing, readSession, type Session } from './pairing';
+import { forgetPairing, readSession, TOKEN_KEY, type Session } from './pairing';
 import type { SecretStore } from './secrets';
 import type { LocalStore } from './store/types';
 import type { Syncer } from './sync';
@@ -81,6 +81,22 @@ export function AppProvider({
   }, []);
 
   const services = state.phase === 'ready' ? state.services : null;
+  const sessionStatus = state.phase === 'ready' ? state.session.status : null;
+
+  // The guard's heartbeat runs without React Native, so it keeps its own copy of the token.
+  useEffect(() => {
+    if (services === null || sessionStatus === null) return;
+    void (async () => {
+      try {
+        const token = sessionStatus === 'paired' ? await services.secrets.get(TOKEN_KEY) : null;
+        if (token === null) await services.guard.unlink();
+        else await services.guard.link(services.apiUrl, token);
+      } catch (error) {
+        const name = error instanceof Error ? error.name : 'unknown';
+        console.error(JSON.stringify({ event: 'guard_link_failed', name }));
+      }
+    })();
+  }, [services, sessionStatus]);
   const forget = useCallback(async () => {
     if (services === null) return;
     await services.syncer.idle(); // a running sync must not write after the wipe

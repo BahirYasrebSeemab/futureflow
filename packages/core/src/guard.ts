@@ -5,6 +5,8 @@ export type Beat = Readonly<{
   bootId: string;
   uptimeSeconds: number;
   guardEnabled: boolean;
+  /** Uptime when the guard's service last connected; null when it isn't connected. */
+  guardSinceUptimeSeconds?: number | null;
 }>;
 export type GuardGapKind = 'phone_off' | 'guard_disabled';
 export type GuardGap = Readonly<{ kind: GuardGapKind; from: number; to: number }>;
@@ -17,7 +19,9 @@ const MS_PER_SECOND = 1_000;
 /**
  * Spec §6.5. A gap that ends with a new boot (new boot id, or uptime shorter than the silence)
  * means the phone was off: not a miss. A gap without a reboot, or time after a beat that reported
- * the guard off, means the guard was disabled: a miss. Adjacent gaps of one kind are merged.
+ * the guard off (or on but not running), means the guard was disabled: a miss. Adjacent gaps of one kind are merged.
+ * Doze can hold a beat back for hours: a silence isn't a gap when the next beat shows the guard
+ * connected since before the previous beat on the same boot.
  */
 export function analyzeBeats(beats: readonly Beat[], rules: Rules): GuardGap[] {
   const sorted = [...beats].sort((a, b) => a.at - b.at);
@@ -38,12 +42,26 @@ export function analyzeBeats(beats: readonly Beat[], rules: Rules): GuardGap[] {
     const silence = b.at - a.at;
     if (silence > limit) {
       const rebooted = b.bootId !== a.bootId || b.uptimeSeconds * MS_PER_SECOND < silence;
-      push({ kind: rebooted ? 'phone_off' : 'guard_disabled', from: a.at, to: b.at });
-    } else if (!a.guardEnabled) {
+      if (rebooted) push({ kind: 'phone_off', from: a.at, to: b.at });
+      else if (!stayedOn(a, b)) push({ kind: 'guard_disabled', from: a.at, to: b.at });
+    } else if (!isOn(a)) {
       push({ kind: 'guard_disabled', from: a.at, to: b.at });
     }
   }
   return gaps;
+}
+
+/**
+ * Switched on in Settings and, where the beat says, actually running: a service Android stopped
+ * but left listed as on blocks nothing. Beats without the field (older senders) count as before.
+ */
+function isOn(beat: Beat): boolean {
+  return beat.guardEnabled && beat.guardSinceUptimeSeconds !== null;
+}
+
+function stayedOn(a: Beat, b: Beat): boolean {
+  const since = b.guardSinceUptimeSeconds;
+  return isOn(a) && since !== undefined && since !== null && since <= a.uptimeSeconds;
 }
 
 /** Milliseconds of [from, to) covered by gaps of `kind`; overlapping gaps count once. */

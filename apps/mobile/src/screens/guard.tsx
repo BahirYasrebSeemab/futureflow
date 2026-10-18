@@ -5,6 +5,7 @@ import { useApp } from '@/lib/app';
 import { BLOCKED_APPS } from '@/lib/guard/types';
 import { useGuardStatus } from '@/lib/guard/use-guard-status';
 import { radius, space, usePalette } from '@/theme';
+import { GuardChecklist } from './guard-checklist';
 
 const BLOCKED_NAMES = [...new Set(BLOCKED_APPS.map(([, name]) => name)), 'Games'];
 
@@ -13,17 +14,23 @@ export function GuardScreen() {
   const c = usePalette();
   const bottomPadding = useBottomPadding();
   const { services } = useApp();
-  const status = useGuardStatus();
+  const { status, refresh } = useGuardStatus();
   if (status === null) return null;
 
+  // Android can stop the service and leave it listed as on: then nothing is blocked either.
+  const stalled = status.enabled && !status.connected;
   const headline = !status.available
     ? 'The guard needs the Android app'
+    : stalled
+      ? "The guard isn't running"
+      : status.enabled
+        ? 'The guard is on'
+        : 'The guard is off';
+  const detail = stalled
+    ? 'Android stopped it, so nothing is blocked.'
     : status.enabled
-      ? 'The guard is on'
-      : 'The guard is off';
-  const detail = status.enabled
-    ? 'When your time runs out, blocked apps are covered until you earn more.'
-    : 'Until it is on, nothing is blocked.';
+      ? 'When your time runs out, blocked apps are covered until you earn more.'
+      : 'Until it is on, nothing is blocked.';
   return (
     <ScrollView
       style={{ backgroundColor: c.background }}
@@ -37,22 +44,31 @@ export function GuardScreen() {
         {headline}
       </Text>
       {status.available && <Text style={[styles.muted, { color: c.muted }]}>{detail}</Text>}
-      {status.available && !status.enabled && (
+      {status.available && (!status.enabled || stalled) && (
         <View style={[styles.card, { borderColor: c.border, backgroundColor: c.surface }]}>
-          <Text style={[styles.step, { color: c.text }]}>
-            1. Open Accessibility, choose Future Flow guard, and turn it on.
-          </Text>
-          <Text style={[styles.step, { color: c.text }]}>
-            2. If Android says “Restricted setting”: open App info for Future Flow, tap ⋮, choose
-            “Allow restricted settings”, then try step 1 again.
-          </Text>
+          {stalled ? (
+            <Text style={[styles.step, { color: c.text }]}>
+              Open Accessibility, then switch Future Flow guard off and on again.
+            </Text>
+          ) : (
+            <>
+              <Text style={[styles.step, { color: c.text }]}>
+                1. Open Accessibility, choose Future Flow guard, and turn it on.
+              </Text>
+              <Text style={[styles.step, { color: c.text }]}>
+                2. If Android says “Restricted setting”: open App info for Future Flow, tap ⋮,
+                choose “Allow restricted settings”, then try step 1 again.
+              </Text>
+            </>
+          )}
           <Button
             testID="guard-enable"
             label="Open Accessibility settings"
-            onPress={() => void services.guard.openSettings()}
+            onPress={() => void services.guard.openSettings('accessibility')}
           />
         </View>
       )}
+      {status.available && <GuardChecklist status={status} refresh={refresh} />}
       <Text style={[styles.label, { color: c.muted }]}>Blocked</Text>
       <Text style={[styles.muted, { color: c.text }]}>{BLOCKED_NAMES.join(', ')}</Text>
       <Text style={[styles.muted, { color: c.muted }]}>
