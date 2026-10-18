@@ -16,3 +16,8 @@ android {
     abortOnError false
   }
 }
+
+dependencies {
+  // The 15-minute heartbeat and watchdog, which run without React Native and survive reboots.
+  implementation "androidx.work:work-runtime:2.10.0"
+}

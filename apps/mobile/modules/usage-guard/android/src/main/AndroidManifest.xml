@@ -1,4 +1,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <!-- The heartbeat (spec §6.5), the "N min left" foreground service and its notification, and
+       the battery step of the checklist. -->
+  <uses-permission android:name="android.permission.INTERNET" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+  <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+  <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+  <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
   <!-- Lets the guard see launcher apps (to spot games) and find the default dialer and SMS app. -->
   <queries>
     <intent>
@@ -12,6 +21,9 @@
       <action android:name="android.intent.action.SENDTO" />
       <data android:scheme="smsto" />
     </intent>
+    <!-- Xiaomi's Autostart and battery screens, for the checklist. -->
+    <package android:name="com.miui.securitycenter" />
+    <package android:name="com.miui.powerkeeper" />
   </queries>
 
   <application>
@@ -35,5 +47,23 @@
       android:launchMode="singleInstance"
       android:taskAffinity=""
       android:theme="@android:style/Theme.Material.Light.NoActionBar" />
+
+    <service
+      android:name="expo.modules.usageguard.GuardForegroundService"
+      android:exported="false"
+      android:foregroundServiceType="specialUse">
+      <property
+        android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+        android:value="Shows the screen time left today and keeps the app blocker running" />
+    </service>
+
+    <receiver
+      android:name="expo.modules.usageguard.BootReceiver"
+      android:exported="true">
+      <intent-filter>
+        <action android:name="android.intent.action.BOOT_COMPLETED" />
+        <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+      </intent-filter>
+    </receiver>
   </application>
 </manifest>

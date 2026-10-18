@@ -50,6 +50,10 @@ class UsageGuardService : AccessibilityService() {
 
   override fun onServiceConnected() {
     super.onServiceConnected()
+    connectedSinceElapsed = SystemClock.elapsedRealtime()
+    HeartbeatStore.markEnabled(this)
+    GuardForegroundService.start(this)
+    HeartbeatWorker.beatNow(this) // the server sees the guard back without waiting 15 minutes
     neverBlocked = NEVER_BLOCKED_BASE + listOfNotNull(packageName, defaultDialer(), defaultSms())
     ignored = IGNORED_BASE + inputMethods()
     // Nobody knows when an earlier service stopped, so a session it left open can't be measured.
@@ -77,6 +81,8 @@ class UsageGuardService : AccessibilityService() {
   override fun onDestroy() {
     stopCounting()
     runCatching { unregisterReceiver(screen) }
+    connectedSinceElapsed = null
+    GuardForegroundService.stop(this)
     super.onDestroy()
   }
 
@@ -111,6 +117,7 @@ class UsageGuardService : AccessibilityService() {
         GuardStore.update(this) {
           it.enter(System.currentTimeMillis(), SystemClock.elapsedRealtime(), GuardClock.bootId(this))
         }
+        GuardForegroundService.poke()
         evaluate()
       }
     }
@@ -119,6 +126,7 @@ class UsageGuardService : AccessibilityService() {
   private fun stopCounting() {
     handler.removeCallbacks(recheck)
     GuardStore.update(this) { it.leave(SystemClock.elapsedRealtime()) }
+    GuardForegroundService.poke()
   }
 
   /** Shields now if the time is gone, otherwise checks again the moment it runs out. */
@@ -169,4 +177,10 @@ class UsageGuardService : AccessibilityService() {
     (getSystemService(TELECOM_SERVICE) as? TelecomManager)?.defaultDialerPackage
 
   private fun defaultSms(): String? = Telephony.Sms.getDefaultSmsPackage(this)
+
+  companion object {
+    /** When this process's service connected (monotonic ms); null while it isn't connected. */
+    @Volatile var connectedSinceElapsed: Long? = null
+      private set
+  }
 }

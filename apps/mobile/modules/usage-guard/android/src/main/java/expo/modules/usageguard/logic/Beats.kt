@@ -19,12 +19,15 @@ data class Beat(
 
 /** Beats waiting to be sent, oldest first. Past capacity the oldest go. */
 data class BeatQueue(val beats: List<Beat> = emptyList(), val capacity: Int = BEAT_CAPACITY) {
-  fun add(beat: Beat): BeatQueue = this
+  fun add(beat: Beat): BeatQueue = copy(beats = (beats + beat).takeLast(capacity))
 
-  fun batch(size: Int = BEAT_BATCH): List<Beat> = emptyList()
+  fun batch(size: Int = BEAT_BATCH): List<Beat> = beats.take(size)
 
   /** Removes exactly the beats sent, so a second sender working on the same queue loses none. */
-  fun remove(sent: List<Beat>): BeatQueue = this
+  fun remove(sent: List<Beat>): BeatQueue {
+    val gone = sent.toSet()
+    return copy(beats = beats.filterNot { it in gone })
+  }
 }
 
 enum class SendOutcome {
@@ -39,7 +42,17 @@ enum class SendOutcome {
 }
 
 /** `status` is the HTTP status, or null when no answer came. */
-fun sendOutcome(status: Int?): SendOutcome = SendOutcome.KEEP
+fun sendOutcome(status: Int?): SendOutcome =
+  when (status) {
+    null -> SendOutcome.KEEP
+    in 200..299 -> SendOutcome.SENT
+    401 -> SendOutcome.UNLINK
+    400, 413 -> SendOutcome.DISCARD
+    else -> SendOutcome.KEEP
+  }
 
 /** Whole minutes left for the notification, rounded up so "0 min" means out of time. */
-fun minutesLeft(remainingMs: Long): Long = 0
+fun minutesLeft(remainingMs: Long): Long =
+  if (remainingMs <= 0) 0 else (remainingMs + MS_PER_MINUTE - 1) / MS_PER_MINUTE
+
+private const val MS_PER_MINUTE = 60_000L

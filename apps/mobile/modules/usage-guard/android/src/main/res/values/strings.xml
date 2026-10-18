@@ -6,4 +6,10 @@
   <string name="guard_shield_body">Earn more by finishing a task in Future Flow.</string>
   <string name="guard_shield_open">Open Future Flow</string>
   <string name="guard_shield_home">Go home</string>
+  <string name="guard_time_channel">Time left</string>
+  <string name="guard_time_left">%1$d min left today</string>
+  <string name="guard_time_out">Out of time for today</string>
+  <string name="guard_alert_channel">Guard alerts</string>
+  <string name="guard_off_title">The guard is off</string>
+  <string name="guard_off_body">Nothing is blocked. Tap to turn it back on.</string>
 </resources>

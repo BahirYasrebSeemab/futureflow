@@ -17,4 +17,11 @@ fun watchdogPlan(
   everEnabled: Boolean,
   lastNudgeAt: Long?,
   now: Long,
-): WatchdogPlan = WatchdogPlan(startForeground = false, nudge = false)
+): WatchdogPlan {
+  // A clock set back makes the last nudge look in the future: treat it as long ago.
+  val quiet = lastNudgeAt != null && now >= lastNudgeAt && now - lastNudgeAt < NUDGE_EVERY_MS
+  return WatchdogPlan(
+    startForeground = connected && !foregroundRunning,
+    nudge = !enabled && everEnabled && !quiet,
+  )
+}
