@@ -169,7 +169,7 @@ export function fakeGuard(
 ) {
   const { sessions, enabled, state, installed, ...methods } = overrides;
   /** The monotonic clock; tests move it with `tick`. */
-  const clock: GuardClock = { elapsed: 0, bootId: '1' };
+  const clock = { elapsed: 0, bootId: '1' };
   const calls = {
     commit: [] as [number, number][],
     included: [] as string[][],
@@ -203,7 +203,7 @@ export function fakeGuard(
     grant: async (id, seconds) => {
       calls.grants.push([id, seconds]);
     },
-    clock: async () => clock,
+    clock: async (): Promise<GuardClock> => ({ ...clock }),
     installedApps: async () => installed ?? [],
     openSettings: async (kind) => {
       calls.settings.push(kind);
