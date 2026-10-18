@@ -52,3 +52,33 @@ if ! echo "$top" | grep -q ShieldActivity; then
   exit 1
 fi
 echo "The shield covers Settings"
+
+# Staying alive (P5b): the guard's foreground service runs, and the native heartbeat reached the
+# server with the guard on and connected.
+services=$(adb shell dumpsys activity services com.bahiryasreb.futureflow)
+if ! echo "$services" | grep -q GuardForegroundService || ! echo "$services" | grep -q 'isForeground=true'; then
+  echo "$services" | head -40
+  echo "The guard's foreground service is not running"
+  exit 1
+fi
+echo "The foreground service runs"
+beats=0
+for i in $(seq 1 12); do
+  beats=$("$E2E/heartbeats.sh" 2> /dev/null || echo 0)
+  beats=${beats//[^0-9]/}
+  beats=${beats:-0} # anything but a count is no count
+  if [ "$beats" -gt 0 ]; then break; fi
+  sleep 5
+done
+if [ "$beats" -eq 0 ]; then
+  grep -i heartbeat "$OUT/../wrangler.log" | tail -20 || true
+  echo "No heartbeat with the guard on reached the server"
+  exit 1
+fi
+echo "Heartbeats with the guard on: $beats"
+
+# The checklist, opened through the app's link (Maestro would switch the guard off again).
+adb shell input keyevent KEYCODE_HOME
+adb shell am start -W -a android.intent.action.VIEW -d futureflow://guard com.bahiryasreb.futureflow
+sleep 5
+adb exec-out screencap -p > "$OUT/16-guard-checklist.png"
