@@ -55,6 +55,9 @@ bun run --cwd apps/mobile test                 # Jest, with real SQL through nod
 - Emergency unlock from the shield (a reason, a 10-minute wait, 10 borrowed minutes, twice a day),
   and a picker for the blocked apps where unblocking waits for the next day
   ([ADR 0018](docs/adr/0018-unlock-and-picker.md)).
+- What the guard sees: blocked sites in Chrome, Brave and Edge; blocked apps in picture-in-picture or
+  split screen; and time it missed, from Android's usage log
+  ([ADR 0019](docs/adr/0019-what-the-guard-sees.md)).
 - The phone bundle includes the math checker (CAS), so it's built only in CI or EAS. Never run
   `expo export` on a small machine.
 - CI bundles the app for Android. The `Android e2e` workflow pairs a release build with a local Worker
