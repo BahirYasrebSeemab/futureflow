@@ -14,7 +14,7 @@ class BeatsTest {
   fun `beats queue oldest first`() {
     val q = BeatQueue().add(beat(1)).add(beat(2)).add(beat(3))
     assertEquals(listOf(beat(1), beat(2)), q.batch(2))
-    assertEquals(listOf(beat(3)), q.drop(2).beats)
+    assertEquals(listOf(beat(3)), q.remove(q.batch(2)).beats)
   }
 
   @Test
@@ -34,8 +34,17 @@ class BeatsTest {
   }
 
   @Test
-  fun `dropping more than the queue holds empties it`() {
-    assertEquals(emptyList(), BeatQueue().add(beat(1)).drop(5).beats)
+  fun `removing a batch twice loses no other beat`() {
+    val q = BeatQueue().add(beat(1)).add(beat(2)).add(beat(3))
+    val sent = q.batch(1)
+    assertEquals(listOf(beat(2), beat(3)), q.remove(sent).remove(sent).beats)
+  }
+
+  @Test
+  fun `a beat added while a batch was in flight stays`() {
+    val q = BeatQueue().add(beat(1))
+    val sent = q.batch()
+    assertEquals(listOf(beat(2)), q.add(beat(2)).remove(sent).beats)
   }
 
   @Test

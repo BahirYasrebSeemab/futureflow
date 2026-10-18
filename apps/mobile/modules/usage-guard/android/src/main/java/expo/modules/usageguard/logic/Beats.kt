@@ -23,7 +23,8 @@ data class BeatQueue(val beats: List<Beat> = emptyList(), val capacity: Int = BE
 
   fun batch(size: Int = BEAT_BATCH): List<Beat> = emptyList()
 
-  fun drop(n: Int): BeatQueue = this
+  /** Removes exactly the beats sent, so a second sender working on the same queue loses none. */
+  fun remove(sent: List<Beat>): BeatQueue = this
 }
 
 enum class SendOutcome {
