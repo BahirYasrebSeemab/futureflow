@@ -5,6 +5,7 @@ import { useApp } from '@/lib/app';
 import { BLOCKED_APPS } from '@/lib/guard/types';
 import { useGuardStatus } from '@/lib/guard/use-guard-status';
 import { radius, space, usePalette } from '@/theme';
+import { GuardChecklist } from './guard-checklist';
 
 const BLOCKED_NAMES = [...new Set(BLOCKED_APPS.map(([, name]) => name)), 'Games'];
 
@@ -13,7 +14,7 @@ export function GuardScreen() {
   const c = usePalette();
   const bottomPadding = useBottomPadding();
   const { services } = useApp();
-  const status = useGuardStatus();
+  const { status, refresh } = useGuardStatus();
   if (status === null) return null;
 
   const headline = !status.available
@@ -49,10 +50,11 @@ export function GuardScreen() {
           <Button
             testID="guard-enable"
             label="Open Accessibility settings"
-            onPress={() => void services.guard.openSettings()}
+            onPress={() => void services.guard.openSettings('accessibility')}
           />
         </View>
       )}
+      {status.available && <GuardChecklist status={status} refresh={refresh} />}
       <Text style={[styles.label, { color: c.muted }]}>Blocked</Text>
       <Text style={[styles.muted, { color: c.text }]}>{BLOCKED_NAMES.join(', ')}</Text>
       <Text style={[styles.muted, { color: c.muted }]}>

@@ -4,12 +4,15 @@ import { AppState } from 'react-native';
 import { useApp } from '../app';
 import type { GuardStatus } from './types';
 
-/** The guard's state, read again on focus and when the owner comes back from Settings. */
-export function useGuardStatus(): GuardStatus | null {
+/**
+ * The guard's state, read again on focus and when the owner comes back from Settings. `refresh`
+ * reads it now (after a permission prompt, which doesn't leave the app).
+ */
+export function useGuardStatus(): { status: GuardStatus | null; refresh: () => Promise<void> } {
   const { services } = useApp();
   const [status, setStatus] = useState<GuardStatus | null>(null);
 
-  const read = useCallback(async () => {
+  const refresh = useCallback(async () => {
     try {
       setStatus(await services.guard.status());
     } catch (error) {
@@ -20,15 +23,15 @@ export function useGuardStatus(): GuardStatus | null {
 
   useFocusEffect(
     useCallback(() => {
-      void read();
-    }, [read]),
+      void refresh();
+    }, [refresh]),
   );
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (next) => {
-      if (next === 'active') void read();
+      if (next === 'active') void refresh();
     });
     return () => subscription.remove();
-  }, [read]);
+  }, [refresh]);
 
-  return status;
+  return { status, refresh };
 }

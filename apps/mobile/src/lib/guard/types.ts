@@ -5,7 +5,18 @@ export type GuardStatus = Readonly<{
   available: boolean;
   /** The accessibility service is switched on. */
   enabled: boolean;
+  /** The service runs in the app's process right now. */
+  connected: boolean;
+  /** The "N min left" foreground service runs. */
+  foreground: boolean;
+  notifications: boolean;
+  /** Android's battery optimisation leaves the app alone. */
+  batteryUnrestricted: boolean;
+  /** Xiaomi, Redmi and POCO phones also need Autostart and a lock in recents. */
+  xiaomi: boolean;
 }>;
+
+export type GuardSettings = 'accessibility' | 'notifications' | 'battery' | 'autostart';
 
 /** The native guard (spec §7): it enforces the balance on blocked apps and counts time spent. */
 export interface Guard {
@@ -15,7 +26,12 @@ export interface Guard {
   pendingSpend(): Promise<SpendSession[]>;
   /** Sessions up to `watermark` are recorded as events; `balanceSeconds` already counts them. */
   commit(watermark: number, balanceSeconds: number): Promise<void>;
-  openSettings(): Promise<void>;
+  openSettings(kind: GuardSettings): Promise<void>;
+  /** Asks Android to allow notifications; true once they are allowed. */
+  requestNotifications(): Promise<boolean>;
+  /** The native heartbeat's own copy of where to send and the device token (spec §6.5). */
+  link(apiUrl: string, token: string): Promise<void>;
+  unlink(): Promise<void>;
 }
 
 /** Social apps blocked by default, with the names the Guard screen shows. Games are blocked too. */
@@ -33,9 +49,20 @@ export const BLOCKED_APPS: readonly (readonly [string, string])[] = [
 
 /** Where there is no native guard: nothing is enforced and nothing is counted. */
 export const noGuard: Guard = {
-  status: async () => ({ available: false, enabled: false }),
+  status: async () => ({
+    available: false,
+    enabled: false,
+    connected: false,
+    foreground: false,
+    notifications: false,
+    batteryUnrestricted: false,
+    xiaomi: false,
+  }),
   setBlockedApps: async () => {},
   pendingSpend: async () => [],
   commit: async () => {},
   openSettings: async () => {},
+  requestNotifications: async () => false,
+  link: async () => {},
+  unlink: async () => {},
 };

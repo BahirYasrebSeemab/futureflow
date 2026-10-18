@@ -22,6 +22,9 @@ export type PlacementRecord = Readonly<{ state: PlacementState; done: boolean }>
 export type AwayWindowRef = Readonly<{ id: string; from: string; to: string }>;
 
 /** The phone's own data: unsent events, refused events, the server-confirmed ledger and small values. */
+/** Xiaomi steps on the Guard screen. */
+export type GuardStep = 'battery' | 'autostart' | 'recents';
+
 export interface LocalStore {
   /** Validates every event first; writes all or nothing. A repeated id is ignored. */
   enqueue(events: readonly LedgerEvent[]): Promise<void>;
@@ -31,6 +34,9 @@ export interface LocalStore {
   enqueueSpend(events: readonly LedgerEvent[], seq: number): Promise<void>;
   /** The guard's last recorded session; it stays across re-pairing (it is the phone's own). */
   spendSeq(): Promise<number>;
+  /** Guard steps Android can't report, ticked by the owner; the phone's own, kept on re-pairing. */
+  guardSteps(): Promise<GuardStep[]>;
+  markGuardStep(step: GuardStep, done: boolean): Promise<void>;
   /**
    * The server answered: `added` events move into the confirmed ledger (so the balance keeps them
    * even if the pull fails); `ignored` ones are dropped, because the server already holds its own copy.

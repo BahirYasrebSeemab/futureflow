@@ -13,7 +13,14 @@ import type { MockResult, TopicProgress } from '../math/engine';
 import type { LedgerEvent } from '@futureflow/core';
 import { z } from 'zod';
 import type { SqlDb } from './sql';
-import type { AwayWindowRef, LocalStore, PlacementRecord, SavedToday, SyncReport } from './types';
+import type {
+  AwayWindowRef,
+  GuardStep,
+  LocalStore,
+  PlacementRecord,
+  SavedToday,
+  SyncReport,
+} from './types';
 
 const SavedTodaySchema = z.object({ today: TodaySchema, savedAt: z.number().int() });
 const SyncReportSchema = z.object({
@@ -55,6 +62,7 @@ const KEY = {
   bankCursor: 'bank_cursor',
   coachCursor: 'coach_cursor',
   spendSeq: 'guard_spend_seq',
+  guardSteps: 'guard_steps',
 } as const;
 /** What came from the server; the rest of kv (away windows, check times) is the phone's own. */
 const SERVER_KEYS = [
@@ -75,6 +83,12 @@ function createQueue() {
     return run;
   };
 }
+
+const GUARD_STEPS: readonly GuardStep[] = ['autostart', 'battery', 'recents'];
+const readSteps = (raw: string | null): GuardStep[] => {
+  const parsed: unknown = raw === null ? [] : JSON.parse(raw);
+  return Array.isArray(parsed) ? GUARD_STEPS.filter((step) => parsed.includes(step)) : [];
+};
 
 const toAttempts = (rows: readonly { attempt: string }[]): MathAttempt[] =>
   rows.map((row) => JSON.parse(row.attempt) as MathAttempt);
@@ -128,6 +142,14 @@ export function sqliteStore(db: SqlDb): LocalStore {
         });
       }),
     spendSeq: async () => Number((await getKv(KEY.spendSeq)) ?? 0),
+    guardSteps: async () => readSteps(await getKv(KEY.guardSteps)),
+    markGuardStep: (step, done) =>
+      write(async () => {
+        const steps = new Set(readSteps(await getKv(KEY.guardSteps)));
+        if (done) steps.add(step);
+        else steps.delete(step);
+        await setKv(KEY.guardSteps, JSON.stringify([...steps].sort()));
+      }),
     pending: async (limit = -1) =>
       toEvents(
         await db.getAllAsync<{ event: string }>(

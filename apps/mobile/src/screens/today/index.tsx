@@ -55,7 +55,7 @@ export function TodayScreen() {
   const bottomPadding = useBottomPadding();
   const { forgetPairing } = useApp();
   const view = useToday();
-  const guard = useGuardStatus();
+  const { status: guard } = useGuardStatus();
   const { loaded, syncing, tried, saved, ledgerComplete, balanceSeconds, lastSync, refresh } = view;
   const center = [styles.center, { backgroundColor: c.background }];
   const actions = useDayActions(saved?.today.day ?? '', refresh);
