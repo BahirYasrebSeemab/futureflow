@@ -2,6 +2,7 @@ package expo.modules.usageguard
 
 import android.content.Context
 import android.content.SharedPreferences
+import expo.modules.usageguard.logic.Grant
 import expo.modules.usageguard.logic.Meter
 import expo.modules.usageguard.logic.OpenSession
 import expo.modules.usageguard.logic.Session
@@ -70,6 +71,10 @@ internal object GuardStore {
         ),
       )
       .put(
+        "grants",
+        JSONArray(m.grants.map { JSONObject().put("id", it.id).put("day", it.day).put("seconds", it.seconds) }),
+      )
+      .put(
         "open",
         m.open?.let {
           JSONObject()
@@ -83,6 +88,8 @@ internal object GuardStore {
   private fun decode(o: JSONObject): Meter {
     val sessions = o.getJSONArray("sessions")
     val open = o.optJSONObject("open")
+    // Meters stored before unlocks existed have no grants.
+    val grants = o.optJSONArray("grants") ?: JSONArray()
     return Meter(
       balanceSeconds = if (o.isNull("balanceSeconds")) null else o.getLong("balanceSeconds"),
       balanceDay = if (o.isNull("balanceDay")) null else o.getLong("balanceDay"),
@@ -97,6 +104,11 @@ internal object GuardStore {
         },
       nextSeq = o.getLong("nextSeq"),
       baseSeconds = o.getLong("baseSeconds"),
+      grants =
+        (0 until grants.length()).map {
+          val g = grants.getJSONObject(it)
+          Grant(g.getString("id"), g.getLong("day"), g.getLong("seconds"))
+        },
     )
   }
 }

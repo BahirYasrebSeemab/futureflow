@@ -22,6 +22,13 @@ import type {
   SyncReport,
 } from './types';
 
+const UnlockWaitSchema = z.object({
+  reason: z.string(),
+  startedAt: z.number(),
+  startElapsed: z.number(),
+  bootId: z.string(),
+});
+
 const SavedTodaySchema = z.object({ today: TodaySchema, savedAt: z.number().int() });
 const SyncReportSchema = z.object({
   status: z.enum(['ok', 'offline', 'server_error', 'unauthorized', 'invalid_response']),
@@ -63,6 +70,7 @@ const KEY = {
   coachCursor: 'coach_cursor',
   spendSeq: 'guard_spend_seq',
   guardSteps: 'guard_steps',
+  unlockWait: 'unlock_wait',
 } as const;
 /** What came from the server; the rest of kv (away windows, check times) is the phone's own. */
 const SERVER_KEYS = [
@@ -148,6 +156,15 @@ export function sqliteStore(db: SqlDb): LocalStore {
       }),
     spendSeq: async () => Number((await getKv(KEY.spendSeq)) ?? 0),
     guardSteps: async () => readSteps(await getKv(KEY.guardSteps)),
+    unlockWait: async () => {
+      const raw = await getKv(KEY.unlockWait);
+      return raw === null ? null : UnlockWaitSchema.parse(JSON.parse(raw));
+    },
+    saveUnlockWait: (wait) =>
+      write(async () => {
+        if (wait === null) await db.runAsync('DELETE FROM kv WHERE key = ?', KEY.unlockWait);
+        else await setKv(KEY.unlockWait, JSON.stringify(wait));
+      }),
     markGuardStep: (step, done) =>
       write(async () => {
         const steps = new Set(readSteps(await getKv(KEY.guardSteps)));

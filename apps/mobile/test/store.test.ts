@@ -311,3 +311,19 @@ test('an unreadable guard-steps value reads as nothing ticked', async () => {
   await store.markGuardStep('recents', true);
   expect(await store.guardSteps()).toEqual(['recents']);
 });
+
+test('an unlock wait is kept until cleared, also across re-pairing', async () => {
+  const { store } = await open();
+  expect(await store.unlockWait()).toBeNull();
+  const wait = {
+    reason: 'my sister needs the group chat',
+    startedAt: 1,
+    startElapsed: 2,
+    bootId: '7',
+  };
+  await store.saveUnlockWait(wait);
+  await store.clearServerCopy();
+  expect(await store.unlockWait()).toEqual(wait);
+  await store.saveUnlockWait(null);
+  expect(await store.unlockWait()).toBeNull();
+});

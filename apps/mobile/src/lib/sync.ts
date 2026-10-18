@@ -71,7 +71,10 @@ async function sendBatch(deps: SyncDeps, batch: readonly LedgerEvent[]): Promise
     return { stop: 'invalid_response', pushed: 0, buried: 0 };
   }
   await deps.store.settle(added, ignored);
-  if (refused.length > 0) await deps.store.bury(refused, 'future_timestamp', deps.now());
+  for (const reason of new Set(rejected.map((r) => r.reason))) {
+    const ids = rejected.filter((r) => r.reason === reason).map((r) => r.id);
+    await deps.store.bury(ids, reason, deps.now());
+  }
   return { stop: null, pushed: added.length + ignored.length, buried: refused.length };
 }
 
@@ -172,8 +175,12 @@ async function collectSpend(deps: SyncDeps): Promise<void> {
 async function commitBalance(deps: SyncDeps): Promise<void> {
   if (deps.guard === undefined) return;
   try {
-    const balance = projectBalance(await deps.store.confirmed(), await deps.store.pending());
-    await deps.guard.native.commit(await deps.store.spendSeq(), Math.max(0, balance));
+    const [confirmed, pending] = [await deps.store.confirmed(), await deps.store.pending()];
+    const balance = projectBalance(confirmed, pending);
+    // The guard drops the unlocks this balance already has, so each counts once.
+    const unlocks = [...confirmed, ...pending].filter((e) => e.kind === 'unlock_borrow');
+    const included = [...new Set(unlocks.map((e) => e.id))];
+    await deps.guard.native.commit(await deps.store.spendSeq(), Math.max(0, balance), included);
   } catch (error) {
     logGuardFailure('guard_commit_failed', error);
   }

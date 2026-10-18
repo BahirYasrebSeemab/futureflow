@@ -370,6 +370,19 @@ describe('the guard', () => {
     expect(calls.commit).toEqual([[4, 840]]);
   });
 
+  test('the commit names every unlock its balance includes: pulled and just pushed', async () => {
+    const pulled = { ...ledgerEvent(91), kind: 'unlock_borrow' as const, seconds: 600 };
+    const queued = { ...ledgerEvent(92), kind: 'unlock_borrow' as const, seconds: 600 };
+    const { deps, store } = await setup({
+      pull: (since) =>
+        since === 0 ? { ok: true, data: { events: [pulled], next: 1 } } : emptyPage(since),
+    });
+    await store.enqueue([queued]);
+    const { guard, calls } = fakeGuard();
+    await syncOnce({ ...deps, guard: { native: guard, newId: () => ledgerEvent(50).id } });
+    expect(calls.included).toEqual([[pulled.id, queued.id].sort()]);
+  });
+
   test('debt is committed as no time left', async () => {
     const { deps } = await setup({ pull: (since) => (since === 0 ? grant(30) : emptyPage(since)) });
     const { guard, calls } = fakeGuard({ sessions: [spent] });

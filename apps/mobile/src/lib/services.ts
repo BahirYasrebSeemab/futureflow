@@ -1,3 +1,4 @@
+import { DEFAULT_RULES } from '@futureflow/core';
 import Constants from 'expo-constants';
 import { getRandomBytes } from 'expo-crypto';
 import { openDatabaseAsync } from 'expo-sqlite';
@@ -50,5 +51,8 @@ export async function createServices(): Promise<AppServices> {
     guard,
     now,
     apiUrl,
+    // Only the emulator build sets this (to a few seconds); every other build waits the full rule.
+    unlockWaitSeconds:
+      Constants.expoConfig?.extra?.e2eUnlockWaitSeconds ?? DEFAULT_RULES.unlockWaitSeconds,
   };
 }

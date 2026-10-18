@@ -1,6 +1,13 @@
 import type { SpendSession } from '@/lib/guard/spend';
-import { noGuard, type Guard, type GuardSettings, type GuardStatus } from '@/lib/guard/types';
-import type { LedgerEvent } from '@futureflow/core';
+import {
+  noGuard,
+  type Guard,
+  type GuardClock,
+  type GuardSettings,
+  type GuardStatus,
+  type InstalledApp,
+} from '@/lib/guard/types';
+import { DEFAULT_RULES, type LedgerEvent } from '@futureflow/core';
 import { randomBytes } from 'node:crypto';
 import type { Api, Today } from '@/lib/api/client';
 import type { AppServices } from '@/lib/app';
@@ -145,6 +152,7 @@ export async function testServices(
     guard,
     now,
     apiUrl: 'https://api.test',
+    unlockWaitSeconds: DEFAULT_RULES.unlockWaitSeconds,
   };
 }
 
@@ -155,11 +163,16 @@ export function fakeGuard(
     enabled?: boolean;
     /** Status fields to change (named apart from `Guard.status`, which overrides replace). */
     state?: Partial<GuardStatus>;
+    installed?: InstalledApp[];
   } = {},
 ) {
-  const { sessions, enabled, state, ...methods } = overrides;
+  const { sessions, enabled, state, installed, ...methods } = overrides;
+  /** The monotonic clock; tests move it with `tick`. */
+  const clock: GuardClock = { elapsed: 0, bootId: '1' };
   const calls = {
     commit: [] as [number, number][],
+    included: [] as string[][],
+    grants: [] as [string, number][],
     blocked: [] as [string[], boolean][],
     settings: [] as GuardSettings[],
     linked: [] as [string, string][],
@@ -182,9 +195,15 @@ export function fakeGuard(
       calls.blocked.push([[...packages], blockGames]);
     },
     pendingSpend: async () => sessions ?? [],
-    commit: async (watermark, balance) => {
+    commit: async (watermark, balance, included) => {
       calls.commit.push([watermark, balance]);
+      calls.included.push([...included].sort());
     },
+    grant: async (id, seconds) => {
+      calls.grants.push([id, seconds]);
+    },
+    clock: async () => clock,
+    installedApps: async () => installed ?? [],
     openSettings: async (kind) => {
       calls.settings.push(kind);
     },
@@ -201,5 +220,12 @@ export function fakeGuard(
     },
     ...methods,
   };
-  return { guard, calls };
+  const tick = (ms: number) => {
+    clock.elapsed += ms;
+  };
+  const reboot = () => {
+    clock.elapsed = 1_000;
+    clock.bootId = String(Number(clock.bootId) + 1);
+  };
+  return { guard, calls, tick, reboot };
 }

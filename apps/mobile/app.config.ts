@@ -26,7 +26,12 @@ const config: ExpoConfig = {
       'android.permission.ACCESS_BACKGROUND_LOCATION',
     ],
   },
-  extra: { allowCleartext: isE2E, e2eBlockedApps: isE2E ? ['com.android.settings'] : [] },
+  extra: {
+    allowCleartext: isE2E,
+    e2eBlockedApps: isE2E ? ['com.android.settings'] : [],
+    // The emulator can't sit through the 10-minute unlock wait; store builds leave this unset.
+    ...(isE2E ? { e2eUnlockWaitSeconds: 5 } : {}),
+  },
   plugins: [
     'expo-router',
     'expo-sqlite',

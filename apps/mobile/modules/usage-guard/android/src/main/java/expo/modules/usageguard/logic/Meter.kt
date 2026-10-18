@@ -26,7 +26,8 @@ data class Meter(
   val grants: List<Grant> = emptyList(),
 ) {
   /** Adds an unlock's time for [day]; the same id twice adds it once. */
-  fun grant(id: String, day: Long, seconds: Long): Meter = this
+  fun grant(id: String, day: Long, seconds: Long): Meter =
+    if (grants.any { it.id == id }) this else copy(grants = grants + Grant(id, day, seconds))
 
   fun enter(wall: Long, elapsed: Long, bootId: String): Meter =
     if (open != null) this else copy(open = OpenSession(wall, elapsed, bootId))
@@ -56,6 +57,7 @@ data class Meter(
       balanceSeconds = balanceSeconds,
       balanceDay = day,
       sessions = sessions.filter { it.seq > watermark },
+      grants = grants.filter { it.id !in included && it.day >= day },
     )
 
   /**
@@ -72,12 +74,13 @@ data class Meter(
   /** On a day the app hasn't committed, the base allowance applies (spec §13.1). */
   fun remainingMs(elapsed: Long, day: Long, dayOf: (Long) -> Long): Long {
     val openMs = open?.let { (elapsed - it.startElapsed).coerceAtLeast(0) } ?: 0
+    val grantedMs = grants.filter { it.day == day }.sumOf { it.seconds } * MS_PER_SECOND
     val known = balanceSeconds
     if (known != null && balanceDay == day) {
-      return known * MS_PER_SECOND - sessions.sumOf { it.ms } - openMs
+      return known * MS_PER_SECOND + grantedMs - sessions.sumOf { it.ms } - openMs
     }
     val spentToday = sessions.filter { dayOf(it.startWall) == day }.sumOf { it.ms }
-    return baseSeconds * MS_PER_SECOND - spentToday - openMs
+    return baseSeconds * MS_PER_SECOND + grantedMs - spentToday - openMs
   }
 }
 

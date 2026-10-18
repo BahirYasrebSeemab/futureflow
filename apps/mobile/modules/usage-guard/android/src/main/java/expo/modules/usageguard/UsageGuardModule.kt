@@ -46,12 +46,39 @@ class UsageGuardModule : Module() {
         }
     }
 
-    AsyncFunction("commit") { watermark: Double, balanceSeconds: Double ->
+    AsyncFunction("commit") { watermark: Double, balanceSeconds: Double, included: List<String> ->
       GuardStore.update(context) {
-        it.commit(watermark.toLong(), balanceSeconds.toLong(), GuardClock.today())
+        it.commit(watermark.toLong(), balanceSeconds.toLong(), GuardClock.today(), included.toSet())
       }
       GuardForegroundService.poke()
       Unit
+    }
+
+    // An emergency unlock's time, at once and offline; the next commit that includes it drops it.
+    AsyncFunction("grant") { id: String, seconds: Double ->
+      GuardStore.update(context) { it.grant(id, GuardClock.today(), seconds.toLong()) }
+      GuardForegroundService.poke()
+      Unit
+    }
+
+    // The monotonic clock, so the unlock wait can't be shortened by changing the time.
+    AsyncFunction("clock") {
+      mapOf(
+        "elapsed" to SystemClock.elapsedRealtime().toDouble(),
+        "bootId" to GuardClock.bootId(context),
+      )
+    }
+
+    // Launcher apps for the picker. The list stays on the phone (spec §13.3).
+    AsyncFunction("installedApps") {
+      val pm = context.packageManager
+      val launcher = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+      pm.queryIntentActivities(launcher, 0)
+        .map { it.activityInfo.packageName to it.loadLabel(pm).toString() }
+        .filter { (pkg, _) -> pkg != context.packageName }
+        .distinctBy { it.first }
+        .sortedBy { it.second.lowercase() }
+        .map { (pkg, label) -> mapOf("package" to pkg, "label" to label) }
     }
 
     // The heartbeat's own copy of the token, so it runs when React Native doesn't.
