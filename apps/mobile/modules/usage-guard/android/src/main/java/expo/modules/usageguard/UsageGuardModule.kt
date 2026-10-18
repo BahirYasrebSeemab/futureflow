@@ -55,9 +55,11 @@ class UsageGuardModule : Module() {
       val isBlocked = { pkg: String ->
         pkg !in never && (pkg in blocked || (games && GuardApps.isGame(context, pkg)))
       }
+      // The log is read outside the guard's lock, so the shield never waits on it.
+      val checked = GuardStore.meter(context).reconciledUntil
+      val read = UsageReconciler.read(context, checked, now, isBlocked)
       GuardStore.transact(context) {
-          UsageReconciler.reconcile(context, it.restore(boot, elapsed), now, isBlocked)
-            .pending(now, elapsed, boot)
+          UsageReconciler.apply(it.restore(boot, elapsed), checked, read).pending(now, elapsed, boot)
         }
         .map {
           mapOf("seq" to it.seq.toDouble(), "start" to it.startWall.toDouble(), "ms" to it.ms.toDouble())

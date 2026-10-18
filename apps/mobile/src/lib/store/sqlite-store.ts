@@ -33,6 +33,7 @@ const BlocklistSchema = z.object({ apps: z.array(z.string()), games: z.boolean()
 const BlocklistStateSchema = z.object({
   current: BlocklistSchema,
   pending: BlocklistSchema.extend({ from: z.string() }).nullable(),
+  version: z.number().int().optional(),
 });
 
 const SavedTodaySchema = z.object({ today: TodaySchema, savedAt: z.number().int() });

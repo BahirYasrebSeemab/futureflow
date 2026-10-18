@@ -57,15 +57,15 @@ export interface Guard {
  * blocked in Chrome, Brave and Edge for as long as the app is. Games are blocked too.
  */
 export const BLOCKED_APPS: readonly (readonly [string, string, readonly string[]])[] = [
-  ['com.instagram.android', 'Instagram', ['instagram.com']],
+  ['com.instagram.android', 'Instagram', ['instagram.com', 'instagr.am']],
   ['com.instagram.barcelona', 'Threads', ['threads.net', 'threads.com']],
   ['com.zhiliaoapp.musically', 'TikTok', ['tiktok.com']],
   ['com.ss.android.ugc.trill', 'TikTok', ['tiktok.com']],
-  ['com.google.android.youtube', 'YouTube', ['youtube.com', 'youtu.be']],
-  ['com.facebook.katana', 'Facebook', ['facebook.com', 'fb.com']],
+  ['com.google.android.youtube', 'YouTube', ['youtube.com', 'youtu.be', 'youtube-nocookie.com']],
+  ['com.facebook.katana', 'Facebook', ['facebook.com', 'fb.com', 'fb.watch']],
   ['com.snapchat.android', 'Snapchat', ['snapchat.com']],
   ['com.twitter.android', 'X', ['x.com', 'twitter.com']],
-  ['com.reddit.frontpage', 'Reddit', ['reddit.com']],
+  ['com.reddit.frontpage', 'Reddit', ['reddit.com', 'redd.it']],
 ];
 
 /**

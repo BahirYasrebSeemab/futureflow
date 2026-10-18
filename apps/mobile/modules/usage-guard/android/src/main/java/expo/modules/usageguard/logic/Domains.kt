@@ -5,18 +5,24 @@ package expo.modules.usageguard.logic
  * browser page (chrome://), or nothing. Lowercase, without `www.`, a port or user info.
  */
 fun hostOf(text: String?): String? {
-  var rest = text?.trim()?.lowercase() ?: return null
+  var rest = text?.trim()?.lowercase()?.removePrefix("view-source:") ?: return null
   if (rest.isEmpty() || rest.any { it.isWhitespace() }) return null
-  val scheme = rest.indexOf("://")
-  if (scheme >= 0) {
-    if (rest.substring(0, scheme) !in WEB_SCHEMES) return null
-    rest = rest.substring(scheme + 3)
+  // Only a scheme at the very start counts: an address inside the query must not hide the host.
+  SCHEME.find(rest)?.let {
+    if (it.groupValues[1] !in WEB_SCHEMES) return null
+    rest = rest.substring(it.range.last + 1)
   }
-  var host = rest.takeWhile { it != '/' && it != '?' && it != '#' }.substringAfterLast('@').substringBefore(':')
-  host = host.removePrefix("www.")
+  val host =
+    rest
+      .takeWhile { it != '/' && it != '?' && it != '#' }
+      .substringAfterLast('@')
+      .substringBefore(':')
+      .trimEnd('.')
+      .removePrefix("www.")
   return host.takeIf { '.' in it && HOST.matches(it) }
 }
 
+private val SCHEME = Regex("^([a-z][a-z0-9+.-]*)://")
 private val WEB_SCHEMES = setOf("http", "https")
 private val HOST = Regex("[a-z0-9-]+(\\.[a-z0-9-]+)+")
 

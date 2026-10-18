@@ -1,3 +1,4 @@
+import { OTHER_BROWSERS } from '@/lib/guard/types';
 import { currentDayKey } from '@/lib/format';
 import { DEFAULT_BLOCKLIST } from '@/lib/guard/blocklist';
 import type { LedgerEvent } from '@futureflow/core';
@@ -391,6 +392,7 @@ describe('the guard', () => {
     await store.saveBlocklist({
       current: { apps: ['a', 'b'], games: true },
       pending: { apps: ['a'], games: false, from: today },
+      version: 2,
     });
     const { guard, calls } = fakeGuard();
     await syncOnce({
@@ -402,6 +404,7 @@ describe('the guard', () => {
     expect(await store.blocklist()).toEqual({
       current: { apps: ['a'], games: false },
       pending: null,
+      version: 2,
     });
   });
 
@@ -412,6 +415,7 @@ describe('the guard', () => {
     await store.saveBlocklist({
       current: { apps: ['a', 'b'], games: true },
       pending: { apps: ['a'], games: true, from: sampleToday().day },
+      version: 2,
     });
     const ahead = { ...deps, now: () => Date.parse(`${tomorrow}T12:00:00Z`) };
     const { guard, calls } = fakeGuard();
@@ -420,6 +424,7 @@ describe('the guard', () => {
     await store.saveBlocklist({
       current: { apps: ['a', 'b'], games: true },
       pending: { apps: ['a'], games: true, from: '2098-12-31' },
+      version: 2,
     });
     const { guard: g2, calls: c2 } = fakeGuard();
     await syncOnce({ ...ahead, guard: { native: g2, newId: () => ledgerEvent(51).id } });
@@ -436,16 +441,47 @@ describe('the guard', () => {
     );
   });
 
+  test('a list saved before browsers were blocked gets them once; unblocking one later sticks', async () => {
+    const { deps, store } = await setup();
+    await store.saveBlocklist({ current: { apps: ['a'], games: true }, pending: null });
+    const { guard, calls } = fakeGuard();
+    const run = () =>
+      syncOnce({ ...deps, guard: { native: guard, newId: () => ledgerEvent(50).id } });
+    await run();
+    expect(calls.blocked.at(-1)?.[0]).toEqual(['a', ...OTHER_BROWSERS.map(([pkg]) => pkg)]);
+    const saved = await store.blocklist();
+    expect(saved?.version).toBe(2);
+
+    const withoutFirefox = saved!.current.apps.filter((p) => p !== 'org.mozilla.firefox');
+    await store.saveBlocklist({ ...saved!, current: { apps: withoutFirefox, games: true } });
+    await run();
+    expect(calls.blocked.at(-1)?.[0]).not.toContain('org.mozilla.firefox');
+  });
+
+  test("an unblocked app's sites go when its unblock applies", async () => {
+    const { deps, store } = await setup();
+    const yt = 'com.google.android.youtube';
+    await store.saveBlocklist({
+      current: { apps: [yt], games: true },
+      pending: { apps: [], games: true, from: currentDayKey(NOW) },
+      version: 2,
+    });
+    const { guard, calls } = fakeGuard();
+    await syncOnce({ ...deps, guard: { native: guard, newId: () => ledgerEvent(50).id } });
+    expect(calls.domains.at(-1)).toEqual([]);
+  });
+
   test("an unblocked app's sites stay blocked until its unblock applies", async () => {
     const { deps, store } = await setup();
     const yt = 'com.google.android.youtube';
     await store.saveBlocklist({
       current: { apps: [yt], games: true },
       pending: { apps: [], games: true, from: '2099-01-01' },
+      version: 2,
     });
     const { guard, calls } = fakeGuard();
     await syncOnce({ ...deps, guard: { native: guard, newId: () => ledgerEvent(50).id } });
-    expect(calls.domains.at(-1)).toEqual(['youtube.com', 'youtu.be']);
+    expect(calls.domains.at(-1)).toEqual(['youtube.com', 'youtu.be', 'youtube-nocookie.com']);
   });
 
   test('debt is committed as no time left', async () => {

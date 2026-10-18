@@ -23,7 +23,8 @@ data class UsageEvent(val pkg: String, val kind: UsageKind, val at: Long, val ac
 
 /**
  * When blocked apps were in front between [from] and [to], merged across apps. An app already in
- * front at [from] (its first event is a pause) starts there; one still in front ends at [to].
+ * front at [from] (its first event is a pause, with no screen-off or boot before it) starts there;
+ * one still in front ends at [to]. A screen-off or shutdown ends everything; a boot forgets it.
  */
 fun foregroundIntervals(events: List<UsageEvent>, from: Long, to: Long): List<Interval> {
   // An app is in front while any of its screens is; the next screen often resumes before the
@@ -31,17 +32,37 @@ fun foregroundIntervals(events: List<UsageEvent>, from: Long, to: Long): List<In
   val screens = HashMap<String, MutableSet<String>>()
   val since = HashMap<String, Long>()
   val seen = HashSet<String>()
+  var reset = false
   val found = ArrayList<Interval>()
   for (e in events.sortedBy { it.at }) {
-    val first = seen.add(e.pkg)
-    val open = screens.getOrPut(e.pkg) { HashSet() }
-    if (e.kind == UsageKind.RESUMED) {
-      if (open.isEmpty()) since[e.pkg] = e.at
-      open += e.activity
-    } else if (open.remove(e.activity)) {
-      if (open.isEmpty()) found += Interval(since.remove(e.pkg) ?: from, e.at)
-    } else if (first) {
-      found += Interval(from, e.at) // in front before the window began
+    when (e.kind) {
+      UsageKind.STOPPED_ALL -> {
+        since.values.forEach { found += Interval(it, e.at) }
+        since.clear()
+        screens.clear()
+        reset = true
+      }
+      // Whatever was open when the phone died has no end in the log: it isn't charged.
+      UsageKind.BOOTED -> {
+        since.clear()
+        screens.clear()
+        reset = true
+      }
+      UsageKind.RESUMED -> {
+        seen += e.pkg
+        val open = screens.getOrPut(e.pkg) { HashSet() }
+        if (open.isEmpty()) since[e.pkg] = e.at
+        open += e.activity
+      }
+      UsageKind.PAUSED -> {
+        val first = seen.add(e.pkg)
+        val open = screens.getOrPut(e.pkg) { HashSet() }
+        if (open.remove(e.activity)) {
+          if (open.isEmpty()) found += Interval(since.remove(e.pkg) ?: from, e.at)
+        } else if (first && !reset) {
+          found += Interval(from, e.at) // in front before the window began
+        }
+      }
     }
   }
   since.values.forEach { found += Interval(it, to) }

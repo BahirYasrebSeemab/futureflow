@@ -10,10 +10,11 @@ import {
   type Blocklist,
   type BlocklistState,
 } from '@/lib/guard/blocklist';
-import { BLOCKED_APPS, type InstalledApp } from '@/lib/guard/types';
+import { BLOCKED_APPS, OTHER_BROWSERS, type InstalledApp } from '@/lib/guard/types';
 import { radius, space, usePalette } from '@/theme';
 
-const KNOWN = BLOCKED_APPS.map(([pkg]) => pkg);
+/** Social apps, then the browsers the guard can't read, in their usual order. */
+const KNOWN = [...BLOCKED_APPS, ...OTHER_BROWSERS].map(([pkg]) => pkg);
 
 /** Known social apps first, in their usual order; then everything else by name. */
 const ordered = (apps: readonly InstalledApp[]) =>

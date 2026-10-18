@@ -89,5 +89,5 @@ test("a blocklist's sites are the sites of its apps", () => {
       apps: ['com.google.android.youtube', 'com.twitter.android', 'x.y'],
       games: true,
     }),
-  ).toEqual(['youtube.com', 'youtu.be', 'x.com', 'twitter.com']);
+  ).toEqual(['youtube.com', 'youtu.be', 'youtube-nocookie.com', 'x.com', 'twitter.com']);
 });

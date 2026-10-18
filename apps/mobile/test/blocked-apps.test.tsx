@@ -98,3 +98,15 @@ test('two quick switches both count: the second builds on the first', async () =
     ),
   );
 });
+
+test('known browsers come right after the social apps', async () => {
+  const { guard } = fakeGuard({
+    installed: [...INSTALLED, { package: 'org.mozilla.firefox', label: 'Firefox' }],
+  });
+  await open('/blocked-apps', guard);
+  const rows = await screen.findAllByTestId(/^block-app-/);
+  expect(rows.map((r) => r.props.testID).slice(0, 2)).toEqual([
+    'block-app-com.instagram.android',
+    'block-app-org.mozilla.firefox',
+  ]);
+});

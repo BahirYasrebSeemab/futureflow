@@ -4,8 +4,9 @@ package expo.modules.usageguard.logic
 data class WindowView(val pkg: String?, val application: Boolean, val focused: Boolean)
 
 /**
- * A blocked app visible beside the focused window: picture-in-picture or the other half of a split
- * screen. The focused window is left to the focus rule; system windows don't count.
+ * A blocked app visible on screen: full screen, picture-in-picture or either half of a split
+ * screen, focused or not (tapping the other half moves focus without a window-state event).
+ * System windows don't count.
  */
 fun sideBlocked(windows: List<WindowView>, verdictOf: (String?) -> Verdict): Boolean =
-  windows.any { it.application && !it.focused && verdictOf(it.pkg) == Verdict.BLOCKED }
+  windows.any { it.application && verdictOf(it.pkg) == Verdict.BLOCKED }

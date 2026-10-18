@@ -8,7 +8,11 @@ export type Blocklist = Readonly<{ apps: readonly string[]; games: boolean }>;
 export type BlocklistState = Readonly<{
   current: Blocklist;
   pending: (Blocklist & Readonly<{ from: DayKey }>) | null;
+  /** 2 once the other browsers were added (lists saved before that have none). */
+  version?: number;
 }>;
+
+export const BLOCKLIST_VERSION = 2;
 
 export const DEFAULT_BLOCKLIST: Blocklist = {
   apps: [...new Set([...BLOCKED_APPS.map(([pkg]) => pkg), ...OTHER_BROWSERS.map(([pkg]) => pkg)])],
@@ -25,7 +29,30 @@ export const blockedDomains = (list: Blocklist): string[] => [
 export const DEFAULT_BLOCKLIST_STATE: BlocklistState = {
   current: DEFAULT_BLOCKLIST,
   pending: null,
+  version: BLOCKLIST_VERSION,
 };
+
+const union = (a: readonly string[], b: readonly string[]) => [
+  ...a,
+  ...b.filter((p) => !a.includes(p)),
+];
+
+/**
+ * Lists saved before the unreadable browsers were blocked get them, once (blocking more applies at
+ * once). After that an owner's unblock of one sticks.
+ */
+export function upgradeBlocklist(state: BlocklistState): BlocklistState {
+  if ((state.version ?? 1) >= BLOCKLIST_VERSION) return state;
+  const browsers = OTHER_BROWSERS.map(([pkg]) => pkg);
+  return {
+    current: { ...state.current, apps: union(state.current.apps, browsers) },
+    pending:
+      state.pending === null
+        ? null
+        : { ...state.pending, apps: union(state.pending.apps, browsers) },
+    version: BLOCKLIST_VERSION,
+  };
+}
 
 const same = (a: Blocklist, b: Blocklist) =>
   a.games === b.games && a.apps.length === b.apps.length && a.apps.every((p) => b.apps.includes(p));
@@ -34,7 +61,11 @@ const same = (a: Blocklist, b: Blocklist) =>
 export function effectiveBlocklist(state: BlocklistState, today: DayKey): BlocklistState {
   const { pending } = state;
   if (pending === null || today < pending.from) return state;
-  return { current: { apps: pending.apps, games: pending.games }, pending: null };
+  return {
+    current: { apps: pending.apps, games: pending.games },
+    pending: null,
+    version: state.version,
+  };
 }
 
 /**
@@ -52,6 +83,7 @@ export function changeBlocklist(
     games: current.games || next.games,
   };
   return {
+    version: state.version,
     current: tightened,
     pending: same(tightened, next)
       ? null
