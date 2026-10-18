@@ -26,6 +26,8 @@ data class Meter(
   val grants: List<Grant> = emptyList(),
   /** The unlocks the last commit's balance included: a grant for one of them arrived late. */
   val included: Set<String> = emptySet(),
+  /** Android's usage log has been checked against this meter up to here (wall ms). */
+  val reconciledUntil: Long? = null,
 ) {
   /** Adds an unlock's time for [day]; the same id twice adds it once. */
   fun grant(id: String, day: Long, seconds: Long): Meter =
@@ -73,10 +75,15 @@ data class Meter(
     else this
 
   /** Time Android's usage log shows in blocked apps that the guard missed: closed sessions. */
-  fun addMissed(intervals: List<Interval>): Meter = this
+  fun addMissed(intervals: List<Interval>): Meter =
+    intervals.fold(this) { m, i ->
+      m.copy(sessions = m.sessions + Session(m.nextSeq, i.start, i.end - i.start), nextSeq = m.nextSeq + 1)
+    }
 
   /** What the guard has counted and not yet committed, on the wall clock, the open session to [now]. */
-  fun coveredWall(now: Long): List<Interval> = emptyList()
+  fun coveredWall(now: Long): List<Interval> =
+    sessions.map { Interval(it.startWall, it.startWall + it.ms) } +
+      listOfNotNull(open?.let { Interval(it.startWall, maxOf(it.startWall, now)) })
 
   /** A service that (re)connects can't know when the last one stopped, so it starts afresh. */
   fun forgetOpen(): Meter = copy(open = null)

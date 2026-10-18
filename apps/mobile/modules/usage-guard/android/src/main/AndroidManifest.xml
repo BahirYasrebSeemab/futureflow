@@ -1,4 +1,5 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:tools="http://schemas.android.com/tools">
   <!-- The heartbeat (spec §6.5), the "N min left" foreground service and its notification, and
        the battery step of the checklist. -->
   <uses-permission android:name="android.permission.INTERNET" />
@@ -7,6 +8,10 @@
   <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
   <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
   <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+  <!-- Usage access, granted by the owner in Settings: reconciles minutes the guard missed. -->
+  <uses-permission
+    android:name="android.permission.PACKAGE_USAGE_STATS"
+    tools:ignore="ProtectedPermissions" />
 
   <!-- Lets the guard see launcher apps (to spot games) and find the default dialer and SMS app. -->
   <queries>

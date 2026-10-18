@@ -75,3 +75,17 @@ class UsageTest {
     assertEquals(listOf(Interval(0, MIN), Interval(10 * MIN, 12 * MIN)), m.coveredWall(12 * MIN))
   }
 }
+
+class UsageScreensTest {
+  @Test
+  fun `the next screen resuming before the last one pauses keeps the app in front`() {
+    val events =
+      listOf(
+        UsageEvent("ig", true, 10 * MIN, "Feed"),
+        UsageEvent("ig", true, 15 * MIN, "Reel"),
+        UsageEvent("ig", false, 15 * MIN + 1, "Feed"),
+        UsageEvent("ig", false, 30 * MIN, "Reel"),
+      )
+    assertEquals(listOf(Interval(10 * MIN, 30 * MIN)), foregroundIntervals(events, 0, 60 * MIN))
+  }
+}
