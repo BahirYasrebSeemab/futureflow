@@ -14,6 +14,8 @@ export type GuardStatus = Readonly<{
   batteryUnrestricted: boolean;
   /** Xiaomi, Redmi and POCO phones also need Autostart and a lock in recents. */
   xiaomi: boolean;
+  /** Usage access: lets the guard find time it missed in Android's usage log. */
+  usageAccess: boolean;
 }>;
 
 /** The phone's monotonic clock: unlock waits are measured on it (spec §6.5). */
@@ -22,12 +24,14 @@ export type GuardClock = Readonly<{ elapsed: number; bootId: string }>;
 /** A launcher app, for the picker. Never sent anywhere. */
 export type InstalledApp = Readonly<{ package: string; label: string }>;
 
-export type GuardSettings = 'accessibility' | 'notifications' | 'battery' | 'autostart';
+export type GuardSettings = 'accessibility' | 'notifications' | 'battery' | 'autostart' | 'usage';
 
 /** The native guard (spec §7): it enforces the balance on blocked apps and counts time spent. */
 export interface Guard {
   status(): Promise<GuardStatus>;
   setBlockedApps(packages: readonly string[], blockGames: boolean): Promise<void>;
+  /** Sites blocked in the browsers whose address bar the guard reads. Never sent anywhere. */
+  setBlockedDomains(domains: readonly string[]): Promise<void>;
   /** Time spent and not yet committed; an open session is cut at now. */
   pendingSpend(): Promise<SpendSession[]>;
   /**
@@ -48,17 +52,35 @@ export interface Guard {
   unlink(): Promise<void>;
 }
 
-/** Social apps blocked by default, with the names the Guard screen shows. Games are blocked too. */
-export const BLOCKED_APPS: readonly (readonly [string, string])[] = [
-  ['com.instagram.android', 'Instagram'],
-  ['com.instagram.barcelona', 'Threads'],
-  ['com.zhiliaoapp.musically', 'TikTok'],
-  ['com.ss.android.ugc.trill', 'TikTok'],
-  ['com.google.android.youtube', 'YouTube'],
-  ['com.facebook.katana', 'Facebook'],
-  ['com.snapchat.android', 'Snapchat'],
-  ['com.twitter.android', 'X'],
-  ['com.reddit.frontpage', 'Reddit'],
+/**
+ * Social apps blocked by default, with the names the Guard screen shows and their sites, which are
+ * blocked in Chrome, Brave and Edge for as long as the app is. Games are blocked too.
+ */
+export const BLOCKED_APPS: readonly (readonly [string, string, readonly string[]])[] = [
+  ['com.instagram.android', 'Instagram', ['instagram.com']],
+  ['com.instagram.barcelona', 'Threads', ['threads.net', 'threads.com']],
+  ['com.zhiliaoapp.musically', 'TikTok', ['tiktok.com']],
+  ['com.ss.android.ugc.trill', 'TikTok', ['tiktok.com']],
+  ['com.google.android.youtube', 'YouTube', ['youtube.com', 'youtu.be']],
+  ['com.facebook.katana', 'Facebook', ['facebook.com', 'fb.com']],
+  ['com.snapchat.android', 'Snapchat', ['snapchat.com']],
+  ['com.twitter.android', 'X', ['x.com', 'twitter.com']],
+  ['com.reddit.frontpage', 'Reddit', ['reddit.com']],
+];
+
+/**
+ * Browsers whose address bar the guard can't read: blocked like apps by default, so they cost
+ * earned time (Chrome, Brave and Edge are judged by the site instead). Unblock them in the picker.
+ */
+export const OTHER_BROWSERS: readonly (readonly [string, string])[] = [
+  ['org.mozilla.firefox', 'Firefox'],
+  ['com.opera.browser', 'Opera'],
+  ['com.opera.mini.native', 'Opera Mini'],
+  ['com.sec.android.app.sbrowser', 'Samsung Internet'],
+  ['com.mi.globalbrowser', 'Mi Browser'],
+  ['com.android.browser', 'Browser'],
+  ['com.duckduckgo.mobile.android', 'DuckDuckGo'],
+  ['com.UCMobile.intl', 'UC Browser'],
 ];
 
 /** Where there is no native guard: nothing is enforced and nothing is counted. */
@@ -71,8 +93,10 @@ export const noGuard: Guard = {
     notifications: false,
     batteryUnrestricted: false,
     xiaomi: false,
+    usageAccess: false,
   }),
   setBlockedApps: async () => {},
+  setBlockedDomains: async () => {},
   pendingSpend: async () => [],
   commit: async () => {},
   grant: async () => {},

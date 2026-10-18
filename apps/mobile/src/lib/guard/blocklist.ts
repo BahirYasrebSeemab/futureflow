@@ -1,5 +1,5 @@
 import { addDays, type DayKey } from '@futureflow/core';
-import { BLOCKED_APPS } from './types';
+import { BLOCKED_APPS, OTHER_BROWSERS } from './types';
 
 /** Which apps the guard blocks, and whether games are blocked too. Never leaves the phone. */
 export type Blocklist = Readonly<{ apps: readonly string[]; games: boolean }>;
@@ -11,9 +11,16 @@ export type BlocklistState = Readonly<{
 }>;
 
 export const DEFAULT_BLOCKLIST: Blocklist = {
-  apps: [...new Set(BLOCKED_APPS.map(([pkg]) => pkg))],
+  apps: [...new Set([...BLOCKED_APPS.map(([pkg]) => pkg), ...OTHER_BROWSERS.map(([pkg]) => pkg)])],
   games: true,
 };
+
+/** The sites of the blocked apps: blocked in readable browsers exactly while the app is. */
+export const blockedDomains = (list: Blocklist): string[] => [
+  ...new Set(
+    BLOCKED_APPS.filter(([pkg]) => list.apps.includes(pkg)).flatMap(([, , domains]) => domains),
+  ),
+];
 
 export const DEFAULT_BLOCKLIST_STATE: BlocklistState = {
   current: DEFAULT_BLOCKLIST,

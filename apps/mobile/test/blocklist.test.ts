@@ -1,17 +1,18 @@
 import {
+  blockedDomains,
   changeBlocklist,
   DEFAULT_BLOCKLIST,
   effectiveBlocklist,
   type BlocklistState,
 } from '@/lib/guard/blocklist';
-import { BLOCKED_APPS } from '@/lib/guard/types';
+import { BLOCKED_APPS, OTHER_BROWSERS } from '@/lib/guard/types';
 
 const TODAY = '2026-10-18';
 const start: BlocklistState = { current: { apps: ['a', 'b'], games: true }, pending: null };
 
-test('the default blocks the known social apps and games', () => {
+test('the default blocks the known social apps, the unreadable browsers and games', () => {
   expect(DEFAULT_BLOCKLIST).toEqual({
-    apps: [...new Set(BLOCKED_APPS.map(([pkg]) => pkg))],
+    apps: [...new Set([...BLOCKED_APPS, ...OTHER_BROWSERS].map(([pkg]) => pkg))],
     games: true,
   });
 });
@@ -66,4 +67,27 @@ test('a change made days after a pending one applied starts from what applies no
     current: { apps: ['a'], games: true },
     pending: { apps: [], games: true, from: '2026-10-21' },
   });
+});
+
+test('other browsers are blocked by default; Chrome, Brave and Edge are judged by the site', () => {
+  for (const pkg of [
+    'org.mozilla.firefox',
+    'com.opera.browser',
+    'com.sec.android.app.sbrowser',
+    'com.mi.globalbrowser',
+  ]) {
+    expect(DEFAULT_BLOCKLIST.apps).toContain(pkg);
+  }
+  for (const pkg of ['com.android.chrome', 'com.brave.browser', 'com.microsoft.emmx']) {
+    expect(DEFAULT_BLOCKLIST.apps).not.toContain(pkg);
+  }
+});
+
+test("a blocklist's sites are the sites of its apps", () => {
+  expect(
+    blockedDomains({
+      apps: ['com.google.android.youtube', 'com.twitter.android', 'x.y'],
+      games: true,
+    }),
+  ).toEqual(['youtube.com', 'youtu.be', 'x.com', 'twitter.com']);
 });

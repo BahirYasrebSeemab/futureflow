@@ -7,7 +7,7 @@ import type { GuardStep } from '@/lib/store/types';
 import { radius, space, usePalette } from '@/theme';
 
 type Item = Readonly<{
-  id: 'notifications' | GuardStep;
+  id: 'notifications' | 'usage' | GuardStep;
   title: string;
   detail: string;
   done: boolean;
@@ -51,7 +51,7 @@ export function GuardChecklist({
     [services, ticked],
   );
 
-  const open = (kind: 'battery' | 'autostart') => () =>
+  const open = (kind: 'battery' | 'autostart' | 'usage') => () =>
     void services.guard.openSettings(kind).catch(logFailure);
   const items: Item[] = [
     {
@@ -76,6 +76,13 @@ export function GuardChecklist({
       tickable: status.xiaomi && !status.batteryUnrestricted,
     },
   ];
+  items.push({
+    id: 'usage',
+    title: 'Usage access',
+    detail: 'Lets the guard find time it missed, for example while Android had stopped it.',
+    done: status.usageAccess,
+    fix: { label: 'Allow usage access', onPress: open('usage') },
+  });
   if (status.xiaomi) {
     items.push(
       {
@@ -115,7 +122,7 @@ export function GuardChecklist({
           {!item.done && item.fix !== undefined && (
             <Button testID={`fix-${item.id}`} label={item.fix.label} onPress={item.fix.onPress} />
           )}
-          {item.tickable === true && item.id !== 'notifications' && (
+          {item.tickable === true && item.id !== 'notifications' && item.id !== 'usage' && (
             <Button
               testID={`done-${item.id}`}
               variant="secondary"

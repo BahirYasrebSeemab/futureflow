@@ -398,6 +398,7 @@ describe('the guard', () => {
       guard: { native: guard, newId: () => ledgerEvent(50).id, extraBlocked: ['x'] },
     });
     expect(calls.blocked).toEqual([[['a', 'x'], false]]);
+    expect(calls.domains).toEqual([[]]);
     expect(await store.blocklist()).toEqual({
       current: { apps: ['a'], games: false },
       pending: null,
@@ -425,11 +426,26 @@ describe('the guard', () => {
     expect(c2.blocked.at(-1)).toEqual([['a', 'b'], true]);
   });
 
-  test('with nothing chosen yet, the guard blocks the default apps and games', async () => {
+  test('with nothing chosen yet, the guard blocks the default apps, games and sites', async () => {
     const { deps } = await setup();
     const { guard, calls } = fakeGuard();
     await syncOnce({ ...deps, guard: { native: guard, newId: () => ledgerEvent(50).id } });
     expect(calls.blocked).toEqual([[[...DEFAULT_BLOCKLIST.apps], true]]);
+    expect(calls.domains.at(-1)).toEqual(
+      expect.arrayContaining(['instagram.com', 'youtube.com', 'x.com']),
+    );
+  });
+
+  test("an unblocked app's sites stay blocked until its unblock applies", async () => {
+    const { deps, store } = await setup();
+    const yt = 'com.google.android.youtube';
+    await store.saveBlocklist({
+      current: { apps: [yt], games: true },
+      pending: { apps: [], games: true, from: '2099-01-01' },
+    });
+    const { guard, calls } = fakeGuard();
+    await syncOnce({ ...deps, guard: { native: guard, newId: () => ledgerEvent(50).id } });
+    expect(calls.domains.at(-1)).toEqual(['youtube.com', 'youtu.be']);
   });
 
   test('debt is committed as no time left', async () => {
