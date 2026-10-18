@@ -24,11 +24,14 @@ fun watchdogPlan(
   lastNudgeAt: Long?,
   now: Long,
 ): WatchdogPlan {
-  // A clock set back makes the last nudge look in the future: treat it as long ago.
+  val running = enabled && connected
+  // A clock set back makes past times look in the future: count from now instead.
+  val since = if (running) null else downSince?.takeIf { it <= now } ?: now
   val quiet = lastNudgeAt != null && now >= lastNudgeAt && now - lastNudgeAt < NUDGE_EVERY_MS
+  val longDown = since != null && now - since >= DOWN_GRACE_MS
   return WatchdogPlan(
     startForeground = connected && !foregroundRunning,
-    nudge = !enabled && everEnabled && !quiet,
-    downSince = downSince,
+    nudge = longDown && everEnabled && !quiet,
+    downSince = since,
   )
 }

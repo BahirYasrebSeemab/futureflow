@@ -82,7 +82,7 @@ class UsageGuardService : AccessibilityService() {
     stopCounting()
     runCatching { unregisterReceiver(screen) }
     connectedSinceElapsed = null
-    GuardForegroundService.stop(this)
+    GuardForegroundService.stop() // after clearing connectedSinceElapsed, which it checks
     super.onDestroy()
   }
 

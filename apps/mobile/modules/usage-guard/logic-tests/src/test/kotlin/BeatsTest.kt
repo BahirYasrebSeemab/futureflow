@@ -54,7 +54,7 @@ class BeatsTest {
   }
 
   @Test
-  fun `a revoked token unlinks but keeps the beats`() {
+  fun `a revoked token unlinks`() {
     assertEquals(SendOutcome.UNLINK, sendOutcome(401))
   }
 

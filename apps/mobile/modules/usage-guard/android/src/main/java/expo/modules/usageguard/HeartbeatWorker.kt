@@ -1,6 +1,7 @@
 package expo.modules.usageguard
 
 import android.content.Context
+import android.util.Log
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
@@ -18,8 +19,14 @@ import java.util.concurrent.TimeUnit
 class HeartbeatWorker(context: Context, params: WorkerParameters) : Worker(context, params) {
   override fun doWork(): Result {
     val context = applicationContext
-    HeartbeatStore.record(context, GuardHealth.beat(context))
-    HeartbeatSender.flush(context)
+    try {
+      // Beats belong to a pairing: none are kept for a phone that isn't paired.
+      if (HeartbeatStore.linked(context)) HeartbeatStore.record(context, GuardHealth.beat(context))
+      HeartbeatSender.flush(context)
+    } catch (e: Exception) {
+      // A broken keystore or a bad answer must not stop the watchdog below.
+      Log.w(TAG, "{\"event\":\"heartbeat_failed\",\"name\":\"${e.javaClass.simpleName}\"}")
+    }
     watch(context)
     return Result.success()
   }
@@ -36,6 +43,7 @@ class HeartbeatWorker(context: Context, params: WorkerParameters) : Worker(conte
         lastNudgeAt = HeartbeatStore.lastNudgeAt(context),
         now = now,
       )
+    HeartbeatStore.setDownSince(context, plan.downSince)
     if (plan.startForeground) GuardForegroundService.start(context)
     if (plan.nudge) {
       GuardNotifications.nudge(context)
@@ -44,6 +52,7 @@ class HeartbeatWorker(context: Context, params: WorkerParameters) : Worker(conte
   }
 
   companion object {
+    private const val TAG = "FutureFlowGuard"
     private const val PERIODIC = "futureflow.heartbeat"
     private const val NOW = "futureflow.heartbeat.now"
     private const val PERIOD_MINUTES = 15L

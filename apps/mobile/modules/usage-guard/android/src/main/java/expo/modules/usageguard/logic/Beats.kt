@@ -35,7 +35,7 @@ enum class SendOutcome {
   SENT,
   /** Offline or the server is down: try again later. */
   KEEP,
-  /** The token is no longer valid: forget it and keep the beats for the next pairing. */
+  /** The token is no longer valid: forget it, with the beats queued for that pairing. */
   UNLINK,
   /** The server can never take this batch: drop it rather than block the queue. */
   DISCARD,

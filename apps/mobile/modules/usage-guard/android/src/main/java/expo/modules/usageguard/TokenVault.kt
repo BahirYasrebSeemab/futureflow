@@ -37,8 +37,8 @@ internal object TokenVault {
       String(cipher.doFinal(decode(parts[1])), Charsets.UTF_8)
     } catch (e: GeneralSecurityException) {
       null
-    } catch (e: IllegalArgumentException) {
-      null
+    } catch (e: Exception) {
+      null // Keystores fail in odd ways (IOException, ProviderException, bad Base64)
     }
   }
 

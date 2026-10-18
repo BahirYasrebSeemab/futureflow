@@ -1,5 +1,5 @@
 import type { SpendSession } from '@/lib/guard/spend';
-import { noGuard, type Guard } from '@/lib/guard/types';
+import { noGuard, type Guard, type GuardSettings, type GuardStatus } from '@/lib/guard/types';
 import type { LedgerEvent } from '@futureflow/core';
 import { randomBytes } from 'node:crypto';
 import type { Api, Today } from '@/lib/api/client';

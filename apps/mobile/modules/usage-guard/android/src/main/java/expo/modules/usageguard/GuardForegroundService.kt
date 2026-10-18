@@ -35,16 +35,32 @@ class GuardForegroundService : Service() {
 
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
     val text = text()
-    val notification = GuardNotifications.time(this, text)
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-      startForeground(GuardNotifications.TIME_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
-    } else {
-      startForeground(GuardNotifications.TIME_ID, notification)
+    try {
+      val notification = GuardNotifications.time(this, text)
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+        startForeground(GuardNotifications.TIME_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+      } else {
+        startForeground(GuardNotifications.TIME_ID, notification)
+      }
+    } catch (e: RuntimeException) {
+      // Android can refuse (background limits, a missing permission): stop quietly rather than
+      // take the guard's process down with us. The watchdog tries again.
+      Log.w(TAG, "{\"event\":\"foreground_refused\",\"name\":\"${e.javaClass.simpleName}\"}")
+      stopSelf()
+      return START_NOT_STICKY
+    }
+    // A start that raced the guard going away: foreground was entered (Android requires it), so
+    // leave now.
+    if (!GuardHealth.connected()) {
+      stopSelf()
+      return START_NOT_STICKY
     }
     shown = text
     handler.removeCallbacks(tick)
     handler.postDelayed(tick, TICK_MS)
-    return START_STICKY
+    // Not sticky: the accessibility service and the watchdog start it, and a sticky restart could
+    // come back with no guard to show for.
+    return START_NOT_STICKY
   }
 
   override fun onDestroy() {
@@ -87,8 +103,12 @@ class GuardForegroundService : Service() {
       }
     }
 
-    fun stop(context: Context) {
-      context.stopService(Intent(context, GuardForegroundService::class.java))
+    /**
+     * Asks a running service to leave. One still starting sees the guard gone and leaves by itself
+     * after entering the foreground; stopping it before that would crash the app.
+     */
+    fun stop() {
+      instance?.let { service -> service.handler.post { service.stopSelf() } }
     }
 
     /** The meter changed: show the new time now rather than at the next tick. */

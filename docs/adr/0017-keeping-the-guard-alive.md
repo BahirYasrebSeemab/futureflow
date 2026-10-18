@@ -26,14 +26,18 @@ Three facts shaped the design:
   - It raises the process to foreground priority.
   - It shows "N min left today" (or "Out of time for today") on a silent, low-importance channel.
   - The accessibility service starts and stops it. Android lets an app with a system-bound
-    accessibility service start one from the background; starts are still wrapped, and the
-    watchdog retries.
+    accessibility service start one from the background, but a refused `startForeground` must
+    never take the guard's process down: it is caught, the service stops itself, and the watchdog
+    retries. It isn't sticky, and it leaves by itself when the guard is gone (stopping it before
+    it entered the foreground would crash the app).
 - **A native heartbeat** (`HeartbeatWorker`, WorkManager unique periodic work, every 15 min):
   - records a beat into a FIFO queue in `SharedPreferences` (up to a week)
   - then sends the queue oldest first, 96 beats per request, to the new `POST /v1/heartbeats`
   - removes exactly the beats a 2xx stored (by identity, so two senders lose nothing)
-  - on a 401 it forgets the token and keeps the beats; on a 400 or 413 it drops the batch; on any
-    other failure it keeps everything for the next run
+  - on a 401 it forgets the token; on a 400 or 413 it drops the batch; on any other failure it
+    keeps everything for the next run
+  - beats belong to a pairing: none are recorded while unpaired, and unlinking (unpair or a 401)
+    drops the queue, so old beats never draw gaps for a pairing that didn't exist yet
   - also sends a beat at once after pairing, a boot, an app update, and the guard reconnecting
 - **Doze-proof gaps.** Each beat carries `guardSinceUptimeSeconds`: the uptime at which the
   accessibility service last connected in this process (null when it isn't connected). In core
@@ -42,6 +46,9 @@ Three facts shaped the design:
   - the beat after it shows the guard connected since before the beat before it.
 
   A guard switched off and back on in between has a later "since", so its silence still counts.
+  A beat with the guard listed as on but `since` null (Android stopped the service and left it
+  switched on) counts as off. That's why the field is required on the wire: a stored null must
+  mean "not running", never "not sent".
 
 - **The token copy.** JS hands `(apiUrl, token)` to the module whenever the session is paired
   (start-up included) and calls `unlink` on unpair. Native code seals the token with AES-GCM under
@@ -53,8 +60,10 @@ Three facts shaped the design:
 - **The watchdog** is the same worker:
   - it restarts the foreground service if the accessibility service is connected and the
     foreground service isn't running
-  - when the guard is switched off after having been on, it posts "The guard is off", at most once
-    every 6 hours; the nudge opens the Guard screen
+  - when the guard has been down for 10 minutes (switched off, or on but not running) after having
+    been on, it posts "The guard is off", at most once every 6 hours; the nudge opens the Guard
+    screen. The 10 minutes let a boot reconnect the service first.
+  - the Guard screen and Today say "The guard isn't running" for a listed-but-stopped service
 - **The checklist** on the Guard screen ("Keep it running"):
   - notifications (the runtime permission on Android 13+, otherwise the app's notification
     settings) and battery limits, ticked from what Android reports

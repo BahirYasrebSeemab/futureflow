@@ -303,3 +303,11 @@ test('guard steps the owner ticked stay ticked, also across re-pairing', async (
   await store.clearServerCopy();
   expect(await store.guardSteps()).toEqual(['recents']);
 });
+
+test('an unreadable guard-steps value reads as nothing ticked', async () => {
+  const { store, db } = await open();
+  await db.runAsync("INSERT INTO kv (key, value) VALUES ('guard_steps', '{not json')");
+  expect(await store.guardSteps()).toEqual([]);
+  await store.markGuardStep('recents', true);
+  expect(await store.guardSteps()).toEqual(['recents']);
+});

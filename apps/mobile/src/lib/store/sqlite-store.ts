@@ -86,7 +86,12 @@ function createQueue() {
 
 const GUARD_STEPS: readonly GuardStep[] = ['autostart', 'battery', 'recents'];
 const readSteps = (raw: string | null): GuardStep[] => {
-  const parsed: unknown = raw === null ? [] : JSON.parse(raw);
+  let parsed: unknown = [];
+  try {
+    parsed = raw === null ? [] : JSON.parse(raw);
+  } catch {
+    // An unreadable value means nothing ticked: the owner ticks again.
+  }
   return Array.isArray(parsed) ? GUARD_STEPS.filter((step) => parsed.includes(step)) : [];
 };
 

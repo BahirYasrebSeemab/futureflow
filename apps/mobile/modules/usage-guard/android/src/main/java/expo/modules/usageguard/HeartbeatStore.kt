@@ -16,6 +16,7 @@ internal object HeartbeatStore {
   private const val KEY_QUEUE = "queue"
   private const val KEY_EVER_ENABLED = "everEnabled"
   private const val KEY_LAST_NUDGE = "lastNudgeAt"
+  private const val KEY_DOWN_SINCE = "downSince"
   private val lock = Any()
 
   data class Credentials(val apiUrl: String, val token: String)
@@ -24,9 +25,14 @@ internal object HeartbeatStore {
     prefs(context).edit().putString(KEY_URL, apiUrl).putString(KEY_TOKEN, TokenVault.seal(token)).apply()
   }
 
-  /** Forgets where to send and how; queued beats stay for the next pairing. */
+  /**
+   * Forgets where to send and how, and the queued beats with it: they belong to that pairing, and
+   * sent under the next one they would draw gaps from before it existed.
+   */
   fun unlink(context: Context) {
-    prefs(context).edit().remove(KEY_URL).remove(KEY_TOKEN).apply()
+    synchronized(lock) {
+      prefs(context).edit().remove(KEY_URL).remove(KEY_TOKEN).remove(KEY_QUEUE).commit()
+    }
   }
 
   fun credentials(context: Context): Credentials? {
@@ -57,10 +63,21 @@ internal object HeartbeatStore {
     prefs(context).edit().putLong(KEY_LAST_NUDGE, at).apply()
   }
 
-  private fun change(context: Context, update: (BeatQueue) -> BeatQueue) =
+  fun downSince(context: Context): Long? =
+    prefs(context).let { if (it.contains(KEY_DOWN_SINCE)) it.getLong(KEY_DOWN_SINCE, 0) else null }
+
+  fun setDownSince(context: Context, at: Long?) {
+    val edit = prefs(context).edit()
+    if (at == null) edit.remove(KEY_DOWN_SINCE) else edit.putLong(KEY_DOWN_SINCE, at)
+    edit.apply()
+  }
+
+  /** Written before returning (`commit`): callers are on a worker thread, and a beat must survive. */
+  private fun change(context: Context, update: (BeatQueue) -> BeatQueue) {
     synchronized(lock) {
-      prefs(context).edit().putString(KEY_QUEUE, encode(update(read(context)))).apply()
+      prefs(context).edit().putString(KEY_QUEUE, encode(update(read(context)))).commit()
     }
+  }
 
   private fun prefs(context: Context): SharedPreferences =
     context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)

@@ -33,7 +33,10 @@ export function GuardChecklist({
 
   useEffect(() => {
     let live = true;
-    void services.store.guardSteps().then((steps) => live && setTicked(steps));
+    services.store
+      .guardSteps()
+      .then((steps) => live && setTicked(steps))
+      .catch(logFailure);
     return () => {
       live = false;
     };
@@ -48,7 +51,8 @@ export function GuardChecklist({
     [services, ticked],
   );
 
-  const open = (kind: 'battery' | 'autostart') => () => void services.guard.openSettings(kind);
+  const open = (kind: 'battery' | 'autostart') => () =>
+    void services.guard.openSettings(kind).catch(logFailure);
   const items: Item[] = [
     {
       id: 'notifications',
@@ -57,7 +61,7 @@ export function GuardChecklist({
       done: status.notifications,
       fix: {
         label: 'Allow notifications',
-        onPress: () => void services.guard.requestNotifications().then(refresh),
+        onPress: () => void services.guard.requestNotifications().then(refresh).catch(logFailure),
       },
     },
     {
@@ -68,7 +72,8 @@ export function GuardChecklist({
         : 'Lets the guard keep running in the background.',
       done: status.batteryUnrestricted || (status.xiaomi && ticked.includes('battery')),
       fix: { label: 'Remove battery limits', onPress: open('battery') },
-      tickable: status.xiaomi,
+      // Ticked only where Android doesn't already say so.
+      tickable: status.xiaomi && !status.batteryUnrestricted,
     },
   ];
   if (status.xiaomi) {
@@ -115,13 +120,18 @@ export function GuardChecklist({
               testID={`done-${item.id}`}
               variant="secondary"
               label={ticked.includes(item.id) ? 'Not done yet' : 'I did this'}
-              onPress={() => void tick(item.id as GuardStep)}
+              onPress={() => void tick(item.id as GuardStep).catch(logFailure)}
             />
           )}
         </View>
       ))}
     </View>
   );
+}
+
+function logFailure(error: unknown) {
+  const name = error instanceof Error ? error.name : 'unknown';
+  console.error(JSON.stringify({ event: 'guard_checklist_failed', name }));
 }
 
 const styles = StyleSheet.create({
