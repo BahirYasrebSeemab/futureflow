@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_RULES as R } from '../src/rules';
-import { expireDay, expireFromBalances, lateSpendCredit, spend, unlock } from '../src/spending';
+import {
+  expireDay,
+  expireFromBalances,
+  lateSpendCredit,
+  spend,
+  unlock,
+  unlockAllowed,
+} from '../src/spending';
 import { ctx, ev } from './fixtures';
 
 const TEN_MIN_MS = 600_000;
@@ -169,5 +176,30 @@ describe('lateSpendCredit', () => {
       ev({ kind: 'correction', seconds: 600, refId: 'late', reason: 'late_spend' }),
     ];
     expect(lateSpendCredit(events, late(events), ctx())).toBeNull();
+  });
+});
+
+describe('unlockAllowed', () => {
+  const reason = 'my sister needs the group chat';
+  const unlocks = (n: number) =>
+    Array.from({ length: n }, () => ev({ kind: 'unlock_borrow', seconds: 600 }));
+
+  it('passes a long enough reason under the daily limit', () => {
+    expect(unlockAllowed(unlocks(1), reason, R)).toBeNull();
+  });
+
+  it('measures the reason after trimming', () => {
+    expect(unlockAllowed([], `  ${'x'.repeat(19)}   `, R)).toBe('reason_too_short');
+    expect(unlockAllowed([], 'x'.repeat(20), R)).toBeNull();
+  });
+
+  it('stops at two unlocks a day', () => {
+    expect(unlockAllowed(unlocks(2), reason, R)).toBe('daily_limit_reached');
+  });
+
+  it('ignores other kinds of event', () => {
+    expect(
+      unlockAllowed([ev({ kind: 'base_grant', seconds: 900 }), ...unlocks(1)], reason, R),
+    ).toBeNull();
   });
 });
