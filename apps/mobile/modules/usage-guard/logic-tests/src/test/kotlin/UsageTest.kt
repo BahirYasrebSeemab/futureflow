@@ -2,6 +2,10 @@ import expo.modules.usageguard.logic.Interval
 import expo.modules.usageguard.logic.Meter
 import expo.modules.usageguard.logic.Session
 import expo.modules.usageguard.logic.UsageEvent
+import expo.modules.usageguard.logic.UsageKind.BOOTED
+import expo.modules.usageguard.logic.UsageKind.PAUSED
+import expo.modules.usageguard.logic.UsageKind.RESUMED
+import expo.modules.usageguard.logic.UsageKind.STOPPED_ALL
 import expo.modules.usageguard.logic.foregroundIntervals
 import expo.modules.usageguard.logic.uncovered
 import kotlin.test.Test
@@ -12,13 +16,13 @@ private const val MIN = 60_000L
 class UsageTest {
   @Test
   fun `a resume and its pause make one interval`() {
-    val events = listOf(UsageEvent("ig", true, 10 * MIN), UsageEvent("ig", false, 20 * MIN))
+    val events = listOf(UsageEvent("ig", RESUMED, 10 * MIN), UsageEvent("ig", PAUSED, 20 * MIN))
     assertEquals(listOf(Interval(10 * MIN, 20 * MIN)), foregroundIntervals(events, 0, 60 * MIN))
   }
 
   @Test
   fun `an app still in front ends at to, and one already in front starts at from`() {
-    val events = listOf(UsageEvent("ig", false, 5 * MIN), UsageEvent("yt", true, 50 * MIN))
+    val events = listOf(UsageEvent("ig", PAUSED, 5 * MIN), UsageEvent("yt", RESUMED, 50 * MIN))
     assertEquals(
       listOf(Interval(0, 5 * MIN), Interval(50 * MIN, 60 * MIN)),
       foregroundIntervals(events, 0, 60 * MIN),
@@ -29,10 +33,10 @@ class UsageTest {
   fun `overlapping apps are merged, so time counts once`() {
     val events =
       listOf(
-        UsageEvent("ig", true, 10 * MIN),
-        UsageEvent("yt", true, 15 * MIN),
-        UsageEvent("ig", false, 20 * MIN),
-        UsageEvent("yt", false, 25 * MIN),
+        UsageEvent("ig", RESUMED, 10 * MIN),
+        UsageEvent("yt", RESUMED, 15 * MIN),
+        UsageEvent("ig", PAUSED, 20 * MIN),
+        UsageEvent("yt", PAUSED, 25 * MIN),
       )
     assertEquals(listOf(Interval(10 * MIN, 25 * MIN)), foregroundIntervals(events, 0, 60 * MIN))
   }
@@ -40,7 +44,7 @@ class UsageTest {
   @Test
   fun `events out of order are sorted, and a second pause is ignored`() {
     val events =
-      listOf(UsageEvent("ig", false, 20 * MIN), UsageEvent("ig", true, 10 * MIN), UsageEvent("ig", false, 30 * MIN))
+      listOf(UsageEvent("ig", PAUSED, 20 * MIN), UsageEvent("ig", RESUMED, 10 * MIN), UsageEvent("ig", PAUSED, 30 * MIN))
     assertEquals(listOf(Interval(10 * MIN, 20 * MIN)), foregroundIntervals(events, 0, 60 * MIN))
   }
 
@@ -81,11 +85,43 @@ class UsageScreensTest {
   fun `the next screen resuming before the last one pauses keeps the app in front`() {
     val events =
       listOf(
-        UsageEvent("ig", true, 10 * MIN, "Feed"),
-        UsageEvent("ig", true, 15 * MIN, "Reel"),
-        UsageEvent("ig", false, 15 * MIN + 1, "Feed"),
-        UsageEvent("ig", false, 30 * MIN, "Reel"),
+        UsageEvent("ig", RESUMED, 10 * MIN, "Feed"),
+        UsageEvent("ig", RESUMED, 15 * MIN, "Reel"),
+        UsageEvent("ig", PAUSED, 15 * MIN + 1, "Feed"),
+        UsageEvent("ig", PAUSED, 30 * MIN, "Reel"),
       )
     assertEquals(listOf(Interval(10 * MIN, 30 * MIN)), foregroundIntervals(events, 0, 60 * MIN))
+  }
+}
+
+class UsageResetTest {
+  @Test
+  fun `a phone that dies with an app in front charges nothing after it died`() {
+    val events =
+      listOf(
+        UsageEvent("ig", RESUMED, 10 * MIN, "Feed"),
+        UsageEvent("", BOOTED, 600 * MIN),
+        UsageEvent("ig", RESUMED, 700 * MIN, "Feed"),
+        UsageEvent("ig", PAUSED, 710 * MIN, "Feed"),
+      )
+    assertEquals(listOf(Interval(700 * MIN, 710 * MIN)), foregroundIntervals(events, 0, 800 * MIN))
+  }
+
+  @Test
+  fun `screen off or a shutdown ends what was in front, at that moment`() {
+    val events = listOf(UsageEvent("ig", RESUMED, 10 * MIN), UsageEvent("", STOPPED_ALL, 25 * MIN))
+    assertEquals(listOf(Interval(10 * MIN, 25 * MIN)), foregroundIntervals(events, 0, 60 * MIN))
+  }
+
+  @Test
+  fun `a stray pause after a screen-off is not taken as the app in front since the start`() {
+    val events = listOf(UsageEvent("", STOPPED_ALL, 5 * MIN), UsageEvent("ig", PAUSED, 30 * MIN))
+    assertEquals(emptyList(), foregroundIntervals(events, 0, 60 * MIN))
+  }
+
+  @Test
+  fun `a stopped or destroyed screen closes like a pause`() {
+    val events = listOf(UsageEvent("ig", RESUMED, 10 * MIN, "Feed"), UsageEvent("ig", PAUSED, 12 * MIN, "Feed"))
+    assertEquals(listOf(Interval(10 * MIN, 12 * MIN)), foregroundIntervals(events, 0, 60 * MIN))
   }
 }

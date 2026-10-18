@@ -9,6 +9,7 @@ import android.os.Process
 import expo.modules.usageguard.logic.Interval
 import expo.modules.usageguard.logic.Meter
 import expo.modules.usageguard.logic.UsageEvent
+import expo.modules.usageguard.logic.UsageKind
 import expo.modules.usageguard.logic.foregroundIntervals
 import expo.modules.usageguard.logic.uncovered
 
@@ -56,7 +57,7 @@ internal object UsageReconciler {
           UsageEvents.Event.MOVE_TO_BACKGROUND -> false // ACTIVITY_PAUSED on Android 10+
           else -> null
         } ?: continue
-      found += UsageEvent(event.packageName, resumed, event.timeStamp, event.className ?: "")
+      found += UsageEvent(event.packageName, if (resumed) UsageKind.RESUMED else UsageKind.PAUSED, event.timeStamp, event.className ?: "")
     }
     return found
   }

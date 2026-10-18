@@ -15,8 +15,8 @@ class WindowsTest {
   }
 
   @Test
-  fun `the focused window is left to the focus rule`() {
-    assertFalse(sideBlocked(listOf(WindowView("yt", true, true)), verdict))
+  fun `a blocked window counts focused or not, since focus can move without a state event`() {
+    assertTrue(sideBlocked(listOf(WindowView("chrome", true, false), WindowView("yt", true, true)), verdict))
   }
 
   @Test

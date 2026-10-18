@@ -6,11 +6,20 @@ const val MIN_MISSED_MS = 60_000L
 /** Wall-clock time, [start, end). */
 data class Interval(val start: Long, val end: Long)
 
-/**
- * One of a blocked app's screens (`activity`) coming to the front (`resumed`) or leaving it, from
- * Android's usage log.
- */
-data class UsageEvent(val pkg: String, val resumed: Boolean, val at: Long, val activity: String = "")
+/** What an entry in Android's usage log means for the guard. */
+enum class UsageKind {
+  /** One of an app's screens came to the front. */
+  RESUMED,
+  /** That screen left the front (paused, stopped or destroyed). */
+  PAUSED,
+  /** Everything left the front at once: the screen went off, the lock screen came, a shutdown. */
+  STOPPED_ALL,
+  /** The phone started: whatever was open before it died is unknown, so it isn't charged. */
+  BOOTED,
+}
+
+/** An entry in Android's usage log; `pkg` and `activity` are empty for phone-wide kinds. */
+data class UsageEvent(val pkg: String, val kind: UsageKind, val at: Long, val activity: String = "")
 
 /**
  * When blocked apps were in front between [from] and [to], merged across apps. An app already in
@@ -26,7 +35,7 @@ fun foregroundIntervals(events: List<UsageEvent>, from: Long, to: Long): List<In
   for (e in events.sortedBy { it.at }) {
     val first = seen.add(e.pkg)
     val open = screens.getOrPut(e.pkg) { HashSet() }
-    if (e.resumed) {
+    if (e.kind == UsageKind.RESUMED) {
       if (open.isEmpty()) since[e.pkg] = e.at
       open += e.activity
     } else if (open.remove(e.activity)) {

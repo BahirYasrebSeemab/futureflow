@@ -32,6 +32,19 @@ class DomainsTest {
   }
 
   @Test
+  fun `a scheme is only at the start, so an address in the query can't hide the host`() {
+    assertEquals("youtube.com", hostOf("youtube.com/watch?v=abc&x=https://a.org"))
+    assertEquals("youtube.com", hostOf("https://youtube.com/redirect?u=http://x.org"))
+  }
+
+  @Test
+  fun `a trailing dot and view-source don't hide the host`() {
+    assertEquals("youtube.com", hostOf("youtube.com."))
+    assertEquals("youtube.com", hostOf("https://youtube.com./watch"))
+    assertEquals("youtube.com", hostOf("view-source:https://youtube.com/"))
+  }
+
+  @Test
   fun `a blocked domain matches itself and its subdomains`() {
     assertTrue(domainBlocked("youtube.com", SOCIAL))
     assertTrue(domainBlocked("m.youtube.com", SOCIAL))
