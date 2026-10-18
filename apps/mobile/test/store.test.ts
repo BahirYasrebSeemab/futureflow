@@ -327,3 +327,15 @@ test('an unlock wait is kept until cleared, also across re-pairing', async () =>
   await store.saveUnlockWait(null);
   expect(await store.unlockWait()).toBeNull();
 });
+
+test("the blocklist is the phone's own: kept across re-pairing", async () => {
+  const { store } = await open();
+  expect(await store.blocklist()).toBeNull();
+  const state = {
+    current: { apps: ['com.instagram.android'], games: true },
+    pending: { apps: [], games: true, from: '2026-10-19' },
+  };
+  await store.saveBlocklist(state);
+  await store.clearServerCopy();
+  expect(await store.blocklist()).toEqual(state);
+});

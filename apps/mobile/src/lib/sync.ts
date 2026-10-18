@@ -3,6 +3,8 @@ import type { LedgerEvent } from '@futureflow/core';
 import type { Api, ApiFailure } from './api/client';
 import { spendEvents } from './guard/spend';
 import type { Guard } from './guard/types';
+import { currentDayKey } from './format';
+import { applyBlocklist } from './guard/apply-blocklist';
 import { projectBalance } from './ledger';
 import type { LocalStore, SyncReport, SyncStatus } from './store/types';
 
@@ -15,8 +17,11 @@ export type SyncDeps = Readonly<{
   api: Pick<Api, 'pushEvents' | 'pushMathAttempts' | 'today' | 'pullLedger' | 'getBank'>;
   store: LocalStore;
   now: () => number;
-  /** The native guard: its spend becomes events, and it learns the balance after each pull. */
-  guard?: Readonly<{ native: Guard; newId: () => string }>;
+  /**
+   * The native guard: it gets today's blocklist, its spend becomes events, and it learns the
+   * balance after each pull. `extraBlocked` is the emulator build's Settings.
+   */
+  guard?: Readonly<{ native: Guard; newId: () => string; extraBlocked?: readonly string[] }>;
 }>;
 
 type Stop = Exclude<SyncStatus, 'ok'>;
@@ -156,6 +161,17 @@ const logGuardFailure = (event: string, error: unknown) => {
 };
 
 /** Time spent in blocked apps joins the outbox first, so this same sync sends it. */
+/** A pending unblock applies once its day has come, even if the app wasn't opened at 04:00. */
+async function refreshBlocklist(deps: SyncDeps): Promise<void> {
+  if (deps.guard === undefined) return;
+  try {
+    const { native, extraBlocked } = deps.guard;
+    await applyBlocklist(deps.store, native, currentDayKey(deps.now()), extraBlocked);
+  } catch (error) {
+    logGuardFailure('guard_blocklist_failed', error);
+  }
+}
+
 async function collectSpend(deps: SyncDeps): Promise<void> {
   if (deps.guard === undefined) return;
   try {
@@ -188,6 +204,7 @@ async function commitBalance(deps: SyncDeps): Promise<void> {
 
 /** Push, then today (it may write the base grant), then pull, so the pull brings the grant back. */
 export async function syncOnce(deps: SyncDeps): Promise<SyncReport> {
+  await refreshBlocklist(deps);
   await collectSpend(deps);
   const sent = await push(deps);
   let status: SyncStatus = sent.stop ?? 'ok';

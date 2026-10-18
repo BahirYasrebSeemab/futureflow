@@ -152,6 +152,7 @@ export async function testServices(
     guard,
     now,
     apiUrl: 'https://api.test',
+    extraBlocked: [],
     unlockWaitSeconds: DEFAULT_RULES.unlockWaitSeconds,
   };
 }

@@ -1,3 +1,5 @@
+import { currentDayKey } from '@/lib/format';
+import { DEFAULT_BLOCKLIST } from '@/lib/guard/blocklist';
 import type { LedgerEvent } from '@futureflow/core';
 import type {
   ApiFailure,
@@ -381,6 +383,32 @@ describe('the guard', () => {
     const { guard, calls } = fakeGuard();
     await syncOnce({ ...deps, guard: { native: guard, newId: () => ledgerEvent(50).id } });
     expect(calls.included).toEqual([[pulled.id, queued.id].sort()]);
+  });
+
+  test('each sync gives the guard the blocklist that applies today, with the extra apps', async () => {
+    const { deps, store } = await setup();
+    const today = currentDayKey(NOW);
+    await store.saveBlocklist({
+      current: { apps: ['a', 'b'], games: true },
+      pending: { apps: ['a'], games: false, from: today },
+    });
+    const { guard, calls } = fakeGuard();
+    await syncOnce({
+      ...deps,
+      guard: { native: guard, newId: () => ledgerEvent(50).id, extraBlocked: ['x'] },
+    });
+    expect(calls.blocked).toEqual([[['a', 'x'], false]]);
+    expect(await store.blocklist()).toEqual({
+      current: { apps: ['a'], games: false },
+      pending: null,
+    });
+  });
+
+  test('with nothing chosen yet, the guard blocks the default apps and games', async () => {
+    const { deps } = await setup();
+    const { guard, calls } = fakeGuard();
+    await syncOnce({ ...deps, guard: { native: guard, newId: () => ledgerEvent(50).id } });
+    expect(calls.blocked).toEqual([[[...DEFAULT_BLOCKLIST.apps], true]]);
   });
 
   test('debt is committed as no time left', async () => {

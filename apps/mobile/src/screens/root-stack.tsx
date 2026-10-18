@@ -19,6 +19,7 @@ export function RootStack() {
         <Stack.Screen name="reading" options={{ title: 'Reading' }} />
         <Stack.Screen name="coach" options={{ title: 'Coach' }} />
         <Stack.Screen name="unlock" options={{ title: 'Emergency unlock' }} />
+        <Stack.Screen name="blocked-apps" options={{ title: 'Blocked apps' }} />
         <Stack.Screen name="roadmap" options={{ title: 'Roadmap' }} />
         <Stack.Screen name="github" options={{ title: 'GitHub' }} />
         <Stack.Screen name="more" options={{ title: 'More' }} />

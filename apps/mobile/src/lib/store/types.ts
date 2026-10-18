@@ -23,6 +23,7 @@ export type AwayWindowRef = Readonly<{ id: string; from: string; to: string }>;
 
 /** The phone's own data: unsent events, refused events, the server-confirmed ledger and small values. */
 /** Xiaomi steps on the Guard screen. */
+import type { BlocklistState } from '../guard/blocklist';
 import type { UnlockWait } from '../unlock';
 
 export type GuardStep = 'battery' | 'autostart' | 'recents';
@@ -42,6 +43,9 @@ export interface LocalStore {
   /** An emergency unlock's wait in progress; the phone's own, kept on re-pairing. */
   unlockWait(): Promise<UnlockWait | null>;
   saveUnlockWait(wait: UnlockWait | null): Promise<void>;
+  /** The owner's blocklist; null until they change it (the defaults apply). Kept on re-pairing. */
+  blocklist(): Promise<BlocklistState | null>;
+  saveBlocklist(state: BlocklistState): Promise<void>;
   /**
    * The server answered: `added` events move into the confirmed ledger (so the balance keeps them
    * even if the pull fails); `ignored` ones are dropped, because the server already holds its own copy.
