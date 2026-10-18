@@ -9,6 +9,12 @@ data class Session(val seq: Long, val startWall: Long, val ms: Long)
 /** A blocked app in the foreground right now. Its length comes from the monotonic clock. */
 data class OpenSession(val startWall: Long, val startElapsed: Long, val bootId: String)
 
+/**
+ * Time an emergency unlock added (spec §6.1), known here before any commit includes it, so it
+ * works offline. [id] is the `unlock_borrow` event's id.
+ */
+data class Grant(val id: String, val day: Long, val seconds: Long)
+
 /** The guard's whole state. Every change returns a new Meter. */
 data class Meter(
   val balanceSeconds: Long? = null,
@@ -17,7 +23,11 @@ data class Meter(
   val open: OpenSession? = null,
   val nextSeq: Long = 1,
   val baseSeconds: Long = DEFAULT_BASE_SECONDS,
+  val grants: List<Grant> = emptyList(),
 ) {
+  /** Adds an unlock's time for [day]; the same id twice adds it once. */
+  fun grant(id: String, day: Long, seconds: Long): Meter = this
+
   fun enter(wall: Long, elapsed: Long, bootId: String): Meter =
     if (open != null) this else copy(open = OpenSession(wall, elapsed, bootId))
 
@@ -37,8 +47,11 @@ data class Meter(
     return split to split.sessions
   }
 
-  /** The app recorded sessions up to [watermark]; [balanceSeconds] already includes them. */
-  fun commit(watermark: Long, balanceSeconds: Long, day: Long): Meter =
+  /**
+   * The app recorded sessions up to [watermark]; [balanceSeconds] already includes them and the
+   * unlocks in [included].
+   */
+  fun commit(watermark: Long, balanceSeconds: Long, day: Long, included: Set<String> = emptySet()): Meter =
     copy(
       balanceSeconds = balanceSeconds,
       balanceDay = day,
