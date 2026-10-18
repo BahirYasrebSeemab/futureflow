@@ -51,3 +51,18 @@ class GrantTest {
     assertEquals(540_000, m.remainingMs(60_000, DAY, sameDay))
   }
 }
+
+class GrantOrderTest {
+  @Test
+  fun `a grant arriving after a commit that already includes it adds nothing`() {
+    val m = Meter().commit(0, 600, DAY, setOf("u1")).grant("u1", DAY, 600)
+    assertEquals(emptyList(), m.grants)
+    assertEquals(600_000, m.remainingMs(0, DAY, sameDay))
+  }
+
+  @Test
+  fun `a later commit that no longer names an id lets a new grant with it count`() {
+    val m = Meter().commit(0, 0, DAY, setOf("u1")).commit(0, 0, DAY, emptySet()).grant("u1", DAY, 600)
+    assertEquals(600_000, m.remainingMs(0, DAY, sameDay))
+  }
+}

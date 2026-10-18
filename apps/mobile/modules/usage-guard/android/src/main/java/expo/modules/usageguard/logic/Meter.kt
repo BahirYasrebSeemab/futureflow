@@ -24,6 +24,8 @@ data class Meter(
   val nextSeq: Long = 1,
   val baseSeconds: Long = DEFAULT_BASE_SECONDS,
   val grants: List<Grant> = emptyList(),
+  /** The unlocks the last commit's balance included: a grant for one of them arrived late. */
+  val included: Set<String> = emptySet(),
 ) {
   /** Adds an unlock's time for [day]; the same id twice adds it once. */
   fun grant(id: String, day: Long, seconds: Long): Meter =
