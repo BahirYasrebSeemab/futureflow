@@ -43,6 +43,11 @@ export interface LocalStore {
   /** An emergency unlock's wait in progress; the phone's own, kept on re-pairing. */
   unlockWait(): Promise<UnlockWait | null>;
   saveUnlockWait(wait: UnlockWait | null): Promise<void>;
+  /**
+   * Uses up the finished wait and queues its unlock in one transaction; false (and nothing
+   * queued) when there is no wait, so one wait never pays for two unlocks.
+   */
+  enqueueUnlock(event: LedgerEvent): Promise<boolean>;
   /** The owner's blocklist; null until they change it (the defaults apply). Kept on re-pairing. */
   blocklist(): Promise<BlocklistState | null>;
   saveBlocklist(state: BlocklistState): Promise<void>;

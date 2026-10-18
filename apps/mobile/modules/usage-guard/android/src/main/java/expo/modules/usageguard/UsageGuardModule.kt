@@ -7,9 +7,12 @@ import android.content.Intent
 import android.net.Uri
 import android.os.SystemClock
 import android.provider.Settings
+import android.provider.Telephony
+import android.telecom.TelecomManager
 import expo.modules.kotlin.exception.Exceptions
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
+import expo.modules.usageguard.logic.NEVER_BLOCKED_BASE
 
 /** The app's side of the guard: the block list in, spent time out, the balance back in. */
 class UsageGuardModule : Module() {
@@ -75,7 +78,8 @@ class UsageGuardModule : Module() {
       val launcher = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
       pm.queryIntentActivities(launcher, 0)
         .map { it.activityInfo.packageName to it.loadLabel(pm).toString() }
-        .filter { (pkg, _) -> pkg != context.packageName }
+        // Future Flow, the dialer and the SMS app are never blocked, so they aren't offered.
+        .filter { (pkg, _) -> pkg !in neverOffered() }
         .distinctBy { it.first }
         .sortedBy { it.second.lowercase() }
         .map { (pkg, label) -> mapOf("package" to pkg, "label" to label) }
@@ -92,6 +96,13 @@ class UsageGuardModule : Module() {
 
     AsyncFunction("openSettings") { kind: String -> open(settingsIntent(kind)) }
   }
+
+  private fun neverOffered(): Set<String> =
+    setOfNotNull(
+      context.packageName,
+      (context.getSystemService(Context.TELECOM_SERVICE) as? TelecomManager)?.defaultDialerPackage,
+      Telephony.Sms.getDefaultSmsPackage(context),
+    ) + NEVER_BLOCKED_BASE
 
   private fun settingsIntent(kind: String): Intent {
     val pkg = context.packageName

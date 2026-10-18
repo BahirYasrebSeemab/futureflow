@@ -1,5 +1,5 @@
 import { DEFAULT_RULES, mergeEvents, type LedgerEvent, type Rules } from '@futureflow/core';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useBottomPadding } from '@/components/bottom-padding';
 import { Button } from '@/components/button';
@@ -106,22 +106,36 @@ export function UnlockScreen() {
     setPhase({ kind: 'form' });
   };
 
+  // One confirm at a time: a double tap must not spend one wait twice.
+  const busy = useRef(false);
+  const [confirming, setConfirming] = useState(false);
   const confirm = async (wait: UnlockWait) => {
-    const clock = await services.guard.clock();
-    if (clock === null) return setPhase({ kind: 'unavailable' });
-    const now = services.now();
-    const ctx = { day: currentDayKey(now), at: now, newId: services.ids.newId };
-    const result = finishUnlock(await todayEvents(services), wait, clock, ctx, rules);
-    if (!result.ok) {
-      if (result.error === 'daily_limit_reached') setPhase({ kind: 'limit' });
-      else await check(wait);
-      return;
+    if (busy.current) return;
+    busy.current = true;
+    setConfirming(true);
+    try {
+      const clock = await services.guard.clock();
+      if (clock === null) return setPhase({ kind: 'unavailable' });
+      const now = services.now();
+      const ctx = { day: currentDayKey(now), at: now, newId: services.ids.newId };
+      const result = finishUnlock(await todayEvents(services), wait, clock, ctx, rules);
+      if (!result.ok) {
+        if (result.error === 'daily_limit_reached') setPhase({ kind: 'limit' });
+        else await check(wait);
+        return;
+      }
+      // The wait is used up in the same transaction that queues the unlock.
+      if (!(await services.store.enqueueUnlock(result.value))) return setPhase({ kind: 'form' });
+      await services.guard.grant(result.value.id, result.value.seconds);
+      setPhase({ kind: 'done' });
+      void services.syncer.sync();
+    } catch (error) {
+      const name = error instanceof Error ? error.name : 'unknown';
+      console.error(JSON.stringify({ event: 'unlock_failed', name }));
+    } finally {
+      busy.current = false;
+      setConfirming(false);
     }
-    await services.store.enqueue([result.value]);
-    await services.guard.grant(result.value.id, result.value.seconds);
-    await services.store.saveUnlockWait(null);
-    setPhase({ kind: 'done' });
-    void services.syncer.sync();
   };
 
   const text = { color: c.text };
@@ -189,17 +203,14 @@ export function UnlockScreen() {
           )}
           <Text style={[styles.body15, muted]}>“{waiting.wait.reason}”</Text>
           {waiting.leftMs > 0 ? (
-            <Text
-              testID="unlock-countdown"
-              accessibilityLiveRegion="polite"
-              style={[styles.countdown, text]}
-            >
+            <Text testID="unlock-countdown" style={[styles.countdown, text]}>
               {countdown(waiting.leftMs)}
             </Text>
           ) : (
             <Button
               testID="unlock-confirm"
               label="Unlock 10 minutes"
+              disabled={confirming}
               onPress={() => void confirm(waiting.wait)}
             />
           )}

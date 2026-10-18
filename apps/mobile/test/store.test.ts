@@ -339,3 +339,31 @@ test("the blocklist is the phone's own: kept across re-pairing", async () => {
   await store.clearServerCopy();
   expect(await store.blocklist()).toEqual(state);
 });
+
+test('unreadable unlock-wait and blocklist values read as nothing stored', async () => {
+  const { store, db } = await open();
+  await db.runAsync("INSERT INTO kv (key, value) VALUES ('unlock_wait', '{\"reason\":1}')");
+  await db.runAsync("INSERT INTO kv (key, value) VALUES ('blocklist', 'not json')");
+  expect(await store.unlockWait()).toBeNull();
+  expect(await store.blocklist()).toBeNull();
+});
+
+test('taking the unlock wait queues the unlock and clears the wait together, once', async () => {
+  const { store } = await open();
+  const event = {
+    ...ledgerEvent(1),
+    kind: 'unlock_borrow' as const,
+    seconds: 600,
+    reason: 'x'.repeat(20),
+  };
+  expect(await store.enqueueUnlock(event)).toBe(false);
+  await store.saveUnlockWait({
+    reason: 'x'.repeat(20),
+    startedAt: 1,
+    startElapsed: 2,
+    bootId: '7',
+  });
+  expect(await store.enqueueUnlock(event)).toBe(true);
+  expect(await store.enqueueUnlock({ ...event, id: ledgerEvent(2).id })).toBe(false);
+  expect([(await store.pending()).length, await store.unlockWait()]).toEqual([1, null]);
+});

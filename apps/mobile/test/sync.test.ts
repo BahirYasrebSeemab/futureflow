@@ -404,6 +404,27 @@ describe('the guard', () => {
     });
   });
 
+  test("a pending unblock waits for the server's day too, so moving the clock forward doesn't apply it", async () => {
+    const tomorrow = '2099-01-01';
+    const { deps, store } = await setup({ today: () => failure({ kind: 'network' }) });
+    await store.saveToday({ today: sampleToday(), savedAt: NOW });
+    await store.saveBlocklist({
+      current: { apps: ['a', 'b'], games: true },
+      pending: { apps: ['a'], games: true, from: sampleToday().day },
+    });
+    const ahead = { ...deps, now: () => Date.parse(`${tomorrow}T12:00:00Z`) };
+    const { guard, calls } = fakeGuard();
+    await syncOnce({ ...ahead, guard: { native: guard, newId: () => ledgerEvent(50).id } });
+    expect(calls.blocked.at(-1)).toEqual([['a'], true]);
+    await store.saveBlocklist({
+      current: { apps: ['a', 'b'], games: true },
+      pending: { apps: ['a'], games: true, from: '2098-12-31' },
+    });
+    const { guard: g2, calls: c2 } = fakeGuard();
+    await syncOnce({ ...ahead, guard: { native: g2, newId: () => ledgerEvent(51).id } });
+    expect(c2.blocked.at(-1)).toEqual([['a', 'b'], true]);
+  });
+
   test('with nothing chosen yet, the guard blocks the default apps and games', async () => {
     const { deps } = await setup();
     const { guard, calls } = fakeGuard();

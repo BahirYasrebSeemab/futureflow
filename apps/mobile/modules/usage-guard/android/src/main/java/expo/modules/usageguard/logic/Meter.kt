@@ -29,7 +29,8 @@ data class Meter(
 ) {
   /** Adds an unlock's time for [day]; the same id twice adds it once. */
   fun grant(id: String, day: Long, seconds: Long): Meter =
-    if (grants.any { it.id == id }) this else copy(grants = grants + Grant(id, day, seconds))
+    if (id in included || grants.any { it.id == id }) this
+    else copy(grants = grants + Grant(id, day, seconds))
 
   fun enter(wall: Long, elapsed: Long, bootId: String): Meter =
     if (open != null) this else copy(open = OpenSession(wall, elapsed, bootId))
@@ -60,6 +61,7 @@ data class Meter(
       balanceDay = day,
       sessions = sessions.filter { it.seq > watermark },
       grants = grants.filter { it.id !in included && it.day >= day },
+      included = included,
     )
 
   /**

@@ -1,10 +1,10 @@
 import { MAX_ATTEMPTS_PER_BATCH, MAX_EVENTS_PER_BATCH } from '@futureflow/contracts';
-import type { LedgerEvent } from '@futureflow/core';
+import { addDays, type LedgerEvent } from '@futureflow/core';
 import type { Api, ApiFailure } from './api/client';
 import { spendEvents } from './guard/spend';
 import type { Guard } from './guard/types';
 import { currentDayKey } from './format';
-import { applyBlocklist } from './guard/apply-blocklist';
+import { applyBlocklist, blocklistDay } from './guard/apply-blocklist';
 import { projectBalance } from './ledger';
 import type { LocalStore, SyncReport, SyncStatus } from './store/types';
 
@@ -166,7 +166,8 @@ async function refreshBlocklist(deps: SyncDeps): Promise<void> {
   if (deps.guard === undefined) return;
   try {
     const { native, extraBlocked } = deps.guard;
-    await applyBlocklist(deps.store, native, currentDayKey(deps.now()), extraBlocked);
+    const day = await blocklistDay(deps.store, deps.now());
+    await applyBlocklist(deps.store, native, day, extraBlocked);
   } catch (error) {
     logGuardFailure('guard_blocklist_failed', error);
   }
@@ -194,7 +195,11 @@ async function commitBalance(deps: SyncDeps): Promise<void> {
     const [confirmed, pending] = [await deps.store.confirmed(), await deps.store.pending()];
     const balance = projectBalance(confirmed, pending);
     // The guard drops the unlocks this balance already has, so each counts once.
-    const unlocks = [...confirmed, ...pending].filter((e) => e.kind === 'unlock_borrow');
+    // Grants older than yesterday are gone from the guard already; naming them would only grow.
+    const since = addDays(currentDayKey(deps.now()), -1);
+    const unlocks = [...confirmed, ...pending].filter(
+      (e) => e.kind === 'unlock_borrow' && e.day >= since,
+    );
     const included = [...new Set(unlocks.map((e) => e.id))];
     await deps.guard.native.commit(await deps.store.spendSeq(), Math.max(0, balance), included);
   } catch (error) {
@@ -204,7 +209,6 @@ async function commitBalance(deps: SyncDeps): Promise<void> {
 
 /** Push, then today (it may write the base grant), then pull, so the pull brings the grant back. */
 export async function syncOnce(deps: SyncDeps): Promise<SyncReport> {
-  await refreshBlocklist(deps);
   await collectSpend(deps);
   const sent = await push(deps);
   let status: SyncStatus = sent.stop ?? 'ok';
@@ -221,6 +225,8 @@ export async function syncOnce(deps: SyncDeps): Promise<SyncReport> {
   // never holds up today's plan or the ledger.
   if (status === 'ok') status = (await pushAttempts(deps)) ?? 'ok';
   if (status === 'ok') await pullBank(deps);
+  // Last, so a day the server just turned is known; offline it still runs on the saved day.
+  await refreshBlocklist(deps);
   const report: SyncReport = {
     status,
     pushed: sent.pushed,

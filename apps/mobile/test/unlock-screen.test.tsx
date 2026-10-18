@@ -3,7 +3,8 @@ import { AppProvider, type AppServices } from '@/lib/app';
 import type { Guard } from '@/lib/guard/types';
 import { RootStack } from '@/screens/root-stack';
 import { UnlockScreen } from '@/screens/unlock';
-import { fakeGuard, ledgerEvent, PAIRED, testServices } from './support/fakes';
+import { currentDayKey } from '@/lib/format';
+import { fakeGuard, ledgerEvent, NOW, PAIRED, testServices } from './support/fakes';
 
 const REASON = 'my sister needs the group chat';
 const TEN_MIN = 600_000;
@@ -83,7 +84,7 @@ test('a reboot starts the wait again', async () => {
 test('after two unlocks today there is no form, only the limit', async () => {
   const { guard } = fakeGuard();
   await open(guard, async (s) => {
-    const today = '2026-10-14';
+    const today = currentDayKey(NOW);
     await s.store.enqueue(
       [1, 2].map((n) => ({
         ...ledgerEvent(n),
@@ -128,4 +129,36 @@ test('without debt there is no debt note', async () => {
   await open(guard);
   expect(await screen.findByTestId('unlock-reason')).toBeTruthy();
   expect(screen.queryByTestId('unlock-debt')).toBeNull();
+});
+
+test('a double tap on unlock spends the wait once: one event, one grant', async () => {
+  const { guard, calls, tick } = fakeGuard();
+  const services = await open(guard);
+  fireEvent.changeText(await screen.findByTestId('unlock-reason'), REASON);
+  fireEvent.press(screen.getByTestId('unlock-start'));
+  await screen.findByTestId('unlock-countdown');
+  tick(TEN_MIN);
+  const confirm = await screen.findByTestId('unlock-confirm', {}, { timeout: 3000 });
+  fireEvent.press(confirm);
+  fireEvent.press(confirm);
+  await screen.findByTestId('unlock-done');
+  // The sync after the unlock may already have sent it: count sent and unsent.
+  const all = [...(await services.store.pending()), ...(await services.store.confirmed())];
+  expect(all.filter((e) => e.kind === 'unlock_borrow')).toHaveLength(1);
+  expect(calls.grants).toHaveLength(1);
+});
+
+test('a wait already used elsewhere unlocks nothing', async () => {
+  const { guard, calls, tick } = fakeGuard();
+  const services = await open(guard);
+  fireEvent.changeText(await screen.findByTestId('unlock-reason'), REASON);
+  fireEvent.press(screen.getByTestId('unlock-start'));
+  await screen.findByTestId('unlock-countdown');
+  tick(TEN_MIN);
+  const confirm = await screen.findByTestId('unlock-confirm', {}, { timeout: 3000 });
+  await services.store.saveUnlockWait(null); // another screen took it
+  fireEvent.press(confirm);
+  expect(await screen.findByTestId('unlock-reason')).toBeTruthy();
+  expect((await services.store.pending()).filter((e) => e.kind === 'unlock_borrow')).toEqual([]);
+  expect(calls.grants).toEqual([]);
 });

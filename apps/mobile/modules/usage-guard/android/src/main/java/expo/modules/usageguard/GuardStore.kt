@@ -74,6 +74,7 @@ internal object GuardStore {
         "grants",
         JSONArray(m.grants.map { JSONObject().put("id", it.id).put("day", it.day).put("seconds", it.seconds) }),
       )
+      .put("included", JSONArray(m.included.toList()))
       .put(
         "open",
         m.open?.let {
@@ -90,6 +91,7 @@ internal object GuardStore {
     val open = o.optJSONObject("open")
     // Meters stored before unlocks existed have no grants.
     val grants = o.optJSONArray("grants") ?: JSONArray()
+    val included = o.optJSONArray("included") ?: JSONArray()
     return Meter(
       balanceSeconds = if (o.isNull("balanceSeconds")) null else o.getLong("balanceSeconds"),
       balanceDay = if (o.isNull("balanceDay")) null else o.getLong("balanceDay"),
@@ -109,6 +111,7 @@ internal object GuardStore {
           val g = grants.getJSONObject(it)
           Grant(g.getString("id"), g.getLong("day"), g.getLong("seconds"))
         },
+      included = (0 until included.length()).map { included.getString(it) }.toSet(),
     )
   }
 }

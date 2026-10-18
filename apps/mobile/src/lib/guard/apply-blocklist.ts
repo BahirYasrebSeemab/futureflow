@@ -1,6 +1,17 @@
 import { DEFAULT_BLOCKLIST_STATE, effectiveBlocklist, type BlocklistState } from './blocklist';
 import type { Guard } from './types';
+import { currentDayKey } from '../format';
 import type { LocalStore } from '../store/types';
+
+/**
+ * The day a pending unblock is measured against: the phone's day, but never past the server's day
+ * from the last sync, so moving the clock forward doesn't bring an unblock forward.
+ */
+export async function blocklistDay(store: LocalStore, now: number): Promise<string> {
+  const local = currentDayKey(now);
+  const server = (await store.savedToday())?.today.day;
+  return server !== undefined && server < local ? server : local;
+}
 
 /**
  * Gives the guard the blocklist that applies today (a pending unblock whose day came applies now),

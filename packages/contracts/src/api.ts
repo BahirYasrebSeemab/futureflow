@@ -32,7 +32,7 @@ export const LedgerSyncResultSchema = z.object({
   rejected: z.array(
     z.object({
       id: z.uuid(),
-      reason: z.enum(['future_timestamp', 'unlock_reason', 'unlock_limit']),
+      reason: z.enum(['future_timestamp', 'unlock_reason', 'unlock_limit', 'unlock_amount']),
     }),
   ),
 });

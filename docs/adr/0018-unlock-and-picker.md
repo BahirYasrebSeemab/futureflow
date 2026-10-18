@@ -24,19 +24,28 @@ Both are easy ways around the guard, so both need care.
   `waitStartedAt` derived from the monotonic wait.
 - **The guard learns of the unlock at once, offline included.** `grant(id, seconds)` adds the time
   to the meter for today. Every commit names the `unlock_borrow` ids its balance already includes
-  (all of them in the store, sent or not), and the meter drops those grants. So the time counts
-  exactly once, whatever order the sync and the unlock run in. Grants from earlier days are dropped.
+  (those of today and yesterday in the store, sent or not), and the meter drops those grants. It
+  also remembers that list, so a grant arriving after a commit that already includes it adds
+  nothing. So the time counts exactly once, whatever order the sync and the unlock run in. Grants
+  from earlier days are dropped.
+- **One wait pays for one unlock.** The store's `enqueueUnlock` uses up the stored wait and queues
+  the event in one transaction, and refuses when no wait is stored. The confirm button is busy
+  while it runs, so a double tap (or a second unlock screen) can't spend one wait twice.
 - **The server checks what it can.** Core's new `unlockAllowed` (reason length and daily limit) is
   used by the phone before unlocking and by `POST /v1/ledger/events` on arrival. A short reason or a
-  third unlock that day comes back `rejected` (`unlock_reason`, `unlock_limit`), and the phone buries
-  it under that reason. Only the phone can see the wait.
+  third unlock that day comes back `rejected` (`unlock_reason`, `unlock_limit`); so does an unlock that
+  isn't exactly 10 minutes (`unlock_amount`). The phone buries each under its reason. Only the phone can see the wait.
 - **An unlock follows the ledger.** It is a +10-minute event, so debt takes its share first. The
   screen says so ("You owe 4 min, so this unlock leaves you 6 min").
 - **Blocking more applies now; unblocking waits for the next day.** The pure `blocklist.ts` keeps
   `{current, pending: {apps, games, from}}`. Turning an app on, or games on, applies at once.
-  Turning anything off goes pending until the next day key (04:00). The app applies a pending change
-  at start-up and at the start of every sync, so it lands even if the app wasn't open at 04:00.
-- **The picker lists launcher apps** from the module (`installedApps()`), known social apps first.
+  Turning anything off goes pending until the next day key (04:00). The day is the phone's, but
+  never past the server's day from the last sync, so moving the clock forward doesn't bring an
+  unblock forward. The app applies a pending change at start-up and at the end of every sync, so it
+  lands even if the app wasn't open at 04:00. Changes in the picker run one after another, each
+  from the stored list, so quick taps build on each other.
+- **The picker lists launcher apps** from the module (`installedApps()`), known social apps first,
+  without the apps that are never blocked (Future Flow, the dialer, the SMS app).
   The list and the choice stay on the phone, in kv, kept across re-pairing.
 
 ## Consequences
@@ -48,6 +57,8 @@ Both are easy ways around the guard, so both need care.
   unlocks). Package names never do.
 - If the server rejects an unlock the phone allowed (they share one rule, so only if they disagree),
   its grant stays until the day ends.
+- Offline, in debt, the guard gives the full 10 minutes until the next sync, which then applies the
+  debt (the screen states the after-sync figure).
 - An unblocked app stays blocked until 04:00 even if the owner changes their mind back and forth;
   re-blocking cancels the pending change.
 - **Left for P5c-2:** Chrome domains and other browsers, picture-in-picture and split screen, and

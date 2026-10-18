@@ -84,3 +84,17 @@ test('the Guard screen lists what is blocked now and opens the picker', async ()
   fireEvent.press(screen.getByTestId('change-blocked'));
   expect(await screen.findByTestId('block-games')).toBeTruthy();
 });
+
+test('two quick switches both count: the second builds on the first', async () => {
+  const { guard, calls } = fakeGuard({
+    installed: [...INSTALLED, { package: 'com.vimeo.android', label: 'Vimeo' }],
+  });
+  await open('/blocked-apps', guard);
+  fireEvent(await screen.findByTestId('block-app-com.duolingo'), 'valueChange', true);
+  fireEvent(screen.getByTestId('block-app-com.vimeo.android'), 'valueChange', true);
+  await waitFor(() =>
+    expect(lastBlocked(calls)?.[0]).toEqual(
+      expect.arrayContaining(['com.duolingo', 'com.vimeo.android']),
+    ),
+  );
+});

@@ -1,10 +1,15 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { useBottomPadding } from '@/components/bottom-padding';
 import { useApp } from '@/lib/app';
-import { currentDayKey } from '@/lib/format';
-import { applyBlocklist } from '@/lib/guard/apply-blocklist';
-import { changeBlocklist, type Blocklist, type BlocklistState } from '@/lib/guard/blocklist';
+import { applyBlocklist, blocklistDay } from '@/lib/guard/apply-blocklist';
+import {
+  changeBlocklist,
+  DEFAULT_BLOCKLIST_STATE,
+  effectiveBlocklist,
+  type Blocklist,
+  type BlocklistState,
+} from '@/lib/guard/blocklist';
 import { BLOCKED_APPS, type InstalledApp } from '@/lib/guard/types';
 import { radius, space, usePalette } from '@/theme';
 
@@ -28,20 +33,33 @@ export function BlockedAppsScreen() {
 
   useEffect(() => {
     void (async () => {
-      const today = currentDayKey(services.now());
-      setState(await applyBlocklist(services.store, services.guard, today, services.extraBlocked));
+      const day = await blocklistDay(services.store, services.now());
+      setState(await applyBlocklist(services.store, services.guard, day, services.extraBlocked));
       setApps(ordered(await services.guard.installedApps()));
     })();
   }, [services]);
 
+  // Changes run one after another, each from the stored list, so quick taps build on each other.
+  const queue = useRef<Promise<void>>(Promise.resolve());
   const choose = useCallback(
-    async (next: Blocklist) => {
-      if (state === null) return;
-      const today = currentDayKey(services.now());
-      await services.store.saveBlocklist(changeBlocklist(state, next, today));
-      setState(await applyBlocklist(services.store, services.guard, today, services.extraBlocked));
+    (update: (chosen: Blocklist) => Blocklist) => {
+      queue.current = queue.current
+        .then(async () => {
+          const day = await blocklistDay(services.store, services.now());
+          const stored = (await services.store.blocklist()) ?? DEFAULT_BLOCKLIST_STATE;
+          const fresh = effectiveBlocklist(stored, day);
+          const next = update(fresh.pending ?? fresh.current);
+          await services.store.saveBlocklist(changeBlocklist(fresh, next, day));
+          setState(
+            await applyBlocklist(services.store, services.guard, day, services.extraBlocked),
+          );
+        })
+        .catch((error: unknown) => {
+          const name = error instanceof Error ? error.name : 'unknown';
+          console.error(JSON.stringify({ event: 'blocklist_change_failed', name }));
+        });
     },
-    [services, state],
+    [services],
   );
 
   if (state === null || apps === null) return null;
@@ -57,10 +75,10 @@ export function BlockedAppsScreen() {
           ...(state.current.games && !chosen.games ? ['Games'] : []),
         ];
   const toggle = (pkg: string, on: boolean) =>
-    void choose({
-      ...chosen,
-      apps: on ? [...chosen.apps, pkg] : chosen.apps.filter((p) => p !== pkg),
-    });
+    choose((list) => ({
+      ...list,
+      apps: on ? [...list.apps.filter((p) => p !== pkg), pkg] : list.apps.filter((p) => p !== pkg),
+    }));
 
   return (
     <ScrollView
@@ -82,7 +100,7 @@ export function BlockedAppsScreen() {
         label="Games"
         testID="block-games"
         value={chosen.games}
-        onChange={(on) => void choose({ ...chosen, games: on })}
+        onChange={(on) => choose((list) => ({ ...list, games: on }))}
       />
       {apps.length === 0 && (
         <Text style={[styles.muted, { color: c.muted }]}>The app list needs the Android app.</Text>

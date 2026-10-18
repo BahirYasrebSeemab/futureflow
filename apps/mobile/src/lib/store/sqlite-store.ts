@@ -163,19 +163,25 @@ export function sqliteStore(db: SqlDb): LocalStore {
       }),
     spendSeq: async () => Number((await getKv(KEY.spendSeq)) ?? 0),
     guardSteps: async () => readSteps(await getKv(KEY.guardSteps)),
-    unlockWait: async () => {
-      const raw = await getKv(KEY.unlockWait);
-      return raw === null ? null : UnlockWaitSchema.parse(JSON.parse(raw));
-    },
+    unlockWait: () => readJson(KEY.unlockWait, UnlockWaitSchema),
+    enqueueUnlock: (event) =>
+      write(async () => {
+        const valid = LedgerEventSchema.parse(event);
+        let taken = false;
+        await db.withTransactionAsync(async () => {
+          if ((await getKv(KEY.unlockWait)) === null) return;
+          await insertOutbox([valid]);
+          await db.runAsync('DELETE FROM kv WHERE key = ?', KEY.unlockWait);
+          taken = true;
+        });
+        return taken;
+      }),
     saveUnlockWait: (wait) =>
       write(async () => {
         if (wait === null) await db.runAsync('DELETE FROM kv WHERE key = ?', KEY.unlockWait);
         else await setKv(KEY.unlockWait, JSON.stringify(wait));
       }),
-    blocklist: async () => {
-      const raw = await getKv(KEY.blocklist);
-      return raw === null ? null : BlocklistStateSchema.parse(JSON.parse(raw));
-    },
+    blocklist: () => readJson(KEY.blocklist, BlocklistStateSchema),
     saveBlocklist: (state) =>
       write(() => setKv(KEY.blocklist, JSON.stringify(state)).then(() => undefined)),
     markGuardStep: (step, done) =>

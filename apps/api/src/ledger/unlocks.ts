@@ -1,7 +1,7 @@
 import { DEFAULT_RULES, unlockAllowed, type LedgerEvent } from '@futureflow/core';
 import type { LedgerRepo } from '../ports';
 
-export type UnlockRefusal = 'unlock_reason' | 'unlock_limit';
+export type UnlockRefusal = 'unlock_reason' | 'unlock_limit' | 'unlock_amount';
 
 /**
  * The phone checks the unlock rule before unlocking; this checks it again on arrival (spec §6.1),
@@ -20,6 +20,10 @@ export async function screenUnlocks(
   for (const e of unlocks) {
     const day = days.get(e.day) ?? [];
     if (day.some((stored) => stored.id === e.id)) continue;
+    if (e.seconds !== DEFAULT_RULES.unlockGrantSeconds) {
+      refused.push({ id: e.id, reason: 'unlock_amount' });
+      continue;
+    }
     const problem = unlockAllowed(day, e.reason ?? '', DEFAULT_RULES);
     if (problem === null) day.push(e);
     else

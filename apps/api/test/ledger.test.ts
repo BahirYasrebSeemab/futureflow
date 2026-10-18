@@ -223,3 +223,17 @@ describe('emergency unlocks from the phone', () => {
     expect(again.body.data).toEqual({ added: [], ignored: [b.id], rejected: [] });
   });
 });
+
+describe('emergency unlock size', () => {
+  it('rejects an unlock that is not exactly the 10-minute grant', async () => {
+    const app = makeApp();
+    const { token } = await pairDevice(app);
+    const long = event({
+      kind: 'unlock_borrow',
+      seconds: 1200,
+      reason: 'my sister needs the group chat',
+    });
+    const sync = await post(app, token, [long]);
+    expect(sync.body.data.rejected).toEqual([{ id: long.id, reason: 'unlock_amount' }]);
+  });
+});

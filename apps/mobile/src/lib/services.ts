@@ -4,11 +4,10 @@ import { getRandomBytes } from 'expo-crypto';
 import { openDatabaseAsync } from 'expo-sqlite';
 import type { AppServices } from './app';
 import { createApi } from './api/client';
-import { currentDayKey } from './format';
 import { parseApiUrl } from './config';
 import { makeIds } from './ids';
 import { nativeGuard } from './guard/native';
-import { applyBlocklist } from './guard/apply-blocklist';
+import { applyBlocklist, blocklistDay } from './guard/apply-blocklist';
 import { expoLocator } from './location';
 import { TOKEN_KEY } from './pairing';
 import { secureSecrets } from './secrets';
@@ -36,7 +35,7 @@ export async function createServices(): Promise<AppServices> {
   // CI's emulator also blocks Settings, so the flow can show the shield on an app it always has.
   const extraBlocked: string[] = Constants.expoConfig?.extra?.e2eBlockedApps ?? [];
   try {
-    await applyBlocklist(store, guard, currentDayKey(now()), extraBlocked);
+    await applyBlocklist(store, guard, await blocklistDay(store, now()), extraBlocked);
   } catch (error) {
     // The app must still open; the guard keeps its last list.
     const name = error instanceof Error ? error.name : 'unknown';
