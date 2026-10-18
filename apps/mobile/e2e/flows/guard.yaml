@@ -1,0 +1,24 @@
+appId: com.bahiryasreb.futureflow
+---
+# Runs after pair-and-today.yaml, with the accessibility service on and today's time spent.
+# No stop: Maestro's default force-stop would switch the accessibility service off again.
+- launchApp:
+    stopApp: false
+- runFlow:
+    when:
+      visible: ".*isn't responding.*"
+    commands:
+      - tapOn: 'Wait'
+# The sync on Today pulls the spend and hands the guard a balance of zero.
+- extendedWaitUntil:
+    visible:
+      id: 'balance'
+      text: '−.*'
+    timeout: 30000
+- tapOn:
+    id: 'open-more'
+- tapOn:
+    id: 'more-guard'
+# Maestro drives the phone through UI automation, which suppresses other accessibility services
+# while it is connected, so the guard reads "off" here. run.sh checks the shield after Maestro.
+- takeScreenshot: 14-guard

@@ -5,6 +5,7 @@ import { ok } from '../http/envelope';
 import { MAX_FUTURE_SKEW_MS } from '../http/day';
 import { valid } from '../http/validate';
 import { appendEvents } from '../ledger/append';
+import { creditLateSpend } from '../ledger/late-spend';
 
 export const ledgerRoutes = new Hono<AppEnv>()
   .post('/ledger/events', valid('json', LedgerEventBatchSchema), async (c) => {
@@ -20,6 +21,12 @@ export const ledgerRoutes = new Hono<AppEnv>()
 
     const added = await appendEvents(deps.repos.ledger, candidates, device.id, now);
     const addedSet = new Set(added);
+    await creditLateSpend(
+      deps.repos.ledger,
+      candidates.filter((e) => addedSet.has(e.id)),
+      deps.newId,
+      now,
+    );
     const ignored = [...new Set(candidates.map((e) => e.id))].filter((id) => !addedSet.has(id));
     return ok(c, { added, ignored, rejected });
   })

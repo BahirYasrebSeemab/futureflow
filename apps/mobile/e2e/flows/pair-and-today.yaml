@@ -16,6 +16,11 @@ appId: com.bahiryasreb.futureflow
     id: 'setup-code'
 - inputText: 'e2e-setup-code-0123456789'
 - hideKeyboard
+- runFlow:
+    when:
+      visible: ".*isn't responding.*"
+    commands:
+      - tapOn: 'Wait'
 - tapOn:
     id: 'pair-button'
 - extendedWaitUntil:
@@ -24,11 +29,19 @@ appId: com.bahiryasreb.futureflow
     timeout: 30000
 - assertVisible: 'Time left'
 - takeScreenshot: 02-today
+# The guard is still off here, so its banner pushes the footer link below the fold.
+- scroll
+- scroll
 - tapOn:
     id: 'diagnostics-link'
 - assertVisible: 'Waiting to send'
 - takeScreenshot: 03-diagnostics
 - back
+# Back at the top of Today.
+- swipe:
+    direction: DOWN
+- swipe:
+    direction: DOWN
 - tapOn:
     id: 'open-plan'
 - tapOn:

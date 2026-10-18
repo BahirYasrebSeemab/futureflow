@@ -280,3 +280,14 @@ test('the coach thread is cached in order, upserted, and cleared with the server
   // Chats can hold hard moments; they leave the phone with the pairing and re-sync after it.
   expect([await store.coachThread(), await store.coachCursor()]).toEqual([[], 0]);
 });
+
+test('spend events and their watermark are saved together', async () => {
+  const { store } = await open();
+  expect(await store.spendSeq()).toBe(0);
+  await store.enqueueSpend([ledgerEvent(1), ledgerEvent(2)], 9);
+  expect([(await store.pending()).length, await store.spendSeq()]).toEqual([2, 9]);
+  await expect(store.enqueueSpend([{ ...ledgerEvent(3), seconds: 5 }], 12)).rejects.toThrow();
+  expect([(await store.pending()).length, await store.spendSeq()]).toEqual([2, 9]);
+  await store.clearServerCopy();
+  expect(await store.spendSeq()).toBe(9);
+});

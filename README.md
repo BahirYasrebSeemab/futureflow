@@ -46,6 +46,9 @@ bun run --cwd apps/mobile test                 # Jest, with real SQL through nod
   accepted word problems are re-verified on the phone ([ADR 0014](docs/adr/0014-learning-loop-on-the-phone.md)).
 - Reading log, coach chat (with a fixed 9-8-8 safety line when the coach can't answer), roadmap
   onboarding and GitHub linking ([ADR 0015](docs/adr/0015-reading-coach-onboarding-on-the-phone.md)).
+- The guard: a Kotlin module (`modules/usage-guard`) blocks social apps and games with a native
+  shield once the time runs out, and counts the minutes spent ([ADR 0016](docs/adr/0016-the-guard-core.md)).
+  Its accounting is tested with JUnit in CI (`modules/usage-guard/logic-tests`).
 - The phone bundle includes the math checker (CAS), so it's built only in CI or EAS. Never run
   `expo export` on a small machine.
 - CI bundles the app for Android. The `Android e2e` workflow pairs a release build with a local Worker

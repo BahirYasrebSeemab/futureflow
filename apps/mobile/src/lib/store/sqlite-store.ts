@@ -54,6 +54,7 @@ const KEY = {
   placement: 'placement',
   bankCursor: 'bank_cursor',
   coachCursor: 'coach_cursor',
+  spendSeq: 'guard_spend_seq',
 } as const;
 /** What came from the server; the rest of kv (away windows, check times) is the phone's own. */
 const SERVER_KEYS = [
@@ -93,6 +94,12 @@ export function sqliteStore(db: SqlDb): LocalStore {
       key,
       value,
     );
+  const insertOutbox = (events: readonly LedgerEvent[]) =>
+    db.runAsync(
+      `INSERT OR IGNORE INTO outbox (id, at, event)
+       SELECT value ->> '$.id', value ->> '$.at', value FROM json_each(?) ORDER BY key`,
+      JSON.stringify(events),
+    );
   // Saved values may come from an older app version: anything that no longer parses reads as absent.
   const readJson = async <T>(key: string, schema: z.ZodType<T>): Promise<T | null> => {
     const raw = await getKv(key);
@@ -110,12 +117,17 @@ export function sqliteStore(db: SqlDb): LocalStore {
     enqueue: (events) =>
       write(async () => {
         const valid = events.map((event) => LedgerEventSchema.parse(event));
-        await db.runAsync(
-          `INSERT OR IGNORE INTO outbox (id, at, event)
-         SELECT value ->> '$.id', value ->> '$.at', value FROM json_each(?) ORDER BY key`,
-          JSON.stringify(valid),
-        );
+        await insertOutbox(valid);
       }),
+    enqueueSpend: (events, seq) =>
+      write(async () => {
+        const valid = events.map((event) => LedgerEventSchema.parse(event));
+        await db.withTransactionAsync(async () => {
+          await insertOutbox(valid);
+          await setKv(KEY.spendSeq, String(seq));
+        });
+      }),
+    spendSeq: async () => Number((await getKv(KEY.spendSeq)) ?? 0),
     pending: async (limit = -1) =>
       toEvents(
         await db.getAllAsync<{ event: string }>(

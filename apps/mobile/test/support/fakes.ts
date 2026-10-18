@@ -1,3 +1,5 @@
+import type { SpendSession } from '@/lib/guard/spend';
+import { noGuard, type Guard } from '@/lib/guard/types';
 import type { LedgerEvent } from '@futureflow/core';
 import { randomBytes } from 'node:crypto';
 import type { Api, Today } from '@/lib/api/client';
@@ -94,7 +96,7 @@ const OFFLINE = { ok: false, error: { kind: 'network' } } as const;
 export async function testServices(
   api: Partial<Api> = {},
   secrets: Record<string, string> = {},
-  options: { locator?: Locator } = {},
+  options: { locator?: Locator; guard?: Guard } = {},
 ): Promise<AppServices> {
   const db = nodeSqlDb();
   await migrate(db);
@@ -131,14 +133,43 @@ export async function testServices(
     ...api,
   };
   const now = () => NOW;
+  const ids = makeIds((n) => new Uint8Array(randomBytes(n)));
+  const guard = options.guard ?? noGuard;
   return {
     api: fullApi,
     store,
     secrets: memorySecrets(secrets),
-    ids: makeIds((n) => new Uint8Array(randomBytes(n))),
-    syncer: createSyncer({ api: fullApi, store, now }),
+    ids,
+    syncer: createSyncer({ api: fullApi, store, now, guard: { native: guard, newId: ids.newId } }),
     locator: options.locator ?? { coarse: async () => null },
+    guard,
     now,
     apiUrl: 'https://api.test',
   };
+}
+
+/** A guard that records what the app tells it; `sessions` is what it has counted. */
+export function fakeGuard(
+  overrides: Partial<Guard> & { sessions?: SpendSession[]; enabled?: boolean } = {},
+) {
+  const calls = {
+    commit: [] as [number, number][],
+    blocked: [] as [string[], boolean][],
+    opened: 0,
+  };
+  const guard: Guard = {
+    status: async () => ({ available: true, enabled: overrides.enabled ?? true }),
+    setBlockedApps: async (packages, blockGames) => {
+      calls.blocked.push([[...packages], blockGames]);
+    },
+    pendingSpend: async () => overrides.sessions ?? [],
+    commit: async (watermark, balance) => {
+      calls.commit.push([watermark, balance]);
+    },
+    openSettings: async () => {
+      calls.opened++;
+    },
+    ...overrides,
+  };
+  return { guard, calls };
 }

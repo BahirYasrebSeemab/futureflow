@@ -12,6 +12,7 @@ import { space, usePalette } from '@/theme';
 import type { Api } from './api/client';
 import { StartupError } from './config';
 import type { Ids } from './ids';
+import type { Guard } from './guard/types';
 import type { Locator } from './location';
 import { forgetPairing, readSession, type Session } from './pairing';
 import type { SecretStore } from './secrets';
@@ -25,6 +26,7 @@ export type AppServices = Readonly<{
   ids: Ids;
   syncer: Syncer;
   locator: Locator;
+  guard: Guard;
   now: () => number;
   apiUrl: string;
 }>;

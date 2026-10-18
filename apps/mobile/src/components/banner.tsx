@@ -5,7 +5,7 @@ import { Button } from './button';
 type BannerProps = Readonly<{
   tone: 'warning' | 'danger';
   message: string;
-  action?: { label: string; onPress: () => void };
+  action?: { label: string; onPress: () => void; testID?: string };
 }>;
 
 export function Banner({ tone, message, action }: BannerProps) {
@@ -14,7 +14,14 @@ export function Banner({ tone, message, action }: BannerProps) {
   return (
     <View accessibilityLiveRegion="polite" style={[styles.box, { backgroundColor: bg }]}>
       <Text style={[styles.text, { color: fg }]}>{message}</Text>
-      {action && <Button label={action.label} onPress={action.onPress} variant="secondary" />}
+      {action && (
+        <Button
+          testID={action.testID}
+          label={action.label}
+          onPress={action.onPress}
+          variant="secondary"
+        />
+      )}
     </View>
   );
 }

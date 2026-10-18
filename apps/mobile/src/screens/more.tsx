@@ -4,6 +4,7 @@ import { useBottomPadding } from '@/components/bottom-padding';
 import { radius, space, usePalette } from '@/theme';
 
 const ROWS: readonly [string, string, string, string][] = [
+  ['more-guard', '/guard', 'Guard', 'Block apps when your time runs out'],
   ['more-roadmap', '/roadmap', 'Roadmap', 'Who you want to become, your skills and milestones'],
   ['more-github', '/github', 'GitHub', 'Link the repos your coding tasks are checked against'],
   ['more-reading', '/reading', 'Reading log', 'Log what you read and what you learned'],

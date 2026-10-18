@@ -13,7 +13,7 @@ async function setup(events: LedgerEvent[]) {
   const deps = makeDeps(env, { now: () => clock.now });
   const ledger = async () =>
     (await call<{ events: LedgerEvent[] }>(app, 'GET', '/v1/ledger', { token })).body.data.events;
-  return { deps, ledger, clock };
+  return { deps, ledger, clock, app, token };
 }
 
 describe('rollover', () => {
@@ -75,6 +75,35 @@ describe('rewards paid to yesterday after it expired', () => {
 
     const balance = (await ledger()).reduce((sum, e) => sum + e.seconds, 0);
     expect(balance).toBe(900); // only the 12th's base grant is left
+  });
+
+  it('spend from last night that syncs after the rollover is charged once, not twice', async () => {
+    const yesterday = '2026-10-09';
+    const { deps, ledger, app, token } = await setup([
+      event({ kind: 'base_grant', seconds: 900, day: yesterday, at: Date.UTC(2026, 9, 9, 8) }),
+    ]);
+    await rollover(deps); // expires the 900 the server thought was left, grants today's 900
+    const late = event({
+      kind: 'usage_spend',
+      seconds: -600,
+      day: yesterday,
+      at: Date.UTC(2026, 9, 9, 23),
+    });
+
+    await call(app, 'POST', '/v1/ledger/events', { token, body: { events: [late] } });
+    await call(app, 'POST', '/v1/ledger/events', { token, body: { events: [late] } }); // a resend
+
+    const events = await ledger();
+    // Yesterday: +900 −900 expired −600 spent +600 given back = 0; today keeps its full 900.
+    expect(events.reduce((total, e) => total + e.seconds, 0)).toBe(900);
+    expect(events.filter((e) => e.kind === 'correction')).toEqual([
+      expect.objectContaining({
+        day: yesterday,
+        seconds: 600,
+        refId: late.id,
+        reason: 'late_spend',
+      }),
+    ]);
   });
 });
 

@@ -1,9 +1,11 @@
 name: Android e2e
 
 # Builds a release APK, starts the Worker locally, and drives the app on an emulator with Maestro.
-# Screenshots land in the android-e2e artifact.
+# Screenshots land in the android-e2e artifact. It takes about 25 minutes, so it runs on demand
+# (`gh workflow run "Android e2e" --ref <branch>`) and when a PR is marked ready, not on every push.
 on:
   pull_request:
+    types: [ready_for_review]
     paths:
       - 'apps/mobile/**'
       - 'apps/api/**'
