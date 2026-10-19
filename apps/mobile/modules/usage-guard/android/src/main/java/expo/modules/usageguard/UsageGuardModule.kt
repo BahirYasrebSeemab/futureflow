@@ -30,6 +30,7 @@ class UsageGuardModule : Module() {
         "notifications" to GuardHealth.notificationsAllowed(context),
         "batteryUnrestricted" to GuardHealth.batteryUnrestricted(context),
         "xiaomi" to GuardHealth.xiaomi(),
+        "usageAccess" to UsageReconciler.allowed(context),
       )
     }
 
@@ -37,12 +38,28 @@ class UsageGuardModule : Module() {
       GuardStore.setBlocked(context, packages.toSet(), blockGames)
     }
 
+    // Blocked sites, for the browsers whose address bar the guard reads. Stays on the phone.
+    AsyncFunction("setBlockedDomains") { domains: List<String> ->
+      GuardStore.setDomains(context, domains.map { it.lowercase() }.toSet())
+    }
+
     AsyncFunction("pendingSpend") {
       // The service may not be back after a reboot: restore first, so an old session is dropped.
       val boot = GuardClock.bootId(context)
       val elapsed = SystemClock.elapsedRealtime()
+      val now = System.currentTimeMillis()
+      val blocked = GuardStore.blocked(context)
+      val games = GuardStore.blockGames(context)
+      val never = neverOffered()
+      // Time Android's usage log shows in blocked apps that the guard missed becomes sessions too.
+      val isBlocked = { pkg: String ->
+        pkg !in never && (pkg in blocked || (games && GuardApps.isGame(context, pkg)))
+      }
+      // The log is read outside the guard's lock, so the shield never waits on it.
+      val checked = GuardStore.meter(context).reconciledUntil
+      val read = UsageReconciler.read(context, checked, now, isBlocked)
       GuardStore.transact(context) {
-          it.restore(boot, elapsed).pending(System.currentTimeMillis(), elapsed, boot)
+          UsageReconciler.apply(it.restore(boot, elapsed), checked, read).pending(now, elapsed, boot)
         }
         .map {
           mapOf("seq" to it.seq.toDouble(), "start" to it.startWall.toDouble(), "ms" to it.ms.toDouble())
@@ -118,6 +135,7 @@ class UsageGuardModule : Module() {
         } else {
           Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:$pkg"))
         }
+      "usage" -> Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
       "autostart" ->
         Intent()
           .setComponent(

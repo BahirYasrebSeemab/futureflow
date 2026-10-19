@@ -6,40 +6,67 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.content.pm.ApplicationInfo
-import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.os.PowerManager
 import android.os.SystemClock
 import android.provider.Telephony
 import android.telecom.TelecomManager
 import android.view.accessibility.AccessibilityEvent
+import android.view.accessibility.AccessibilityWindowInfo
 import android.view.inputmethod.InputMethodManager
+import expo.modules.usageguard.logic.BROWSER_URL_BARS
 import expo.modules.usageguard.logic.IGNORED_BASE
 import expo.modules.usageguard.logic.NEVER_BLOCKED_BASE
 import expo.modules.usageguard.logic.Verdict
+import expo.modules.usageguard.logic.WindowView
 import expo.modules.usageguard.logic.classify
+import expo.modules.usageguard.logic.domainBlocked
+import expo.modules.usageguard.logic.hostOf
+import expo.modules.usageguard.logic.sideBlocked
 
 /**
  * Watches which app is in front (spec §7). Time in a blocked app is counted; when the balance
- * runs out the Shield covers the app. Only package names are read, never window content.
+ * runs out the Shield covers the app. Of window content it reads only the root package of each
+ * visible app window and the address bar of a few browsers (ADR 0019); nothing read leaves the
+ * phone or reaches a log.
  */
 class UsageGuardService : AccessibilityService() {
   private val handler = Handler(Looper.getMainLooper())
-  private val games = HashMap<String, Boolean>()
   private var neverBlocked: Set<String> = NEVER_BLOCKED_BASE
   private var ignored: Set<String> = IGNORED_BASE
   /** The last app that counted (not a keyboard or the status bar). */
   private var current: String? = null
+  /** The focused app is blocked (an app, or a browser on a blocked domain). */
+  private var focusBlocked = false
+  /** A blocked app is visible: full screen, picture-in-picture or split screen. */
+  private var visibleBlocked = false
+  /** The screen is on and unlocked: nothing counts otherwise. */
+  private var interactive = true
+  private var rereadPending = false
+  /** The last host read from each browser's address bar. */
+  private val hosts = HashMap<String, String?>()
   private val recheck = Runnable { evaluate() }
+  private val reread = Runnable {
+    rereadPending = false
+    current?.takeIf { it in BROWSER_URL_BARS }?.let {
+      readHost(it, forgetIfMissing = false)
+      onForeground(it)
+    }
+  }
 
   private val screen =
     object : BroadcastReceiver() {
       override fun onReceive(context: Context, intent: Intent) {
         when (intent.action) {
           // A phone left on Instagram with the screen off isn't spending time.
-          Intent.ACTION_SCREEN_OFF -> stopCounting()
+          Intent.ACTION_SCREEN_OFF -> {
+            interactive = false
+            handler.removeCallbacks(reread)
+            rereadPending = false
+            stopCounting()
+          }
           // Back on without a lock screen (within the lock delay, Smart Lock): the app in front is
           // still in front, and no window event says so. With a lock, wait for the unlock.
           Intent.ACTION_SCREEN_ON -> if (!isLocked()) resume()
@@ -56,6 +83,7 @@ class UsageGuardService : AccessibilityService() {
     HeartbeatWorker.beatNow(this) // the server sees the guard back without waiting 15 minutes
     neverBlocked = NEVER_BLOCKED_BASE + listOfNotNull(packageName, defaultDialer(), defaultSms())
     ignored = IGNORED_BASE + inputMethods()
+    interactive = (getSystemService(POWER_SERVICE) as? PowerManager)?.isInteractive != false && !isLocked()
     // Nobody knows when an earlier service stopped, so a session it left open can't be measured.
     GuardStore.update(this) { it.forgetOpen() }
     val filter =
@@ -72,8 +100,21 @@ class UsageGuardService : AccessibilityService() {
   }
 
   override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-    if (event?.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
-    onForeground(event.packageName?.toString())
+    val pkg = event?.packageName?.toString()
+    when (event?.eventType) {
+      AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> {
+        if (pkg != null && pkg in BROWSER_URL_BARS) readHost(pkg, forgetIfMissing = true)
+        onForeground(pkg)
+      }
+      // A page change inside the browser in front: read its address bar again, at most every
+      // REREAD_MS (a page that keeps changing, like a video, must not put the read off for good).
+      AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED ->
+        if (interactive && !rereadPending && pkg != null && pkg == current && pkg in BROWSER_URL_BARS) {
+          rereadPending = true
+          handler.postDelayed(reread, REREAD_MS)
+        }
+      AccessibilityEvent.TYPE_WINDOWS_CHANGED -> scanWindows()
+    }
   }
 
   override fun onInterrupt() = Unit
@@ -87,6 +128,7 @@ class UsageGuardService : AccessibilityService() {
   }
 
   private fun resume() {
+    interactive = true
     ignored = IGNORED_BASE + inputMethods()
     current?.let { onForeground(it) }
   }
@@ -97,30 +139,11 @@ class UsageGuardService : AccessibilityService() {
   private fun onForeground(pkg: String?) {
     // A keyboard switched on after the service started is still a keyboard over the same app.
     if (pkg != null && pkg !in ignored && pkg in inputMethods()) ignored = ignored + pkg
-    val verdict =
-      classify(
-        pkg,
-        GuardStore.blocked(this),
-        GuardStore.blockGames(this),
-        isGame(pkg),
-        neverBlocked,
-        ignored,
-      )
-    when (verdict) {
-      Verdict.IGNORE -> Unit
-      Verdict.ALLOWED -> {
-        current = pkg
-        stopCounting()
-      }
-      Verdict.BLOCKED -> {
-        current = pkg
-        GuardStore.update(this) {
-          it.enter(System.currentTimeMillis(), SystemClock.elapsedRealtime(), GuardClock.bootId(this))
-        }
-        GuardForegroundService.poke()
-        evaluate()
-      }
-    }
+    val verdict = verdictOf(pkg)
+    if (verdict == Verdict.IGNORE) return
+    current = pkg
+    focusBlocked = verdict == Verdict.BLOCKED
+    updateCounting()
   }
 
   private fun stopCounting() {
@@ -129,13 +152,68 @@ class UsageGuardService : AccessibilityService() {
     GuardForegroundService.poke()
   }
 
+  /** Counts while the focused app or one beside it is blocked. */
+  private fun updateCounting() {
+    if (!interactive || (!focusBlocked && !visibleBlocked)) return stopCounting()
+    GuardStore.update(this) {
+      it.enter(System.currentTimeMillis(), SystemClock.elapsedRealtime(), GuardClock.bootId(this))
+    }
+    GuardForegroundService.poke()
+    evaluate()
+  }
+
+  /** The verdict for a package, a browser judged by the host in its address bar. */
+  private fun verdictOf(pkg: String?): Verdict {
+    val verdict =
+      classify(pkg, GuardStore.blocked(this), GuardStore.blockGames(this), GuardApps.isGame(this, pkg), neverBlocked, ignored)
+    if (verdict != Verdict.ALLOWED || pkg == null || pkg !in BROWSER_URL_BARS) return verdict
+    return if (domainBlocked(hosts[pkg], GuardStore.domains(this))) Verdict.BLOCKED else Verdict.ALLOWED
+  }
+
+  /**
+   * Reads the browser's address bar, unless the owner is typing in it. The bar hides while a page
+   * scrolls or plays full screen, so a re-read keeps the last host; only a fresh window without
+   * one ([forgetIfMissing]: the browser changed its layout, a web app) forgets it, and the
+   * browser is allowed.
+   */
+  private fun readHost(pkg: String, forgetIfMissing: Boolean) {
+    val root = rootInActiveWindow ?: return
+    if (root.packageName?.toString() != pkg) return
+    val bar = root.findAccessibilityNodeInfosByViewId(BROWSER_URL_BARS.getValue(pkg)).firstOrNull()
+    if (bar == null) {
+      if (forgetIfMissing) hosts[pkg] = null
+      return
+    }
+    if (bar.isFocused) return
+    hosts[pkg] = hostOf(bar.text?.toString())
+  }
+
+  /** Blocked apps visible on screen, focused or not: picture-in-picture and split screen too. */
+  private fun scanWindows() {
+    // Only app windows are asked for their package (a cross-process call each).
+    val seen =
+      windows
+        .filter { it.type == AccessibilityWindowInfo.TYPE_APPLICATION }
+        .map { w -> WindowView(w.root?.packageName?.toString(), application = true, focused = w.isFocused || w.isActive) }
+    val beside = sideBlocked(seen, ::verdictOf)
+    if (beside == visibleBlocked) return
+    visibleBlocked = beside
+    updateCounting()
+  }
+
   /** Shields now if the time is gone, otherwise checks again the moment it runs out. */
   private fun evaluate() {
     handler.removeCallbacks(recheck)
     val meter = GuardStore.meter(this)
     if (meter.open == null) return
     val remaining = meter.remainingMs(SystemClock.elapsedRealtime(), GuardClock.today(), GuardClock::dayOf)
-    if (remaining <= 0) shield() else handler.postDelayed(recheck, remaining)
+    if (remaining > 0) {
+      handler.postDelayed(recheck, remaining)
+      return
+    }
+    // Already on the shield (or in Future Flow) with a picture-in-picture still playing: don't
+    // relaunch it; the next app switch brings it back until the PiP is closed.
+    if (current == packageName) stopCounting() else shield()
   }
 
   /**
@@ -145,26 +223,11 @@ class UsageGuardService : AccessibilityService() {
   private fun shield() {
     stopCounting()
     current = null
+    focusBlocked = false
     startActivity(
       Intent(this, ShieldActivity::class.java)
         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION)
     )
-  }
-
-  private fun isGame(pkg: String?): Boolean {
-    if (pkg.isNullOrEmpty()) return false
-    return games.getOrPut(pkg) {
-      try {
-        val info = packageManager.getApplicationInfo(pkg, 0)
-        @Suppress("DEPRECATION")
-        val flagged = info.flags and ApplicationInfo.FLAG_IS_GAME != 0
-        flagged ||
-          (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
-            info.category == ApplicationInfo.CATEGORY_GAME)
-      } catch (e: PackageManager.NameNotFoundException) {
-        false
-      }
-    }
   }
 
   private fun inputMethods(): Set<String> =
@@ -179,6 +242,9 @@ class UsageGuardService : AccessibilityService() {
   private fun defaultSms(): String? = Telephony.Sms.getDefaultSmsPackage(this)
 
   companion object {
+    /** Page changes come in bursts; the address bar is read once the burst settles. */
+    private const val REREAD_MS = 500L
+
     /** When this process's service connected (monotonic ms); null while it isn't connected. */
     @Volatile var connectedSinceElapsed: Long? = null
       private set

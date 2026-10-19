@@ -25,7 +25,12 @@ function useBlockedNames(): string[] | null {
           installed.find((a) => a.package === pkg)?.label ??
           BLOCKED_APPS.find(([p]) => p === pkg)?.[1] ??
           pkg;
-        const apps = [...new Set(current.apps.map(label))];
+        // Only what is on this phone, once the phone can say (the defaults list many apps).
+        const present =
+          installed.length === 0
+            ? current.apps
+            : current.apps.filter((pkg) => installed.some((a) => a.package === pkg));
+        const apps = [...new Set(present.map(label))];
         setNames(current.games ? [...apps, 'Games'] : apps);
       })();
     }, [services]),
@@ -105,8 +110,8 @@ export function GuardScreen() {
         onPress={() => router.push('/blocked-apps')}
       />
       <Text style={[styles.muted, { color: c.muted }]}>
-        Calls, messages and emergency apps are never blocked. Which apps you open stays on this
-        phone: only the minutes you spent and when are sent.
+        Calls, messages and emergency apps are never blocked. The apps and sites you open stay on
+        this phone: only the minutes you spent and when are sent.
       </Text>
     </ScrollView>
   );

@@ -176,3 +176,16 @@ test('on a Xiaomi phone a battery step Android reports done has nothing to tick'
   expect(await screen.findByTestId('check-battery')).toHaveTextContent(/Done/);
   expect(screen.queryByTestId('done-battery')).toBeNull();
 });
+
+test('usage access shows its state and opens its settings', async () => {
+  const { guard, calls } = fakeGuard({ state: { usageAccess: false } });
+  await open('/guard', guard);
+  expect(await screen.findByTestId('check-usage')).toHaveTextContent(/To do/);
+  fireEvent.press(screen.getByTestId('fix-usage'));
+  await waitFor(() => expect(calls.settings).toEqual(['usage']));
+});
+
+test('the privacy line says sites stay on the phone too', async () => {
+  await open('/guard', fakeGuard().guard);
+  expect(await screen.findByText(/apps and sites you open stay on this phone/)).toBeTruthy();
+});

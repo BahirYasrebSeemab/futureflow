@@ -12,6 +12,7 @@ export function nativeGuard(): Guard {
   return {
     status: async () => ({ available: true, ...(await native.status()) }),
     setBlockedApps: (packages, blockGames) => native.setBlockedApps([...packages], blockGames),
+    setBlockedDomains: (domains) => native.setBlockedDomains([...domains]),
     pendingSpend: () => native.pendingSpend(),
     commit: (watermark, balanceSeconds, included) =>
       native.commit(watermark, balanceSeconds, [...included]),

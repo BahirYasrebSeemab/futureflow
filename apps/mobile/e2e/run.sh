@@ -53,6 +53,26 @@ if ! echo "$top" | grep -q ShieldActivity; then
 fi
 echo "The shield covers Settings"
 
+# Browsers (P5c-2): Chrome on a blocked site should get the shield too. Chrome's first-run screens
+# are skipped through its debug command line. Fragile by nature (spec §7: an ADR and a manual test),
+# so this records a screenshot and a result line rather than failing the run.
+if adb shell pm path com.android.chrome | grep -q package; then
+  adb shell am set-debug-app --persistent com.android.chrome
+  adb shell 'echo "_ --disable-fre --no-default-browser-check --no-first-run" > /data/local/tmp/chrome-command-line'
+  adb shell input keyevent KEYCODE_HOME
+  adb shell am start -W -a android.intent.action.VIEW -d https://www.instagram.com com.android.chrome
+  sleep 10
+  adb exec-out screencap -p > "$OUT/15b-chrome.png"
+  top=$(adb shell dumpsys activity activities | grep -E 'topResumedActivity|mResumedActivity' | head -1)
+  if echo "$top" | grep -q ShieldActivity; then
+    echo "CHROME CHECK: the shield covers instagram.com in Chrome"
+  else
+    echo "CHROME CHECK: no shield over Chrome (top: $top)"
+  fi
+else
+  echo "CHROME CHECK: Chrome is not on this emulator image"
+fi
+
 # Staying alive (P5b): the guard's foreground service runs, and the native heartbeat reached the
 # server with the guard on and connected.
 services=$(adb shell dumpsys activity services com.bahiryasreb.futureflow)

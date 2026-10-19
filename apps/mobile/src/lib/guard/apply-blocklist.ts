@@ -1,4 +1,10 @@
-import { DEFAULT_BLOCKLIST_STATE, effectiveBlocklist, type BlocklistState } from './blocklist';
+import {
+  blockedDomains,
+  DEFAULT_BLOCKLIST_STATE,
+  effectiveBlocklist,
+  upgradeBlocklist,
+  type BlocklistState,
+} from './blocklist';
 import type { Guard } from './types';
 import { currentDayKey } from '../format';
 import type { LocalStore } from '../store/types';
@@ -24,8 +30,9 @@ export async function applyBlocklist(
   extra: readonly string[] = [],
 ): Promise<BlocklistState> {
   const stored = await store.blocklist();
-  const state = effectiveBlocklist(stored ?? DEFAULT_BLOCKLIST_STATE, today);
+  const state = effectiveBlocklist(upgradeBlocklist(stored ?? DEFAULT_BLOCKLIST_STATE), today);
   if (stored !== null && state !== stored) await store.saveBlocklist(state);
   await guard.setBlockedApps([...state.current.apps, ...extra], state.current.games);
+  await guard.setBlockedDomains(blockedDomains(state.current));
   return state;
 }

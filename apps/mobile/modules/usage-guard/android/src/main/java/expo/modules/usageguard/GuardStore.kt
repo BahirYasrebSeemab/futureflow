@@ -19,6 +19,7 @@ internal object GuardStore {
   private const val KEY_METER = "meter"
   private const val KEY_BLOCKED = "blocked"
   private const val KEY_BLOCK_GAMES = "blockGames"
+  private const val KEY_DOMAINS = "domains"
   private val lock = Any()
 
   fun meter(context: Context): Meter = synchronized(lock) { read(context) }
@@ -37,6 +38,13 @@ internal object GuardStore {
     prefs(context).getStringSet(KEY_BLOCKED, null)?.toSet() ?: emptySet()
 
   fun blockGames(context: Context): Boolean = prefs(context).getBoolean(KEY_BLOCK_GAMES, true)
+
+  fun domains(context: Context): Set<String> =
+    prefs(context).getStringSet(KEY_DOMAINS, null)?.toSet() ?: emptySet()
+
+  fun setDomains(context: Context, domains: Set<String>) {
+    prefs(context).edit().putStringSet(KEY_DOMAINS, domains).apply()
+  }
 
   fun setBlocked(context: Context, packages: Set<String>, blockGames: Boolean) {
     prefs(context)
@@ -75,6 +83,7 @@ internal object GuardStore {
         JSONArray(m.grants.map { JSONObject().put("id", it.id).put("day", it.day).put("seconds", it.seconds) }),
       )
       .put("included", JSONArray(m.included.toList()))
+      .put("reconciledUntil", m.reconciledUntil ?: JSONObject.NULL)
       .put(
         "open",
         m.open?.let {
@@ -112,6 +121,8 @@ internal object GuardStore {
           Grant(g.getString("id"), g.getLong("day"), g.getLong("seconds"))
         },
       included = (0 until included.length()).map { included.getString(it) }.toSet(),
+      reconciledUntil =
+        if (!o.has("reconciledUntil") || o.isNull("reconciledUntil")) null else o.getLong("reconciledUntil"),
     )
   }
 }

@@ -175,6 +175,7 @@ export function fakeGuard(
     included: [] as string[][],
     grants: [] as [string, number][],
     blocked: [] as [string[], boolean][],
+    domains: [] as string[][],
     settings: [] as GuardSettings[],
     linked: [] as [string, string][],
     unlinked: 0,
@@ -188,12 +189,16 @@ export function fakeGuard(
     notifications: true,
     batteryUnrestricted: true,
     xiaomi: false,
+    usageAccess: true,
     ...state,
   };
   const guard: Guard = {
     status: async () => status,
     setBlockedApps: async (packages, blockGames) => {
       calls.blocked.push([[...packages], blockGames]);
+    },
+    setBlockedDomains: async (domains) => {
+      calls.domains.push([...domains]);
     },
     pendingSpend: async () => sessions ?? [],
     commit: async (watermark, balance, included) => {
