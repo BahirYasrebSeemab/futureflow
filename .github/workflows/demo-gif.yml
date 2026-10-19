@@ -27,7 +27,7 @@ jobs:
           if [ -z "$run" ]; then echo "No passing Android e2e run on $BRANCH"; exit 1; fi
           echo "From run $run"
           gh run download "$run" -n android-e2e -D .
-      - run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg > /dev/null
+      - run: command -v convert > /dev/null || (sudo apt-get update -qq && sudo apt-get install -y -qq imagemagick > /dev/null)
       - run: apps/mobile/e2e/demo-gif.sh e2e-out
       - uses: actions/upload-artifact@v4
         with:

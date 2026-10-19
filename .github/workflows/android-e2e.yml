@@ -98,7 +98,7 @@ jobs:
       - name: Make the demo GIF
         if: success()
         run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg > /dev/null
+          command -v convert > /dev/null || (sudo apt-get update -qq && sudo apt-get install -y -qq imagemagick > /dev/null)
           apps/mobile/e2e/demo-gif.sh e2e-out
 
       - if: always()
