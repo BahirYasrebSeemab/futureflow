@@ -32,6 +32,8 @@ After ADRs 0016–0018 the guard watched only which app had focus. Three gaps re
     keeps the last host. Only a new window without a bar forgets it.
   - Only a scheme at the very start counts (`…?u=https://…` can't hide the host); trailing dots and
     `view-source:` are stripped.
+  - **YouTube is free by default** (the owner's choice, 2026-10-19: it's where they learn). It stays
+    a known app, so the picker can block it, and then its sites, again.
   - **Sites follow apps:** each app in `BLOCKED_APPS` lists its sites, and a site is blocked
     exactly while its app is. Unblocking YouTube in the picker unblocks youtube.com on the same
     "from tomorrow" rule (ADR 0018).

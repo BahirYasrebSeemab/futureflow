@@ -60,12 +60,12 @@ if adb shell pm path com.android.chrome | grep -q package; then
   adb shell am set-debug-app --persistent com.android.chrome
   adb shell 'echo "_ --disable-fre --no-default-browser-check --no-first-run" > /data/local/tmp/chrome-command-line'
   adb shell input keyevent KEYCODE_HOME
-  adb shell am start -W -a android.intent.action.VIEW -d https://m.youtube.com com.android.chrome
+  adb shell am start -W -a android.intent.action.VIEW -d https://www.instagram.com com.android.chrome
   sleep 10
   adb exec-out screencap -p > "$OUT/15b-chrome.png"
   top=$(adb shell dumpsys activity activities | grep -E 'topResumedActivity|mResumedActivity' | head -1)
   if echo "$top" | grep -q ShieldActivity; then
-    echo "CHROME CHECK: the shield covers youtube.com in Chrome"
+    echo "CHROME CHECK: the shield covers instagram.com in Chrome"
   else
     echo "CHROME CHECK: no shield over Chrome (top: $top)"
   fi

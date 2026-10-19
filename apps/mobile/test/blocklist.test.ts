@@ -12,7 +12,13 @@ const start: BlocklistState = { current: { apps: ['a', 'b'], games: true }, pend
 
 test('the default blocks the known social apps, the unreadable browsers and games', () => {
   expect(DEFAULT_BLOCKLIST).toEqual({
-    apps: [...new Set([...BLOCKED_APPS, ...OTHER_BROWSERS].map(([pkg]) => pkg))],
+    apps: [
+      ...new Set(
+        [...BLOCKED_APPS, ...OTHER_BROWSERS]
+          .map(([pkg]) => pkg)
+          .filter((pkg) => pkg !== 'com.google.android.youtube'),
+      ),
+    ],
     games: true,
   });
 });
@@ -90,4 +96,10 @@ test("a blocklist's sites are the sites of its apps", () => {
       games: true,
     }),
   ).toEqual(['youtube.com', 'youtu.be', 'youtube-nocookie.com', 'x.com', 'twitter.com']);
+});
+
+test('YouTube is known but not blocked by default: it is used for learning', () => {
+  expect(DEFAULT_BLOCKLIST.apps).not.toContain('com.google.android.youtube');
+  expect(blockedDomains(DEFAULT_BLOCKLIST)).not.toContain('youtube.com');
+  expect(BLOCKED_APPS.map(([pkg]) => pkg)).toContain('com.google.android.youtube');
 });

@@ -436,9 +436,7 @@ describe('the guard', () => {
     const { guard, calls } = fakeGuard();
     await syncOnce({ ...deps, guard: { native: guard, newId: () => ledgerEvent(50).id } });
     expect(calls.blocked).toEqual([[[...DEFAULT_BLOCKLIST.apps], true]]);
-    expect(calls.domains.at(-1)).toEqual(
-      expect.arrayContaining(['instagram.com', 'youtube.com', 'x.com']),
-    );
+    expect(calls.domains.at(-1)).toEqual(expect.arrayContaining(['instagram.com', 'x.com']));
   });
 
   test('a list saved before browsers were blocked gets them once; unblocking one later sticks', async () => {

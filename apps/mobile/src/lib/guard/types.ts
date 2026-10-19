@@ -53,8 +53,9 @@ export interface Guard {
 }
 
 /**
- * Social apps blocked by default, with the names the Guard screen shows and their sites, which are
- * blocked in Chrome, Brave and Edge for as long as the app is. Games are blocked too.
+ * Known social apps, with the names the Guard screen shows and their sites, which are blocked in
+ * Chrome, Brave and Edge for as long as the app is. All but `UNBLOCKED_BY_DEFAULT` are blocked by
+ * default, and games too.
  */
 export const BLOCKED_APPS: readonly (readonly [string, string, readonly string[]])[] = [
   ['com.instagram.android', 'Instagram', ['instagram.com', 'instagr.am']],
@@ -67,6 +68,9 @@ export const BLOCKED_APPS: readonly (readonly [string, string, readonly string[]
   ['com.twitter.android', 'X', ['x.com', 'twitter.com']],
   ['com.reddit.frontpage', 'Reddit', ['reddit.com', 'redd.it']],
 ];
+
+/** Known apps left free by default: the owner learns on YouTube. The picker can still block it. */
+export const UNBLOCKED_BY_DEFAULT: readonly string[] = ['com.google.android.youtube'];
 
 /**
  * Browsers whose address bar the guard can't read: blocked like apps by default, so they cost
