@@ -1,12 +1,13 @@
 name: Demo GIF
 
-# Rebuilds the README's demo GIF from an earlier Android e2e run's screenshots, in a minute.
+# Rebuilds the README's demo GIF from the branch's latest passing Android e2e screenshots, in a
+# minute, whenever the GIF script changes (or on demand once this file is on main).
 on:
+  pull_request:
+    paths:
+      - 'apps/mobile/e2e/demo-gif.sh'
+      - '.github/workflows/demo-gif.yml'
   workflow_dispatch:
-    inputs:
-      run_id:
-        description: 'An Android e2e run id with the android-e2e artifact'
-        required: true
 
 permissions:
   contents: read
@@ -17,11 +18,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
-        with:
-          name: android-e2e
-          run-id: ${{ inputs.run_id }}
-          github-token: ${{ github.token }}
+      - name: Fetch the latest passing emulator screenshots
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ github.head_ref || github.ref_name }}
+        run: |
+          run=$(gh run list --workflow "Android e2e" --branch "$BRANCH" --status success --limit 1 --json databaseId -q '.[0].databaseId')
+          if [ -z "$run" ]; then echo "No passing Android e2e run on $BRANCH"; exit 1; fi
+          echo "From run $run"
+          gh run download "$run" -n android-e2e -D .
       - run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg > /dev/null
       - run: apps/mobile/e2e/demo-gif.sh e2e-out
       - uses: actions/upload-artifact@v4
