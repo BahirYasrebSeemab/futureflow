@@ -5,7 +5,33 @@ become into skills and daily plans, verifies the work with real evidence (GitHub
 answers checked by a CAS, reading logs), and pays out social-media time from an event-sourced
 ledger that a native guard enforces.
 
-> Status: Phase 4 (phone app). See `docs/superpowers/specs/` for the design and `docs/adr/` for decisions.
+> Status: v1.0.0. One owner, one Android phone (a Redmi). Design: `docs/superpowers/specs/`;
+> decisions: `docs/adr/`.
+
+![Today, planning, math practice, the roadmap, the shield, an emergency unlock and the guard checklist](docs/demo.gif)
+
+## What it does
+
+- **Earn:** a nightly plan of 3–5 tasks from your roadmap. GitHub commits, CAS-checked math and
+  reading notes are verified, and passed work pays screen time into a ledger.
+- **Spend:** a native Android guard counts time in social apps, games and their sites, and covers
+  them with a shield when the time runs out. Emergency unlocks borrow from tomorrow.
+- **Stay honest:** a heartbeat tells "phone off" from "guard off"; Android's usage log catches time
+  the guard missed; unblocking an app waits until the next day.
+
+## Privacy
+
+- Your location never leaves the phone: away days send only "away or not" and a rounded distance.
+- The apps and sites you open never leave the phone: the server sees spent minutes and when.
+- The guard reads only which app owns each window and the address bar of Chrome, Brave and Edge.
+- Secrets live only in Worker secrets; the GitHub token is sealed at rest; logs carry no personal
+  data.
+
+## Run it for real
+
+1. Deploy the API: [docs/deploy.md](docs/deploy.md).
+2. Build and install the APK: [docs/release.md](docs/release.md).
+3. Pair the phone, switch the guard on, and work through **Keep it running** on the Guard screen.
 
 ## Repo layout
 
@@ -22,7 +48,7 @@ ledger that a native guard enforces.
 ## Develop
 
     bun install
-    bun run test        # all packages
+    bun run test        # all packages (on a small machine, one package or one file at a time)
     bun run coverage    # with coverage gates
     bun run lint && bun run typecheck
 
@@ -62,10 +88,9 @@ bun run --cwd apps/mobile test                 # Jest, with real SQL through nod
   `expo export` on a small machine.
 - CI bundles the app for Android. The `Android e2e` workflow pairs a release build with a local Worker
   on an emulator and saves screenshots as the `android-e2e` artifact.
-- Installable APK with EAS Build (free plan: 15 Android builds a month). In `apps/mobile`:
-  `bun x eas-cli login`, `bun x eas-cli init`, then
-  `bun x eas-cli env:create --environment preview --name EXPO_PUBLIC_API_URL --value https://<worker-url> --visibility plaintext`
-  and `bun x eas-cli build -p android --profile preview`.
+- Installable APK with EAS Build (free plan: 15 Android builds a month), from a `v*` tag:
+  [docs/release.md](docs/release.md). A production build refuses to start without an https API
+  address or with the emulator flags.
 
 ## API (`apps/api`)
 
@@ -78,16 +103,7 @@ bun run --cwd apps/api migrate:local
 bun run --cwd apps/api dev           # http://localhost:8787/v1/health
 ```
 
-First deploy (owner only):
-
-```bash
-bun x wrangler login
-bun x wrangler d1 create futureflow       # put the printed id into apps/api/wrangler.jsonc
-bun x wrangler secret put SETUP_CODE --cwd apps/api
-openssl rand -base64 32 | bun x wrangler secret put GITHUB_TOKEN_KEY --cwd apps/api
-bun x wrangler d1 migrations apply futureflow --remote --cwd apps/api
-bun x wrangler deploy --cwd apps/api
-```
+First deploy (owner only): [docs/deploy.md](docs/deploy.md).
 
 ## AI (`packages/ai`)
 
@@ -99,6 +115,14 @@ Without keys, plans come from a deterministic template.
 bun x wrangler secret put GEMINI_API_KEY --cwd apps/api   # optional, free: https://aistudio.google.com/apikey
 bun x wrangler secret put JEV_API_KEY --cwd apps/api      # optional, paid
 ```
+
+## Judge eval
+
+50 labelled GitHub and reading cases (`apps/api/eval/judge-cases.ts`) run through the production
+judge: `bun run --cwd apps/api judge:eval` with the AI keys in `apps/api/.dev.vars`. It writes
+`docs/judge-eval/report.md`, which says whether `JUDGE_AUTO_DECIDE` may be turned on: at least 40
+cases judged, 95% right when it decides alone, and no confident false pass
+([ADR 0020](docs/adr/0020-judge-eval.md)).
 
 ## Verification
 
