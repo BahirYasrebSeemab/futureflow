@@ -1,0 +1,30 @@
+name: Release
+
+# A `v*` tag builds the store APK on EAS (spec §14: EAS builds only on tags, 15 a month on the free
+# plan). It needs the EXPO_TOKEN repo secret; see docs/release.md.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - run: bun install --frozen-lockfile
+      - name: Build the APK on EAS
+        working-directory: apps/mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then echo "Add the EXPO_TOKEN secret (docs/release.md)"; exit 1; fi
+          bun x eas-cli@16 build --platform android --profile production --non-interactive --no-wait

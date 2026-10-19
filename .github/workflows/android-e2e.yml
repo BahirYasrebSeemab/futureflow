@@ -94,6 +94,13 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           script: ./apps/mobile/e2e/run.sh
 
+      # The README's demo: a fixed set of screenshots, 2 s each.
+      - name: Make the demo GIF
+        if: success()
+        run: |
+          command -v convert > /dev/null || (sudo apt-get update -qq && sudo apt-get install -y -qq imagemagick > /dev/null)
+          apps/mobile/e2e/demo-gif.sh e2e-out
+
       - if: always()
         uses: actions/upload-artifact@v4
         with:
