@@ -7,6 +7,9 @@
     "dev": "wrangler dev",
     "types": "wrangler types",
     "migrate:local": "wrangler d1 migrations apply futureflow --local",
+    "migrate:remote": "wrangler d1 migrations apply futureflow --remote",
+    "deploy": "wrangler deploy",
+    "judge:eval": "bun eval/run.ts",
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",
     "coverage": "vitest run --coverage"
