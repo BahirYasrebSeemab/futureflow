@@ -115,11 +115,14 @@ export const GITHUB_CASES: JudgeCase[] = [
   gh(
     'gh-02',
     'pass',
-    'the slice end includes the last items, with a test',
+    'the page count rounds up and the slice keeps the last item, with a test',
     PAGES,
     commit('Fix last page of pagination', {
       'src/paginate.ts': `-  const pages = Math.floor(items.length / size);
-+  const pages = Math.ceil(items.length / size);`,
++  const pages = Math.ceil(items.length / size);
+ export const page = (items: number[], size: number, n: number) =>
+-  items.slice((n - 1) * size, n * size - 1);
++  items.slice((n - 1) * size, n * size);`,
       'test/paginate.test.ts': `+test('last page has the remainder', () => expect(page([1, 2, 3, 4, 5], 2, 3)).toEqual([5]));`,
     }),
   ),
@@ -164,8 +167,9 @@ export const GITHUB_CASES: JudgeCase[] = [
   gh(
     'gh-06',
     'pass',
-    'the three named tests',
+    'the three tests, beside an unrelated commit the same day',
     CART,
+    commit('Fix README typo', { 'README.md': `-Instal\n+Install` }),
     commit('Cart total tests', {
       'test/cart.test.ts': `+test('applies a 10% discount', () => expect(total([{ price: 100 }], { discount: 0.1 })).toBe(90));
 +test('adds 13% tax', () => expect(total([{ price: 100 }], { tax: 0.13 })).toBe(113));
@@ -194,7 +198,7 @@ export const GITHUB_CASES: JudgeCase[] = [
   gh(
     'gh-08',
     'pass',
-    'caught and shown to the user',
+    'caught, kept in state and shown to the user',
     ERRORS,
     commit('Show an error when fetchUser fails', {
       'src/profile.tsx': `-  const user = await fetchUser(id);
@@ -204,7 +208,9 @@ export const GITHUB_CASES: JudgeCase[] = [
 +  } catch {
 +    setError('Could not load your profile. Check your connection and try again.');
 +    return;
-+  }`,
++  }
+@@ return (
++      {error !== null && <Text role="alert">{error}</Text>}`,
     }),
   ),
   gh(
@@ -286,11 +292,15 @@ export const GITHUB_CASES: JudgeCase[] = [
   gh(
     'gh-14',
     'fail',
-    'a typo fix, nothing about validation',
+    'real work the same day, but for another task: nothing validates signup',
     SIGNUP,
-    commit('Fix typo', {
-      'README.md': `-Sigup form
-+Signup form`,
+    commit('Rate limit per IP', {
+      'src/limit.ts': `+export function limit(req, res, next) {
++  const recent = (hits.get(req.ip) ?? []).filter((t) => Date.now() - t < 60_000);
++  if (recent.length >= 100) return res.status(429).send('Too many requests');
++  hits.set(req.ip, [...recent, Date.now()]);
++  next();
++}`,
     }),
   ),
   gh(
@@ -370,10 +380,17 @@ export const GITHUB_CASES: JudgeCase[] = [
   gh(
     'gh-22',
     'fail',
-    'a TODO, no limit',
+    'one counter for everyone, not per IP',
     LIMIT,
     commit('Rate limiting', {
-      'src/server.ts': `+// TODO: rate limit to 100/min per IP`,
+      'src/limit.ts': `+let recent: number[] = [];
++export function limit(req, res, next) {
++  recent = recent.filter((t) => Date.now() - t < 60_000);
++  if (recent.length >= 100) return res.status(429).send('Too many requests');
++  recent.push(Date.now());
++  next();
++}`,
+      'src/server.ts': `+app.use(limit);`,
     }),
   ),
   gh(
@@ -390,11 +407,15 @@ export const GITHUB_CASES: JudgeCase[] = [
   gh(
     'gh-24',
     'fail',
-    'unrelated dependency bumps',
+    'a dependency bump and a binary search for another task: no Two Sum',
     TWOSUM,
-    commit('Bump deps', {
-      'package.json': `-    "vitest": "^3.1.0",
-+    "vitest": "^3.2.0",`,
+    commit('Bump deps', { 'package.json': `-    "vitest": "^3.1.0",\n+    "vitest": "^3.2.0",` }),
+    commit('Binary search', {
+      'src/search.ts': `+export function binarySearch(arr: number[], x: number): number {
++  let lo = 0, hi = arr.length - 1;
++  while (lo <= hi) { const mid = (lo + hi) >> 1; if (arr[mid] === x) return mid; if (arr[mid] < x) lo = mid + 1; else hi = mid - 1; }
++  return -1;
++}`,
     }),
   ),
   gh(
@@ -545,7 +566,14 @@ export const READING_CASES: JudgeCase[] = [
     'basically talent counts but effort counts twice: skill = talent x effort and achievement = skill x effort. so sticking with stuff matters more than i thought',
   ),
   rd('rd-14', 'fail', 'no summary at all', 'Atomic Habits', 'book', 'Good book.'),
-  rd('rd-15', 'fail', 'only the title again', 'Deep Work', 'book', 'Deep Work by Cal Newport'),
+  rd(
+    'rd-15',
+    'fail',
+    'a real summary, but of another book (Atomic Habits, not Deep Work)',
+    'Deep Work',
+    'book',
+    'Small habits compound: getting 1% better every day adds up, and systems matter more than goals.',
+  ),
   rd(
     'rd-16',
     'fail',
@@ -565,10 +593,10 @@ export const READING_CASES: JudgeCase[] = [
   rd(
     'rd-18',
     'fail',
-    'opinion only',
+    'the back-cover blurb, not what was learned in own words',
     'Thinking, Fast and Slow',
     'book',
-    'I liked it a lot, very well written, recommend!',
+    'In this groundbreaking tour of the mind, a Nobel laureate reveals the forces that shape our judgments and choices. An instant classic that will change the way you think about thinking.',
   ),
   rd('rd-19', 'fail', 'a chapter count', 'Clean Code', 'book', 'Chapter 3 finished.'),
   rd(
@@ -579,8 +607,22 @@ export const READING_CASES: JudgeCase[] = [
     'book',
     'Tomorrow I need to buy groceries and finish my math homework.',
   ),
-  rd('rd-21', 'fail', 'a phrase, not an idea', 'Sapiens', 'book', 'humans history'),
-  rd('rd-22', 'fail', 'emoji only', 'Grit', 'book', '👍🔥'),
+  rd(
+    'rd-21',
+    'fail',
+    'a confident main idea the book argues against',
+    'Sapiens, ch. 2',
+    'book',
+    'Humans took over the world because they had the biggest brains and the best tools; stories and beliefs played no real part.',
+  ),
+  rd(
+    'rd-22',
+    'fail',
+    'a question for later, no idea from the reading',
+    'Grit',
+    'book',
+    'Why would effort matter more than talent? I want to find out in the next chapter.',
+  ),
   rd(
     'rd-23',
     'fail',

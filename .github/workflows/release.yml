@@ -6,6 +6,9 @@ on:
   push:
     tags: ['v*']
 
+permissions:
+  contents: read
+
 jobs:
   apk:
     runs-on: ubuntu-latest
@@ -24,4 +27,4 @@ jobs:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
           if [ -z "$EXPO_TOKEN" ]; then echo "Add the EXPO_TOKEN secret (docs/release.md)"; exit 1; fi
-          bun x eas-cli build --platform android --profile production --non-interactive --no-wait
+          bun x eas-cli@16 build --platform android --profile production --non-interactive --no-wait

@@ -67,19 +67,51 @@ export function summarize(results: readonly CaseResult[]): EvalSummary {
   };
 }
 
-/** The bar for letting the judge decide alone: enough cases, right when sure, never paying wrongly. */
-export const GATE = { minJudged: 40, minAutoAccuracy: 0.95, maxAutoFalsePasses: 0 } as const;
+/**
+ * The bar for letting the judge decide alone: enough cases, enough confident ones to judge it by,
+ * right when sure, never paying wrongly; and each kind (GitHub, reading) clears it on its own.
+ */
+export const GATE = {
+  minJudged: 40,
+  minAutoDecided: 30,
+  minAutoDecidedPerKind: 10,
+  minAutoAccuracy: 0.95,
+  maxAutoFalsePasses: 0,
+} as const;
 
-export function gate(summary: EvalSummary): { allowed: boolean; reasons: string[] } {
+const KINDS = ['github', 'reading'] as const;
+
+export function gate(
+  summary: EvalSummary,
+  results: readonly CaseResult[] = [],
+): { allowed: boolean; reasons: string[] } {
   const reasons = [
     ...(summary.judged < GATE.minJudged ? [`only ${summary.judged} cases judged`] : []),
-    ...(summary.autoDecided === 0 ? ['no case was confident enough to decide alone'] : []),
-    ...(summary.autoAccuracy < GATE.minAutoAccuracy
+    ...(summary.autoDecided < GATE.minAutoDecided
+      ? [`only ${summary.autoDecided} confident enough to decide alone`]
+      : []),
+    ...(summary.autoDecided > 0 && summary.autoAccuracy < GATE.minAutoAccuracy
       ? [`auto accuracy ${pct(summary.autoAccuracy)} is under ${pct(GATE.minAutoAccuracy)}`]
       : []),
     ...(summary.autoFalsePasses > GATE.maxAutoFalsePasses
       ? [`${summary.autoFalsePasses} confident false pass(es)`]
       : []),
+    ...KINDS.flatMap((kind) => {
+      const own = results.filter((r) => r.kind === kind);
+      if (own.length === 0) return [];
+      const k = summarize(own);
+      return [
+        ...(k.autoDecided < GATE.minAutoDecidedPerKind
+          ? [`${kind}: only ${k.autoDecided} decided alone`]
+          : []),
+        ...(k.autoDecided > 0 && k.autoAccuracy < GATE.minAutoAccuracy
+          ? [`${kind}: auto accuracy ${pct(k.autoAccuracy)}`]
+          : []),
+        ...(k.autoFalsePasses > GATE.maxAutoFalsePasses
+          ? [`${kind}: ${k.autoFalsePasses} confident false pass(es)`]
+          : []),
+      ];
+    }),
   ];
   return { allowed: reasons.length === 0, reasons };
 }
@@ -91,7 +123,7 @@ const decided = (d: Decision | null) =>
 
 /** A Markdown report: the verdict, the metrics, and one row per case (ids only, no evidence). */
 export function report(summary: EvalSummary, results: readonly CaseResult[]): string {
-  const verdict = gate(summary);
+  const verdict = gate(summary, results);
   return [
     '# Judge eval',
     '',
@@ -105,6 +137,13 @@ export function report(summary: EvalSummary, results: readonly CaseResult[]): st
     `| Decided alone (confidence ≥ threshold) | ${pct(summary.autoCoverage)} (${summary.autoDecided}) |`,
     `| Accuracy when decided alone | ${pct(summary.autoAccuracy)} (${summary.autoCorrect}/${summary.autoDecided}) |`,
     `| False passes | ${summary.falsePasses} (${summary.autoFalsePasses} decided alone) |`,
+    '',
+    '| Kind | Judged | Accuracy | Decided alone | Accuracy alone | False passes alone |',
+    '| --- | --- | --- | --- | --- | --- |',
+    ...KINDS.map((kind) => {
+      const k = summarize(results.filter((r) => r.kind === kind));
+      return `| ${kind} | ${k.judged} | ${pct(k.accuracy)} | ${k.autoDecided} | ${pct(k.autoAccuracy)} | ${k.autoFalsePasses} |`;
+    }),
     '',
     '| Case | Kind | Expected | Judge | Outcome | Alone |',
     '| --- | --- | --- | --- | --- | --- |',

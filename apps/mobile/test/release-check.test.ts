@@ -1,4 +1,4 @@
-import { releaseProblems } from '../release-check';
+import { releaseProblems } from '../app.config';
 
 const URL = 'https://futureflow-api.example.workers.dev';
 
@@ -26,4 +26,14 @@ test('other builds (preview, local, the emulator run) are not checked', () => {
     releaseProblems({ profile: undefined, apiUrl: 'http://10.0.2.2:8787', e2e: true }),
   ).toEqual([]);
   expect(releaseProblems({ profile: 'preview', apiUrl: undefined, e2e: false })).toEqual([]);
+});
+
+test('the runbook placeholder and stray spaces are not an address', () => {
+  for (const apiUrl of [
+    'https://futureflow-api.<you>.workers.dev',
+    ' https://a.example.dev',
+    'https://localhost',
+  ]) {
+    expect(releaseProblems({ profile: 'production', apiUrl, e2e: false })).toHaveLength(1);
+  }
 });

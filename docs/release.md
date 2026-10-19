@@ -12,7 +12,12 @@ builds a month, so a build only starts from a `v*` tag (spec §14). Deploy the A
 3. **The API address:** put the deployed address (`https://futureflow-api.<you>.workers.dev`) into
    `build.production.env.EXPO_PUBLIC_API_URL` in `apps/mobile/eas.json` and commit. A production
    build refuses to start without an https address.
-4. **A token for GitHub:** on expo.dev, Account settings → Access tokens → Create. Then
+   Only this value counts for production: it overrides an EAS environment variable of the same
+   name.
+4. **The signing key:** `bun x eas-cli credentials -p android`, choose the production profile and let
+   EAS create a keystore. A tagged build can't create one (it runs without questions), and the same
+   key must sign every later update. EAS keeps it; download a backup from expo.dev.
+5. **A token for GitHub:** on expo.dev, Account settings → Access tokens → Create. Then
    `gh secret set EXPO_TOKEN` and paste it.
 
 ## Each release

@@ -64,6 +64,10 @@ describe('summarize and gate', () => {
     const many = (n: number, outcome: CaseResult['outcome'], auto = true) =>
       Array.from({ length: n }, (_, i) => result(`${outcome}-${i}`, outcome, auto));
     expect(gate(summarize(many(40, 'correct'))).allowed).toBe(true);
+    // 39 unsure verdicts and one confident one are no evidence for deciding alone.
+    expect(gate(summarize([...many(39, 'correct', false), ...many(1, 'correct')])).allowed).toBe(
+      false,
+    );
     expect(gate(summarize(many(39, 'correct'))).allowed).toBe(false);
     expect(gate(summarize([...many(40, 'correct'), ...many(1, 'false_pass')])).allowed).toBe(false);
     expect(gate(summarize([...many(38, 'correct'), ...many(3, 'false_fail')])).allowed).toBe(false);
@@ -80,5 +84,31 @@ describe('report', () => {
     expect(text).toContain('| gh-1 | github | pass | pass (0.90) | correct | yes |');
     expect(text).toContain('| rd-2 | github | pass | no answer | unavailable | no |');
     expect(text).toMatch(/Auto-decide: \*\*keep off\*\*/);
+  });
+});
+
+describe('per kind', () => {
+  it('a kind with too few confident verdicts or a confident false pass keeps the gate shut', () => {
+    const reading = (id: string, outcome: CaseResult['outcome']): CaseResult => ({
+      ...result(id, outcome, true),
+      kind: 'reading',
+    });
+    const github = Array.from({ length: 35 }, (_, i) => result(`g${i}`, 'correct', true));
+    const fine = Array.from({ length: 15 }, (_, i) => reading(`r${i}`, 'correct'));
+    expect(gate(summarize([...github, ...fine]), [...github, ...fine]).allowed).toBe(true);
+    const badReading = [...fine.slice(1), reading('r-bad', 'false_pass')];
+    const verdict = gate(summarize([...github, ...badReading]), [...github, ...badReading]);
+    expect(verdict.allowed).toBe(false);
+    expect(verdict.reasons.join(' ')).toMatch(/reading/);
+  });
+
+  it('the report shows each kind on its own line', () => {
+    const results = [
+      result('gh-1', 'correct', true),
+      { ...result('rd-1', 'false_fail', true), kind: 'reading' as const },
+    ];
+    const text = report(summarize(results), results);
+    expect(text).toMatch(/\| github \| 1 \| 100\.0% \|/);
+    expect(text).toMatch(/\| reading \| 1 \| 0\.0% \|/);
   });
 });

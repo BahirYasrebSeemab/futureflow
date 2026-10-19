@@ -34,13 +34,14 @@ triggers (hourly verification, half-hourly upkeep) are set up by the deploy.
 
 ## 4. Secrets
 
-Secrets live only in Cloudflare, never in the repo. Each command asks for the value.
+Secrets live only in Cloudflare, never in the repo. Piped values go straight in; the others ask.
 
 ```sh
-openssl rand -base64 24 | bun x wrangler secret put SETUP_CODE        # pairing code; keep a copy to pair the phone
+CODE=$(openssl rand -base64 24); echo "Pairing code: $CODE"   # write it down: it can't be read back
+printf %s "$CODE" | bun x wrangler secret put SETUP_CODE
 openssl rand -base64 32 | bun x wrangler secret put GITHUB_TOKEN_KEY  # seals the GitHub token at rest
-bun x wrangler secret put GEMINI_API_KEY                               # https://aistudio.google.com/apikey
-bun x wrangler secret put JEV_API_KEY                                  # optional, judge only (paid, cents a day)
+bun x wrangler secret put GEMINI_API_KEY                               # asks; https://aistudio.google.com/apikey
+bun x wrangler secret put JEV_API_KEY                                  # asks; optional, judge only (paid, cents a day)
 ```
 
 To see the pairing code again later you can't read it back: put a new one (the old phone stays
@@ -57,8 +58,8 @@ curl -s -o /dev/null -w '%{http_code}\n' "$URL/v1/today"     # 401: needs a pair
 
 ## 6. The phone
 
-Build the APK with this address (see "Release" in the README), install it on the phone, and pair
-with the `SETUP_CODE`.
+Build the APK with this address ([docs/release.md](release.md)), install it on the phone, and pair
+with the pairing code.
 
 ## Later
 

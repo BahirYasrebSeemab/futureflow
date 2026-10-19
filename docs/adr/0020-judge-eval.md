@@ -22,16 +22,23 @@ ADR, before verdicts may decide alone (§14).
 - **Scoring** (`src/verification/eval.ts`, tested): each case is correct, a false pass, a false fail,
   or unavailable (no provider answered: not counted as wrong). A verdict "decides alone" when its
   confidence is at least the production threshold (0.75).
-- **The gate:** auto-decide may be turned on only when at least 40 cases were judged, verdicts that
-  decide alone are right at least 95% of the time, and **none of them is a false pass**. A
-  low-confidence verdict still goes to the owner, so false fails and uncertain cases only cost a tap.
+- **The gate:** auto-decide may be turned on only when at least 40 cases were judged, at least 30 of
+  them confidently enough to decide alone (10 of each kind), those are right at least 95% of the
+  time, and **none of them is a false pass**, overall and for GitHub and reading separately. A
+  low-confidence verdict still goes to the owner. A confident false fail is final (the owner can't
+  override a decided verdict), so the 95% bar also caps those.
+- **What production sends:** a GitHub task is judged against all of the day's commits, so some cases
+  mix in commits made for other work (one passes beside an unrelated commit; one fails on real
+  work done for another task).
 - The report (`docs/judge-eval/report.md`) lists case ids, labels, verdicts and metrics, never the
   evidence or the keys.
 
 ## Consequences
 
 - The labels are Claude's, written to be checkable from the criteria; the owner should skim the
-  notes and correct any label they disagree with before trusting the gate.
+  notes and correct any label they disagree with before trusting the gate. The set leans on near
+  misses (a summary of the wrong book, a back-cover blurb, a main idea the book argues against, a
+  rate limit shared by everyone) because those cause confident false passes.
 - 50 cases measure the judge roughly; one wrong confident pass already keeps it off.
 - Re-run after a model or prompt change.
 

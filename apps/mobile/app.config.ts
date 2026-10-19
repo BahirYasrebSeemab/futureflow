@@ -1,5 +1,36 @@
 import type { ExpoConfig } from 'expo/config';
-import { releaseProblems } from './release-check';
+
+// Kept in this file: Expo loads app.config.ts on its own and can't follow imports of other .ts files.
+/**
+ * What must hold before a store APK is built (EAS profile `production`), checked when the Expo
+ * config loads so a wrong build fails at once instead of shipping. Other builds aren't checked.
+ */
+export type ReleaseInputs = Readonly<{
+  profile: string | undefined;
+  apiUrl: string | undefined;
+  e2e: boolean;
+}>;
+
+export function releaseProblems({ profile, apiUrl, e2e }: ReleaseInputs): string[] {
+  if (profile !== 'production') return [];
+  return [
+    ...(!isHttpsAddress(apiUrl)
+      ? ['EXPO_PUBLIC_API_URL must be the https address of the deployed API']
+      : []),
+    ...(e2e ? ['E2E must not be set for a production build'] : []),
+  ];
+}
+
+/** A real https address: parses, no placeholder like `<you>` left in it. */
+function isHttpsAddress(raw: string | undefined): boolean {
+  if (raw === undefined || raw !== raw.trim() || /[<>\s]/.test(raw)) return false;
+  try {
+    const url = new URL(raw);
+    return url.protocol === 'https:' && url.hostname.includes('.');
+  } catch {
+    return false;
+  }
+}
 
 /** CI's emulator build talks to a local Worker over plain http://10.0.2.2. Store builds never do. */
 const isE2E = process.env.E2E === '1';

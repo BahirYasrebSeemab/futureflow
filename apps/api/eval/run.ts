@@ -18,18 +18,28 @@ const here = dirname(fileURLToPath(import.meta.url));
 const REPORT = `${here}/../../../docs/judge-eval/report.md`;
 const say = (line: string) => process.stdout.write(`${line}\n`);
 
-/** KEY=VALUE lines from .dev.vars; comments and blanks skipped. */
+/** KEY=VALUE lines from .dev.vars, as wrangler reads them: comments, spaces and quotes handled. */
 function devVars(path: string): Record<string, string> {
   if (!existsSync(path)) return {};
   const pairs = readFileSync(path, 'utf8')
     .split('\n')
     .map((line) => line.trim())
     .filter((line) => line !== '' && !line.startsWith('#') && line.includes('='))
-    .map((line) => [line.slice(0, line.indexOf('=')), line.slice(line.indexOf('=') + 1)] as const);
+    .map((line) => {
+      const key = line.slice(0, line.indexOf('=')).trim();
+      let value = line.slice(line.indexOf('=') + 1).trim();
+      const quoted = /^(["'])(.*)\1$/.exec(value);
+      value = quoted ? (quoted[2] ?? '') : value.replace(/\s+#.*$/, '');
+      return [key, value] as const;
+    });
   return Object.fromEntries(pairs);
 }
 
-const vars = { ...devVars(`${here}/../.dev.vars`), ...process.env };
+// The shell's values win, but an empty one doesn't hide the file's.
+const shell = Object.fromEntries(
+  Object.entries(process.env).filter(([, v]) => v !== undefined && v !== ''),
+);
+const vars: Record<string, string | undefined> = { ...devVars(`${here}/../.dev.vars`), ...shell };
 const providers = [
   ...(vars.JEV_API_KEY ? ['Jev'] : []),
   ...(vars.GEMINI_API_KEY ? ['Gemini (fallback)'] : []),
@@ -57,6 +67,11 @@ for (const c of JUDGE_CASES) {
   const scored = scoreCase(c.expected, decision, DEFAULT_RULES.judgeConfidenceThreshold);
   results.push({ id: c.id, kind: c.kind, expected: c.expected, decision, ...scored });
   say(`${c.id}: ${scored.outcome}${scored.auto ? '' : ' (would ask the owner)'}`);
+  // Five unanswered calls in a row at the start mean bad keys or no network: stop, keep the old report.
+  if (results.length === 5 && results.every((r) => r.outcome === 'unavailable')) {
+    say('\nNo answer from any provider for the first 5 cases. Check the keys and the network.');
+    process.exit(1);
+  }
 }
 
 const summary = summarize(results);
