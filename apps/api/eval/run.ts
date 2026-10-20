@@ -8,7 +8,7 @@ import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { memoryUsage } from '@futureflow/ai';
 import { DEFAULT_RULES } from '@futureflow/core';
-import { aiFromEnv, timeoutFetch } from '../src/ai';
+import { aiFromEnv, fetchWithin } from '../src/ai';
 import type { Bindings } from '../src/env';
 import { report, scoreCase, summarize, type CaseResult } from '../src/verification/eval';
 import { judgeGithub, judgeReading } from '../src/verification/judge';
@@ -56,7 +56,9 @@ const env = {
   JEV_DAILY_LIMIT: '1000',
   GEMINI_DAILY_LIMIT: '1000',
 } as unknown as Bindings;
-const ai = aiFromEnv(env, memoryUsage(), timeoutFetch, () => Date.now());
+// A slow home connection can take 20 s+ per answer; the eval measures the judge, not the network.
+const EVAL_TIMEOUT_MS = 90_000;
+const ai = aiFromEnv(env, memoryUsage(), fetchWithin(EVAL_TIMEOUT_MS), () => Date.now());
 
 const results: CaseResult[] = [];
 for (const c of JUDGE_CASES) {
