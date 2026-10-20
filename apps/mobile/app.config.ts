@@ -36,7 +36,7 @@ function isHttpsAddress(raw: string | undefined): boolean {
 const isE2E = process.env.E2E === '1';
 
 /** The owner's Expo project, printed by `eas init` (docs/release.md). Not a secret. */
-const EAS_PROJECT_ID = '';
+const EAS_PROJECT_ID = '7a063ad0-e24f-47b3-9072-ab1849ec435c';
 
 const problems = releaseProblems({
   profile: process.env.EAS_BUILD_PROFILE,
