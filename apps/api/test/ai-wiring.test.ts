@@ -1,6 +1,6 @@
 import { env } from 'cloudflare:test';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { aiFromEnv, dailyLimit, GEMINI_MODELS } from '../src/ai';
+import { aiFromEnv, dailyLimit, fetchWithin, GEMINI_MODELS } from '../src/ai';
 import { d1AiUsage } from '../src/adapters/d1/ai-usage';
 import type { FetchLike } from '@futureflow/ai';
 import { geminiReply, T0 } from './helpers';
@@ -161,5 +161,22 @@ describe('budget under concurrency', () => {
     );
 
     expect(urls.filter((u) => u.includes(GEMINI_MODELS[0])).length).toBe(1);
+  });
+});
+
+describe('fetchWithin', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('gives up after the given time', async () => {
+    vi.stubGlobal(
+      'fetch',
+      (_url: string, init: { signal: AbortSignal }) =>
+        new Promise((_resolve, reject) =>
+          init.signal.addEventListener('abort', () => reject(init.signal.reason)),
+        ),
+    );
+    await expect(
+      fetchWithin(10)('https://example.com', { method: 'POST', headers: {} }),
+    ).rejects.toThrow();
   });
 });

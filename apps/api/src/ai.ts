@@ -21,9 +21,13 @@ export const DEFAULT_GEMINI_DAILY_LIMIT = 100;
 export const DEFAULT_JEV_DAILY_LIMIT = 200;
 export const AI_TIMEOUT_MS = 20_000;
 
-/** Global fetch with a timeout. Waiting on the network does not use Worker CPU time. */
-export const timeoutFetch: FetchLike = (url, init) =>
-  fetch(url, { ...init, signal: AbortSignal.timeout(AI_TIMEOUT_MS) });
+/** Global fetch that gives up after `ms`. Waiting on the network does not use Worker CPU time. */
+export const fetchWithin =
+  (ms: number): FetchLike =>
+  (url, init) =>
+    fetch(url, { ...init, signal: AbortSignal.timeout(ms) });
+
+export const timeoutFetch: FetchLike = fetchWithin(AI_TIMEOUT_MS);
 
 /** A positive whole number from a Worker setting, or the default. */
 export const dailyLimit = (setting: string | undefined, fallback: number): number => {
