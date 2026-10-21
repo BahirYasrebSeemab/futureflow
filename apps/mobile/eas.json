@@ -5,6 +5,7 @@
   },
   "build": {
     "preview": {
+      "bun": "1.4.0",
       "distribution": "internal",
       "environment": "preview",
       "android": {
@@ -12,6 +13,7 @@
       }
     },
     "production": {
+      "bun": "1.4.0",
       "distribution": "internal",
       "autoIncrement": true,
       "android": {
