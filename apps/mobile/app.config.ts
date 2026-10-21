@@ -56,7 +56,7 @@ const config: ExpoConfig = {
   android: {
     package: 'com.bahiryasreb.futureflow',
     adaptiveIcon: {
-      backgroundColor: '#E6F4FE',
+      backgroundColor: '#2747C9',
       foregroundImage: './assets/android-icon-foreground.png',
       backgroundImage: './assets/android-icon-background.png',
       monochromeImage: './assets/android-icon-monochrome.png',
