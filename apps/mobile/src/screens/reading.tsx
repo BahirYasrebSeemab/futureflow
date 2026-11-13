@@ -1,6 +1,6 @@
 import { addDays } from '@futureflow/core';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Banner } from '@/components/banner';
 import { useBottomPadding } from '@/components/bottom-padding';
 import { Button } from '@/components/button';
@@ -8,6 +8,7 @@ import type { ApiFailure } from '@/lib/api/client';
 import { useApp } from '@/lib/app';
 import { currentDayKey } from '@/lib/format';
 import { radius, space, usePalette } from '@/theme';
+import { TextField } from '@/components/text-field';
 
 type Source = 'book' | 'pdf' | 'article';
 const SOURCES: readonly [Source, string][] = [
@@ -94,10 +95,6 @@ export function ReadingScreen() {
     }
   };
 
-  const input = [
-    styles.input,
-    { color: c.text, borderColor: c.border, backgroundColor: c.surface },
-  ];
   const chip = (on: boolean) => [
     styles.chip,
     { borderColor: on ? c.accent : c.border, backgroundColor: on ? c.accent : c.surface },
@@ -117,13 +114,12 @@ export function ReadingScreen() {
           </Text>
         ))}
       <Text style={[styles.label, { color: c.text }]}>What did you read?</Text>
-      <TextInput
+      <TextField
         testID="reading-title"
         accessibilityLabel="Title"
         value={title}
         onChangeText={setTitle}
         maxLength={MAX_TITLE}
-        style={input}
       />
       <View style={styles.row}>
         {SOURCES.map(([value, label]) => (
@@ -142,36 +138,34 @@ export function ReadingScreen() {
       <View style={styles.row}>
         <View style={styles.half}>
           <Text style={[styles.label, { color: c.text }]}>Pages</Text>
-          <TextInput
+          <TextField
             testID="reading-pages"
             accessibilityLabel="Pages"
             keyboardType="number-pad"
             value={pages}
             onChangeText={setPages}
-            style={input}
           />
         </View>
         <View style={styles.half}>
           <Text style={[styles.label, { color: c.text }]}>Minutes</Text>
-          <TextInput
+          <TextField
             testID="reading-minutes"
             accessibilityLabel="Minutes"
             keyboardType="number-pad"
             value={minutes}
             onChangeText={setMinutes}
-            style={input}
           />
         </View>
       </View>
       <Text style={[styles.label, { color: c.text }]}>What did you learn?</Text>
-      <TextInput
+      <TextField
         testID="reading-summary"
         accessibilityLabel="What did you learn?"
         value={summary}
         onChangeText={setSummary}
         maxLength={MAX_SUMMARY}
         multiline
-        style={[input, styles.summary]}
+        style={styles.summary}
       />
       <Pressable
         testID="read-yesterday"
@@ -195,13 +189,6 @@ export function ReadingScreen() {
 const styles = StyleSheet.create({
   body: { padding: space.md, gap: space.md },
   label: { fontSize: 15, fontWeight: '600' },
-  input: {
-    minHeight: 48,
-    borderWidth: 1,
-    borderRadius: radius.md,
-    paddingHorizontal: space.md,
-    fontSize: 16,
-  },
   summary: { minHeight: 120, paddingVertical: space.sm, textAlignVertical: 'top' },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
   half: { flex: 1, gap: space.xs },

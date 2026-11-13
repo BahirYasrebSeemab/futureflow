@@ -6,6 +6,7 @@ import { AwayScreen } from '@/screens/away';
 import { DiagnosticsScreen } from '@/screens/diagnostics';
 import { PlanScreen } from '@/screens/plan';
 import { RootStack } from '@/screens/root-stack';
+import { TabsLayout } from '@/screens/tabs';
 import { TodayScreen } from '@/screens/today';
 import { PAIRED, sampleToday, testServices } from './support/fakes';
 
@@ -31,8 +32,9 @@ async function openPlan(api: Partial<Api>) {
           <RootStack />
         </AppProvider>
       ),
-      index: TodayScreen,
-      plan: PlanScreen,
+      '(tabs)/_layout': TabsLayout,
+      '(tabs)/index': TodayScreen,
+      '(tabs)/plan': PlanScreen,
       away: AwayScreen,
       diagnostics: DiagnosticsScreen,
     },
@@ -208,4 +210,19 @@ test('a failed load offers Try again, never Propose over a saved draft', async (
   expect(screen.queryByTestId('propose')).toBeNull();
   fireEvent.press(screen.getByTestId('reload-plan'));
   expect(await screen.findByTestId('propose')).toBeTruthy();
+});
+
+test('coming back to the Plan tab loads again, so a plan made elsewhere shows up', async () => {
+  let server: Plan | null = null;
+  const getPlan: Api['getPlan'] = async (day) => ({
+    ok: true,
+    data: day === TOMORROW ? server : null,
+  });
+  await openPlan({ getPlan });
+  fireEvent.press(await screen.findByTestId('plan-tomorrow'));
+  expect(await screen.findByText('No plan yet')).toBeTruthy();
+  server = proposed;
+  fireEvent.press(screen.getByTestId('tab-today'));
+  fireEvent.press(await screen.findByTestId('open-plan'));
+  expect(await screen.findByDisplayValue('Fractions practice')).toBeTruthy();
 });

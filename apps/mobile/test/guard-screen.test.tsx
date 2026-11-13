@@ -4,6 +4,7 @@ import type { Guard } from '@/lib/guard/types';
 import { GuardScreen } from '@/screens/guard';
 import { MoreScreen } from '@/screens/more';
 import { RootStack } from '@/screens/root-stack';
+import { TabsLayout } from '@/screens/tabs';
 import { TodayScreen } from '@/screens/today';
 import { fakeGuard, PAIRED, testServices } from './support/fakes';
 
@@ -17,8 +18,9 @@ async function open(url: string, guard?: Guard) {
           <RootStack />
         </AppProvider>
       ),
-      index: TodayScreen,
-      more: MoreScreen,
+      '(tabs)/_layout': TabsLayout,
+      '(tabs)/index': TodayScreen,
+      '(tabs)/more': MoreScreen,
       guard: GuardScreen,
     },
     { initialUrl: url },
@@ -160,7 +162,7 @@ test('switched on but not running: the screen says so and offers the settings', 
   const { guard, calls } = fakeGuard({ state: { enabled: true, connected: false } });
   await open('/guard', guard);
   expect(await screen.findByTestId('guard-status')).toHaveTextContent("The guard isn't running");
-  expect(screen.getByText(/switch Future Flow guard off and on again/)).toBeTruthy();
+  expect(screen.getByText(/switch FutureFlow guard off and on again/)).toBeTruthy();
   fireEvent.press(screen.getByTestId('guard-enable'));
   await waitFor(() => expect(calls.settings).toEqual(['accessibility']));
 });

@@ -1,8 +1,13 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { useBottomPadding } from '@/components/bottom-padding';
+import { KeyboardAvoidingView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useHeaderHeight } from 'expo-router/react-navigation';
 import { Button } from '@/components/button';
+import { Icon } from '@/components/icon';
+import { PressableScale } from '@/components/pressable-scale';
+import { TextField } from '@/components/text-field';
+import { haptics } from '@/lib/haptics';
+import { useReducedMotion } from '@/lib/reduced-motion';
 import type { CoachMessage } from '@/lib/api/client';
 import { useApp } from '@/lib/app';
 import { radius, space, usePalette } from '@/theme';
@@ -30,7 +35,10 @@ function unansweredIn(thread: readonly CoachMessage[]): Unanswered[] {
 
 export function CoachScreen() {
   const c = usePalette();
-  const bottomPadding = useBottomPadding();
+  const headerHeight = useHeaderHeight();
+  const scroller = useRef<ScrollView>(null);
+  const shownCount = useRef(0);
+  const reduced = useReducedMotion();
   const { services } = useApp();
   const [thread, setThread] = useState<CoachMessage[]>([]);
   // Failed sends the server may not have stored; once synced they come from the thread instead.
@@ -90,109 +98,200 @@ export function CoachScreen() {
     void deliver({ id: services.ids.newId(), text: trimmed });
   };
 
-  const bubble = (mine: boolean) => [
-    styles.bubble,
-    mine
-      ? { alignSelf: 'flex-end' as const, backgroundColor: c.accent }
-      : {
-          alignSelf: 'flex-start' as const,
-          backgroundColor: c.surface,
-          borderColor: c.border,
-          borderWidth: 1,
-        },
-  ];
   const inThread = new Set(thread.map((m) => m.id));
   const unanswered = [...unansweredIn(thread), ...unsent.filter((m) => !inThread.has(m.id))];
   const pendingIds = new Set(unanswered.map((m) => m.id));
+  const canSend = !sending && text.trim() !== '';
   return (
-    <ScrollView
-      style={{ backgroundColor: c.background }}
-      contentContainerStyle={[styles.body, bottomPadding]}
-      keyboardShouldPersistTaps="handled"
+    <KeyboardAvoidingView
+      behavior="padding"
+      keyboardVerticalOffset={headerHeight}
+      style={[styles.fill, { backgroundColor: c.background }]}
     >
-      {thread.length === 0 && unanswered.length === 0 && (
-        <Text style={[styles.muted, { color: c.muted }]}>
-          Your coach is you, a few years from now. Ask about today, a task, or what got in the way.
-        </Text>
-      )}
-      {thread
-        .filter((m) => !pendingIds.has(m.id))
-        .map((m) => (
-          <View key={m.id} style={bubble(m.role === 'owner')}>
-            {m.kind === 'review' && (
-              <Text style={[styles.tag, { color: c.muted }]}>Nightly review</Text>
-            )}
-            <Text
-              style={{
-                color: m.role === 'owner' ? c.accentText : c.text,
-                fontSize: 16,
-                lineHeight: 22,
-              }}
-            >
-              {m.text}
+      <ScrollView
+        ref={scroller}
+        style={styles.fill}
+        contentContainerStyle={styles.body}
+        keyboardShouldPersistTaps="handled"
+        // A new message arrives at the bottom, so the view follows it like any chat; a reload
+        // that adds nothing leaves the reader where they are.
+        onContentSizeChange={() => {
+          const count = thread.length + unanswered.length;
+          if (count === shownCount.current) return;
+          shownCount.current = count;
+          scroller.current?.scrollToEnd({ animated: !reduced });
+        }}
+      >
+        {thread.length === 0 && unanswered.length === 0 && (
+          <View style={styles.intro}>
+            <Avatar size={64} />
+            <Text style={[styles.introTitle, { color: c.text }]}>Your coach</Text>
+            <Text style={[styles.muted, { color: c.muted }]}>
+              Your coach is you, a few years from now. Ask about today, a task, or what got in the
+              way.
             </Text>
           </View>
-        ))}
-      {unanswered.map((m) => (
-        <View key={m.id} style={styles.pending}>
-          <View style={bubble(true)}>
-            <Text style={{ color: c.accentText, fontSize: 16, lineHeight: 22 }}>{m.text}</Text>
+        )}
+        {thread
+          .filter((m) => !pendingIds.has(m.id))
+          .map((m) =>
+            m.role === 'owner' ? (
+              <Mine key={m.id} text={m.text} />
+            ) : (
+              <View key={m.id} style={styles.theirsRow}>
+                <Avatar size={32} />
+                <View
+                  style={[
+                    styles.bubble,
+                    styles.theirs,
+                    { backgroundColor: c.surface, borderColor: c.border },
+                  ]}
+                >
+                  {m.kind === 'review' && (
+                    <Text style={[styles.tag, { color: c.accentSoftText }]}>Nightly review</Text>
+                  )}
+                  <Text selectable style={[styles.text, { color: c.text }]}>
+                    {m.text}
+                  </Text>
+                </View>
+              </View>
+            ),
+          )}
+        {unanswered.map((m) => (
+          <View key={m.id} style={styles.pending}>
+            <Mine text={m.text} />
+            <View style={styles.pendingLine}>
+              <Icon name="error-outline" color={c.muted} size={16} />
+              <Text style={[styles.tag, { color: c.muted }]}>Not answered yet</Text>
+            </View>
+            <View style={styles.retry}>
+              <Button
+                testID={`retry-${m.id}`}
+                label="Try again"
+                icon="refresh"
+                variant="soft"
+                disabled={sending}
+                onPress={() => void deliver(m)}
+              />
+            </View>
           </View>
-          <Text style={[styles.tag, { color: c.muted, alignSelf: 'flex-end' }]}>
-            Not answered yet
+        ))}
+        {unanswered.length > 0 && (
+          <Text
+            testID="coach-unavailable"
+            accessibilityLiveRegion="polite"
+            style={[styles.safety, { color: c.warningText, backgroundColor: c.warningBg }]}
+          >
+            {COACH_UNAVAILABLE}
           </Text>
-          <Button
-            testID={`retry-${m.id}`}
-            label="Try again"
-            variant="secondary"
-            disabled={sending}
-            onPress={() => void deliver(m)}
-          />
-        </View>
-      ))}
-      {unanswered.length > 0 && (
-        <Text
-          testID="coach-unavailable"
-          accessibilityLiveRegion="polite"
-          style={[styles.safety, { color: c.text, backgroundColor: c.warningBg }]}
+        )}
+      </ScrollView>
+      <View
+        style={[
+          styles.composer,
+          {
+            backgroundColor: c.surface,
+            borderTopColor: c.border,
+            paddingBottom: space.sm,
+          },
+        ]}
+      >
+        <TextField
+          testID="coach-input"
+          accessibilityLabel="Message to your coach"
+          value={text}
+          onChangeText={setText}
+          maxLength={MAX_TEXT}
+          multiline
+          placeholder="Message your coach"
+          style={styles.input}
+        />
+        <PressableScale
+          testID="coach-send"
+          accessibilityLabel={sending ? 'Sending' : 'Send'}
+          disabled={!canSend}
+          onPress={() => {
+            haptics.tap();
+            send();
+          }}
+          pressedScale={0.9}
+          style={[styles.send, { backgroundColor: canSend ? c.accent : c.track }]}
         >
-          {COACH_UNAVAILABLE}
-        </Text>
-      )}
-      <TextInput
-        testID="coach-input"
-        accessibilityLabel="Message to your coach"
-        value={text}
-        onChangeText={setText}
-        maxLength={MAX_TEXT}
-        multiline
-        placeholder="Message your coach"
-        placeholderTextColor={c.muted}
-        style={[styles.input, { color: c.text, borderColor: c.border, backgroundColor: c.surface }]}
-      />
-      <Button
-        testID="coach-send"
-        label={sending ? 'Sending…' : 'Send'}
-        disabled={sending || text.trim() === ''}
-        onPress={send}
-      />
-    </ScrollView>
+          <Icon name="arrow-upward" color={canSend ? c.accentText : c.muted} size={24} />
+        </PressableScale>
+      </View>
+    </KeyboardAvoidingView>
+  );
+}
+
+/** The coach's face: a soft circle with the "future you" mark. */
+function Avatar({ size }: Readonly<{ size: number }>) {
+  const c = usePalette();
+  return (
+    <View
+      style={{
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        backgroundColor: c.heroBg,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <Icon name="self-improvement" color={c.heroText} size={size * 0.6} />
+    </View>
+  );
+}
+
+function Mine({ text }: Readonly<{ text: string }>) {
+  const c = usePalette();
+  return (
+    <View style={[styles.bubble, styles.mine, { backgroundColor: c.accent }]}>
+      <Text selectable style={[styles.text, { color: c.accentText }]}>
+        {text}
+      </Text>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  body: { padding: space.md, gap: space.sm },
-  muted: { fontSize: 15, lineHeight: 21 },
-  bubble: { maxWidth: '85%', borderRadius: radius.md, padding: space.sm, gap: space.xs },
-  tag: { fontSize: 12, fontWeight: '600' },
-  pending: { gap: space.xs },
-  safety: { fontSize: 15, lineHeight: 21, borderRadius: radius.md, padding: space.md },
-  input: {
-    minHeight: 48,
-    borderWidth: 1,
-    borderRadius: radius.md,
+  fill: { flex: 1 },
+  body: { padding: space.md, gap: space.sm, flexGrow: 1 },
+  intro: { alignItems: 'center', gap: space.sm, paddingVertical: space.xl },
+  introTitle: { fontSize: 20, fontWeight: '800' },
+  muted: { fontSize: 15, lineHeight: 21, textAlign: 'center' },
+  bubble: {
+    maxWidth: '82%',
+    borderRadius: radius.lg,
+    borderCurve: 'continuous',
     paddingHorizontal: space.md,
-    paddingVertical: space.sm,
-    fontSize: 16,
+    paddingVertical: 10,
+    gap: space.xs,
+  },
+  // The corner nearest the speaker is tighter, so each bubble points at who said it.
+  mine: { alignSelf: 'flex-end', borderBottomRightRadius: 6 },
+  theirs: { borderWidth: 1, borderBottomLeftRadius: 6, flexShrink: 1 },
+  theirsRow: { flexDirection: 'row', alignItems: 'flex-end', gap: space.sm },
+  text: { fontSize: 16, lineHeight: 22 },
+  tag: { fontSize: 12, fontWeight: '700' },
+  pending: { gap: space.xs },
+  pendingLine: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-end' },
+  retry: { alignSelf: 'flex-end' },
+  safety: { fontSize: 15, lineHeight: 21, borderRadius: radius.md, padding: space.md },
+  composer: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: space.sm,
+    paddingHorizontal: space.md,
+    paddingTop: space.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  input: { flex: 1, maxHeight: 140, borderRadius: radius.lg },
+  send: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

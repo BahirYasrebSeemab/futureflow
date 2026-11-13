@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "main": "expo-router/entry",
   "dependencies": {
+    "@expo/vector-icons": "^15.0.2",
     "@futureflow/contracts": "workspace:*",
     "@futureflow/core": "workspace:*",
     "@futureflow/math-engine": "workspace:*",
@@ -10,6 +11,7 @@
     "expo-build-properties": "~57.0.22",
     "expo-constants": "~57.0.21",
     "expo-crypto": "~57.0.4",
+    "expo-haptics": "~57.0.3",
     "expo-linking": "~57.0.12",
     "expo-location": "~57.0.21",
     "expo-router": "~57.0.26",

@@ -1,9 +1,10 @@
 import type { TaskSpec } from '@futureflow/core';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Button } from '@/components/button';
 import { formatDuration } from '@/lib/format';
 import { minutesOf, taskProblems, type TaskEdit } from '@/lib/plan-draft';
 import { radius, space, usePalette } from '@/theme';
+import { TextField } from '@/components/text-field';
 
 type Props = Readonly<{
   task: TaskSpec;
@@ -30,17 +31,15 @@ export function TaskEditor({ task, index, locked, onEdit, onRemove }: Props) {
     );
   }
 
-  const input = [styles.input, { color: c.text, borderColor: c.border }];
   const field = (label: string, value: string, key: keyof TaskEdit, testID?: string) => (
     <View style={styles.field}>
       <Text style={[styles.label, { color: c.muted }]}>{label}</Text>
-      <TextInput
+      <TextField
         testID={testID}
         accessibilityLabel={label}
         value={value}
         onChangeText={(text) => onEdit({ [key]: text })}
         multiline // long plan text wraps instead of hiding its start on a narrow phone
-        style={input}
       />
     </View>
   );
@@ -51,7 +50,7 @@ export function TaskEditor({ task, index, locked, onEdit, onRemove }: Props) {
       {field('When', task.when, 'when', `when-${index}`)}
       <View style={styles.field}>
         <Text style={[styles.label, { color: c.muted }]}>Minutes</Text>
-        <TextInput
+        <TextField
           testID={`minutes-${index}`}
           accessibilityLabel="Minutes"
           keyboardType="number-pad"
@@ -60,7 +59,6 @@ export function TaskEditor({ task, index, locked, onEdit, onRemove }: Props) {
             const minutes = Number.parseInt(text, 10);
             if (Number.isFinite(minutes)) onEdit({ minutes });
           }}
-          style={input}
         />
       </View>
       {field('2-minute version', task.twoMinute.title, 'smallTitle', `small-${index}`)}
@@ -80,13 +78,5 @@ const styles = StyleSheet.create({
   body: { fontSize: 15, lineHeight: 21 },
   field: { gap: space.xs },
   label: { fontSize: 13, fontWeight: '600' },
-  input: {
-    minHeight: 44,
-    paddingVertical: space.sm,
-    borderWidth: 1,
-    borderRadius: radius.md,
-    paddingHorizontal: space.sm,
-    fontSize: 16,
-  },
   problem: { fontSize: 14 },
 });

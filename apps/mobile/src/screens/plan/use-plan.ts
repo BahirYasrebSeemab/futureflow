@@ -1,6 +1,7 @@
 import type { Skill } from '@futureflow/contracts';
 import { addDays, type TaskSpec } from '@futureflow/core';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useRef, useState } from 'react';
 import type { ApiFailure, ApiResult, Plan } from '@/lib/api/client';
 import { useApp } from '@/lib/app';
 import { editTask, newTask, removeTask, type TaskEdit } from '@/lib/plan-draft';
@@ -104,9 +105,14 @@ export function usePlan() {
     [services],
   );
 
-  useEffect(() => {
-    void load(target);
-  }, [load, target]);
+  // A tab stays mounted, so load on every visit: Today may have synced, the day may have turned,
+  // or the roadmap changed since. Unsaved edits are never thrown away by a reload.
+  const dirtyRef = useRef(false);
+  useFocusEffect(
+    useCallback(() => {
+      if (!dirtyRef.current) void load(target);
+    }, [load, target]),
+  );
 
   /** One server call with the busy flag; returns the plan on success, null on failure. */
   const run = useCallback(async (call: () => Promise<ApiResult<Plan>>): Promise<Plan | null> => {
@@ -126,6 +132,7 @@ export function usePlan() {
 
   const { day, saved, tasks } = state;
   const dirty = saved === null ? tasks.length > 0 : !sameTasks(saved.tasks, tasks);
+  dirtyRef.current = dirty;
 
   const propose = async () => {
     if (day === null) return;
@@ -147,10 +154,11 @@ export function usePlan() {
     if (day !== null) await run(() => services.api.savePlan(day, tasks));
   };
 
-  const lock = async () => {
-    if (day === null) return;
-    if (dirty && (await run(() => services.api.savePlan(day, tasks))) === null) return;
-    await run(() => services.api.lockPlan(day));
+  /** True once the server has locked the plan. */
+  const lock = async (): Promise<boolean> => {
+    if (day === null) return false;
+    if (dirty && (await run(() => services.api.savePlan(day, tasks))) === null) return false;
+    return (await run(() => services.api.lockPlan(day))) !== null;
   };
 
   return {

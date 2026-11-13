@@ -3,6 +3,7 @@ import type { Api, ApiResult } from '@/lib/api/client';
 import { AppProvider, type AppServices } from '@/lib/app';
 import { CoachScreen } from '@/screens/coach';
 import { RootStack } from '@/screens/root-stack';
+import { TabsLayout } from '@/screens/tabs';
 import { TodayScreen } from '@/screens/today';
 import { PAIRED, testServices } from './support/fakes';
 
@@ -49,8 +50,9 @@ async function open(api: Partial<Api>, setup?: (s: AppServices) => Promise<void>
           <RootStack />
         </AppProvider>
       ),
-      index: TodayScreen,
-      coach: CoachScreen,
+      '(tabs)/_layout': TabsLayout,
+      '(tabs)/index': TodayScreen,
+      '(tabs)/coach': CoachScreen,
     },
     { initialUrl: '/coach' },
   );

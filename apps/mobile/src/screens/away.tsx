@@ -1,7 +1,7 @@
 import { addDays, type TaskSpec } from '@futureflow/core';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Banner } from '@/components/banner';
 import { useBottomPadding } from '@/components/bottom-padding';
 import { Button } from '@/components/button';
@@ -10,6 +10,7 @@ import { useApp } from '@/lib/app';
 import { readHome, saveHome } from '@/lib/away';
 import { formatDayLabel } from '@/lib/format';
 import { radius, space, usePalette } from '@/theme';
+import { TextField } from '@/components/text-field';
 
 const START_CHOICES = 14;
 const MAX_DAYS = 30;
@@ -178,16 +179,13 @@ export function AwayScreen() {
 
       <View style={styles.section}>
         <Text style={[styles.label, { color: c.text }]}>Where are you going?</Text>
-        <TextInput
+        <TextField
           testID="place"
           accessibilityLabel="Where are you going?"
           value={place}
           onChangeText={setPlace}
           maxLength={MAX_PLACE}
-          style={[
-            styles.input,
-            { color: c.text, borderColor: c.border, backgroundColor: c.surface },
-          ]}
+          style={styles.input}
         />
       </View>
 
@@ -284,8 +282,6 @@ const styles = StyleSheet.create({
   label: { fontSize: 15, fontWeight: '600' },
   input: {
     minHeight: 48,
-    borderWidth: 1,
-    borderRadius: radius.md,
     paddingHorizontal: space.md,
     fontSize: 16,
   },

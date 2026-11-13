@@ -78,16 +78,16 @@ export function GuardScreen() {
         <View style={[styles.card, { borderColor: c.border, backgroundColor: c.surface }]}>
           {stalled ? (
             <Text style={[styles.step, { color: c.text }]}>
-              Open Accessibility, then switch Future Flow guard off and on again.
+              Open Accessibility, then switch FutureFlow guard off and on again.
             </Text>
           ) : (
             <>
               <Text style={[styles.step, { color: c.text }]}>
-                1. Open Accessibility, choose Future Flow guard, and turn it on.
+                1. Open Accessibility, choose FutureFlow guard, and turn it on.
               </Text>
               <Text style={[styles.step, { color: c.text }]}>
-                2. If Android says “Restricted setting”: open App info for Future Flow, tap ⋮,
-                choose “Allow restricted settings”, then try step 1 again.
+                2. If Android says “Restricted setting”: open App info for FutureFlow, tap ⋮, choose
+                “Allow restricted settings”, then try step 1 again.
               </Text>
             </>
           )}

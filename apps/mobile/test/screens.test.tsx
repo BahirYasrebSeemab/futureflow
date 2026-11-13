@@ -16,6 +16,7 @@ import { PairScreen } from '@/screens/pair';
 import { PlanScreen } from '@/screens/plan';
 import { AwayScreen } from '@/screens/away';
 import { RootStack } from '@/screens/root-stack';
+import { TabsLayout } from '@/screens/tabs';
 import { TodayScreen } from '@/screens/today';
 import { ledgerEvent, PAIRED, sampleToday, testServices } from './support/fakes';
 
@@ -27,10 +28,11 @@ function mount(load: () => Promise<AppServices>, initialUrl = '/') {
           <RootStack />
         </AppProvider>
       ),
-      index: TodayScreen,
+      '(tabs)/_layout': TabsLayout,
+      '(tabs)/index': TodayScreen,
       pair: PairScreen,
       diagnostics: DiagnosticsScreen,
-      plan: PlanScreen,
+      '(tabs)/plan': PlanScreen,
       away: AwayScreen,
     },
     { initialUrl },

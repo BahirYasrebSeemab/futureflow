@@ -7,6 +7,7 @@ import { startMock } from '@/lib/math/mocks';
 import { MockScreen } from '@/screens/math/mock';
 import { MockListScreen } from '@/screens/math/mock-list';
 import { RootStack } from '@/screens/root-stack';
+import { TabsLayout } from '@/screens/tabs';
 import { TodayScreen } from '@/screens/today';
 import { NOW, PAIRED, testServices } from './support/fakes';
 
@@ -31,7 +32,8 @@ async function open(url: string, setup?: (s: AppServices) => Promise<void>) {
           <RootStack />
         </AppProvider>
       ),
-      index: TodayScreen,
+      '(tabs)/_layout': TabsLayout,
+      '(tabs)/index': TodayScreen,
       mocks: MockListScreen,
       mock: MockScreen,
     },
