@@ -2,7 +2,6 @@ import { StyleSheet, Text, View } from 'react-native';
 import type { Today } from '@/lib/api/client';
 import { Button } from '@/components/button';
 import { Icon, type IconName } from '@/components/icon';
-import { haptics } from '@/lib/haptics';
 import { formatDuration } from '@/lib/format';
 import { type Palette, radius, shadow, space, usePalette } from '@/theme';
 
@@ -41,7 +40,7 @@ function marker(c: Palette, status: string): { icon: IconName; fg: string; bg: s
     case 'Passed':
       return { icon: 'check', fg: c.accentText, bg: c.success };
     case 'Not passed':
-      return { icon: 'close', fg: '#FFFFFF', bg: c.danger };
+      return { icon: 'close', fg: c.dangerText, bg: c.dangerBg };
     case 'Checking':
       return { icon: 'hourglass-top', fg: c.gold, bg: c.goldSoft };
     case 'Excused':
@@ -103,10 +102,8 @@ export function TaskRow({ task, verdict, mode, detail, last = true, onDecide }: 
                   label="I did it"
                   icon="check"
                   variant="success"
-                  onPress={() => {
-                    haptics.success();
-                    onDecide('pass');
-                  }}
+                  haptic={false}
+                  onPress={() => onDecide('pass')}
                 />
               </View>
               <View style={styles.button}>

@@ -28,7 +28,7 @@ export function TextField({ style, onFocus, onBlur, ...props }: TextInputProps) 
         {
           color: c.text,
           backgroundColor: c.surface,
-          borderColor: focused ? c.accent : c.border,
+          borderColor: focused ? c.accent : c.fieldBorder,
         },
         style,
       ]}

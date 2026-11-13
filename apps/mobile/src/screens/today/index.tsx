@@ -106,7 +106,11 @@ export function TodayScreen() {
   const record = today.dayRecord;
   const caption = dayCaption(record);
   const tasks = today.plan?.tasks ?? [];
-  const passed = today.verdicts.filter((v) => v.outcome === 'pass').length;
+  // Excused tasks (away days) aren't part of the count.
+  const counted = tasks.filter((t) => modeFor(record, t.id) !== 'excused');
+  const passed = counted.filter((t) =>
+    today.verdicts.some((v) => v.taskId === t.id && v.outcome === 'pass'),
+  ).length;
   // How much of today's time is still there: what's left over what could have been spent.
   const ofToday = balanceSeconds / Math.max(1, view.allowanceSeconds + view.earnedSeconds);
   return (
@@ -152,13 +156,13 @@ export function TodayScreen() {
             label="Time left today"
           />
           <View style={styles.heroStats}>
-            <View style={[styles.stat, { backgroundColor: c.heroTrack }]}>
+            <View style={[styles.stat, { backgroundColor: c.heroChip }]}>
               <Icon name="bolt" color={c.heroText} size={18} />
               <Text style={[styles.statText, { color: c.heroText }]}>
                 Earned today {formatDuration(view.earnedSeconds)}
               </Text>
             </View>
-            <View style={[styles.stat, { backgroundColor: c.heroTrack }]}>
+            <View style={[styles.stat, { backgroundColor: c.heroChip }]}>
               <Icon name="wb-sunny" color={c.heroText} size={18} />
               <Text style={[styles.statText, { color: c.heroText }]}>
                 Daily allowance {formatDuration(view.allowanceSeconds)}
@@ -194,11 +198,11 @@ export function TodayScreen() {
             <Text accessibilityRole="header" style={[type.heading, { color: c.text }]}>
               {formatDayLabel(today.day)}
             </Text>
-            {tasks.length > 0 && (
+            {counted.length > 0 && (
               <Text
                 style={[styles.count, { color: c.accentSoftText, backgroundColor: c.accentSoft }]}
               >
-                {passed} of {tasks.length} done
+                {passed} of {counted.length} done
               </Text>
             )}
           </View>
@@ -274,6 +278,7 @@ function Tile({ testID, icon, label, detail, disabled, onPress }: TileProps) {
       onPress={onPress}
       disabled={disabled}
       accessibilityLabel={label}
+      containerStyle={styles.tileSlot}
       style={[
         styles.tile,
         { backgroundColor: c.surface, borderColor: c.border },
@@ -317,6 +322,8 @@ const styles = StyleSheet.create({
   },
   statText: { fontSize: 13, fontWeight: '700' },
   tiles: { flexDirection: 'row', gap: space.sm },
+  // The touch area takes an equal share of the row; the face fills it.
+  tileSlot: { flex: 1 },
   tile: {
     flex: 1,
     borderWidth: 1,

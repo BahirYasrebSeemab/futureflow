@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Alert } from 'react-native';
+import { haptics } from '@/lib/haptics';
 import type { ApiFailure, ApiResult } from '@/lib/api/client';
 import { useApp } from '@/lib/app';
 
@@ -37,13 +38,19 @@ export function useDayActions(day: string, refresh: () => Promise<void>) {
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const run = async (call: () => Promise<ApiResult<unknown>>, messages: Messages) => {
+  const run = async (
+    call: () => Promise<ApiResult<unknown>>,
+    messages: Messages,
+    onDone?: () => void,
+  ) => {
     setBusy(true);
     setMessage(null);
     try {
       const result = await call();
-      if (result.ok) await refresh();
-      else {
+      if (result.ok) {
+        onDone?.();
+        await refresh();
+      } else {
         setMessage(failureMessage(result.error, messages));
         // Someone (or the judge) decided first: show the current state.
         if (result.error.kind === 'rejected' && result.error.code === 'verdict_not_pending') {
@@ -70,7 +77,10 @@ export function useDayActions(day: string, refresh: () => Promise<void>) {
 
   /** The owner answers for a task the judge left pending (ADR 0008: never decided silently). */
   const decide = (taskId: string, outcome: 'pass' | 'fail') => {
-    const send = () => void run(() => services.api.decideVerdict(taskId, { day, outcome }), DECIDE);
+    // The success buzz waits for the server: a cancel or a refusal must not feel like a win.
+    const celebrate = outcome === 'pass' ? haptics.success : undefined;
+    const send = () =>
+      void run(() => services.api.decideVerdict(taskId, { day, outcome }), DECIDE, celebrate);
     if (outcome === 'pass') {
       Alert.alert('Mark it done?', "Only confirm what you really did. This pays the task's time.", [
         { text: 'Cancel', style: 'cancel' },

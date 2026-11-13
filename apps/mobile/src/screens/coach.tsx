@@ -1,13 +1,13 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { KeyboardAvoidingView, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useHeaderHeight } from 'expo-router/react-navigation';
 import { Button } from '@/components/button';
 import { Icon } from '@/components/icon';
 import { PressableScale } from '@/components/pressable-scale';
 import { TextField } from '@/components/text-field';
 import { haptics } from '@/lib/haptics';
+import { useReducedMotion } from '@/lib/reduced-motion';
 import type { CoachMessage } from '@/lib/api/client';
 import { useApp } from '@/lib/app';
 import { radius, space, usePalette } from '@/theme';
@@ -36,8 +36,9 @@ function unansweredIn(thread: readonly CoachMessage[]): Unanswered[] {
 export function CoachScreen() {
   const c = usePalette();
   const headerHeight = useHeaderHeight();
-  const { bottom } = useSafeAreaInsets();
   const scroller = useRef<ScrollView>(null);
+  const shownCount = useRef(0);
+  const reduced = useReducedMotion();
   const { services } = useApp();
   const [thread, setThread] = useState<CoachMessage[]>([]);
   // Failed sends the server may not have stored; once synced they come from the thread instead.
@@ -112,8 +113,14 @@ export function CoachScreen() {
         style={styles.fill}
         contentContainerStyle={styles.body}
         keyboardShouldPersistTaps="handled"
-        // New messages arrive at the bottom, so the view follows them like any chat.
-        onContentSizeChange={() => scroller.current?.scrollToEnd({ animated: true })}
+        // A new message arrives at the bottom, so the view follows it like any chat; a reload
+        // that adds nothing leaves the reader where they are.
+        onContentSizeChange={() => {
+          const count = thread.length + unanswered.length;
+          if (count === shownCount.current) return;
+          shownCount.current = count;
+          scroller.current?.scrollToEnd({ animated: !reduced });
+        }}
       >
         {thread.length === 0 && unanswered.length === 0 && (
           <View style={styles.intro}>
@@ -185,7 +192,7 @@ export function CoachScreen() {
           {
             backgroundColor: c.surface,
             borderTopColor: c.border,
-            paddingBottom: space.sm + bottom,
+            paddingBottom: space.sm,
           },
         ]}
       >

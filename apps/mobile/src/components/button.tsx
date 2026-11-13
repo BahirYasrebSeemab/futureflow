@@ -4,7 +4,7 @@ import { radius, space, type Palette, usePalette } from '@/theme';
 import { Icon, type IconName } from './icon';
 import { PressableScale } from './pressable-scale';
 
-type Variant = 'primary' | 'secondary' | 'success' | 'soft' | 'danger';
+type Variant = 'primary' | 'secondary' | 'success' | 'soft';
 
 type ButtonProps = Readonly<{
   label: string;
@@ -12,6 +12,8 @@ type ButtonProps = Readonly<{
   disabled?: boolean;
   variant?: Variant;
   icon?: IconName;
+  /** False when the caller gives its own feedback, e.g. after the server answers. */
+  haptic?: boolean;
   testID?: string;
   style?: StyleProp<ViewStyle>;
 }>;
@@ -23,8 +25,6 @@ function look(c: Palette, variant: Variant): { face: string; edge: string; ink: 
       return { face: c.accent, edge: c.accentEdge, ink: c.accentText };
     case 'success':
       return { face: c.success, edge: c.successEdge, ink: c.accentText };
-    case 'danger':
-      return { face: c.danger, edge: c.dangerText, ink: '#FFFFFF' };
     case 'soft':
       return { face: c.accentSoft, edge: c.accentSoft, ink: c.accentSoftText };
     case 'secondary':
@@ -42,17 +42,18 @@ export function Button({
   disabled = false,
   variant = 'primary',
   icon,
+  haptic = true,
   testID,
   style,
 }: ButtonProps) {
   const c = usePalette();
   const { face, edge, ink } = look(c, variant);
   const press = () => {
-    if (variant === 'primary' || variant === 'success') haptics.tap();
+    if (haptic && (variant === 'primary' || variant === 'success')) haptics.tap();
     onPress();
   };
   return (
-    <PressableScale testID={testID} disabled={disabled} onPress={press} style={style}>
+    <PressableScale testID={testID} disabled={disabled} onPress={press} containerStyle={style}>
       <View
         style={[
           styles.base,

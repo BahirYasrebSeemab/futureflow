@@ -438,3 +438,13 @@ test('a broken bank never blocks practice', async () => {
   );
   expect(await startPractice()).toBeTruthy();
 });
+
+test('hopping to another tab mid-problem keeps the problem and the typed answer', async () => {
+  await open();
+  const prompt = (await startPractice()).props.children;
+  answer('12');
+  fireEvent.press(screen.getByTestId('tab-today'));
+  fireEvent.press(await screen.findByTestId('open-math'));
+  expect((await screen.findByTestId('problem-prompt')).props.children).toEqual(prompt);
+  expect(screen.getByDisplayValue('12')).toBeTruthy();
+});

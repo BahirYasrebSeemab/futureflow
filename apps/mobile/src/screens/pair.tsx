@@ -110,6 +110,7 @@ export function PairScreen() {
             testID="pair-button"
             label={busy ? 'Pairing…' : 'Pair'}
             icon="link"
+            haptic={false}
             onPress={submit}
             disabled={busy || code.trim() === ''}
           />

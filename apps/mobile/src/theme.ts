@@ -14,11 +14,12 @@ export const LIGHT = {
   accentText: '#FFFFFF',
   accentSoft: '#E8EDFF',
   accentSoftText: '#2440C2',
-  success: '#1FA463',
-  successEdge: '#178A52',
+  // White text on the success face needs 4.5:1, so light mode uses a deeper green.
+  success: '#15803D',
+  successEdge: '#0F6630',
   successSoft: '#E2F6EB',
   successText: '#0F6B3E',
-  gold: '#E89B0C',
+  gold: '#B86E00',
   goldSoft: '#FFF3D6',
   danger: '#E5484D',
   warningBg: '#FFF4D6',
@@ -29,7 +30,11 @@ export const LIGHT = {
   heroText: '#FFFFFF',
   heroMuted: 'rgba(255,255,255,0.8)',
   heroTrack: 'rgba(255,255,255,0.24)',
+  /** Behind the hero's small text: darker than the card, so white text stays readable. */
+  heroChip: 'rgba(8,16,64,0.3)',
   track: '#E3E6EF',
+  /** A text field's edge must stand out from the page (3:1). */
+  fieldBorder: '#8E95A8',
 };
 
 export type Palette = typeof LIGHT;
@@ -60,7 +65,9 @@ export const DARK: Palette = {
   heroText: '#FFFFFF',
   heroMuted: 'rgba(255,255,255,0.78)',
   heroTrack: 'rgba(255,255,255,0.2)',
+  heroChip: 'rgba(4,8,32,0.35)',
   track: '#292E46',
+  fieldBorder: '#646B88',
 };
 
 export const space = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, xxl: 48 } as const;

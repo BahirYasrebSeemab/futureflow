@@ -131,12 +131,15 @@ echo "After the unlock, Settings opens"
 
 # Dark mode (P7): the headers, tab bar and screens must follow the system theme. Screenshots only;
 # nothing fails here, the PR review looks at them.
+set +e
 adb shell cmd uimode night yes
 sleep 3
-for page in "futureflow://" "futureflow://coach" "futureflow://more"; do
-  open_link "$page"
-  name=$(echo "$page" | sed 's|futureflow://||; s|^$|today|')
-  adb exec-out screencap -p > "$OUT/21-dark-$name.png"
+for page in today coach more; do
+  link="futureflow://$page"
+  [ "$page" = today ] && link="futureflow://"
+  open_link "$link"
+  adb exec-out screencap -p > "$OUT/21-dark-$page.png"
 done
 adb shell cmd uimode night no
+set -e
 echo "Dark mode screenshots taken"

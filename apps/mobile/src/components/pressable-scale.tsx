@@ -19,7 +19,10 @@ type Props = Readonly<{
   accessibilityState?: AccessibilityState;
   /** How far it shrinks while held; small elements can shrink more. */
   pressedScale?: number;
+  /** The face that shrinks: colours, padding, borders. */
   style?: StyleProp<ViewStyle>;
+  /** Layout of the touch area in its parent (flex, margins), which a face style can't set. */
+  containerStyle?: StyleProp<ViewStyle>;
 }>;
 
 /**
@@ -36,6 +39,7 @@ export function PressableScale({
   accessibilityState,
   pressedScale = 0.97,
   style,
+  containerStyle,
 }: Props) {
   const scale = useRef(new Animated.Value(1)).current;
   const reduced = useReducedMotion();
@@ -58,6 +62,7 @@ export function PressableScale({
       onPress={onPress}
       onPressIn={() => to(pressedScale)}
       onPressOut={() => to(1)}
+      style={containerStyle}
     >
       <Animated.View style={[style, { transform: [{ scale }] }]}>{children}</Animated.View>
     </Pressable>

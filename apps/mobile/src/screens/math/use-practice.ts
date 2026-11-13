@@ -55,9 +55,13 @@ export function usePractice() {
     void warmChecker(); // the CAS's first check is slow; do it before the owner answers
   }, []);
 
-  // On every visit (e.g. back from the placement test), decide again what to show.
+  // On every visit (e.g. back from the placement test), decide again what to show. A problem in
+  // progress stays: Math is a tab, and a hop to another tab must not throw the answer away.
+  const phaseRef = useRef<Phase>('loading');
+  phaseRef.current = phase;
   useFocusEffect(
     useCallback(() => {
+      if (phaseRef.current === 'practice' || phaseRef.current === 'example') return;
       void (async () => {
         const [placement, progress] = await Promise.all([
           services.store.placement(),
