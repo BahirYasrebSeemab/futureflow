@@ -154,10 +154,11 @@ export function usePlan() {
     if (day !== null) await run(() => services.api.savePlan(day, tasks));
   };
 
-  const lock = async () => {
-    if (day === null) return;
-    if (dirty && (await run(() => services.api.savePlan(day, tasks))) === null) return;
-    await run(() => services.api.lockPlan(day));
+  /** True once the server has locked the plan. */
+  const lock = async (): Promise<boolean> => {
+    if (day === null) return false;
+    if (dirty && (await run(() => services.api.savePlan(day, tasks))) === null) return false;
+    return (await run(() => services.api.lockPlan(day))) !== null;
   };
 
   return {

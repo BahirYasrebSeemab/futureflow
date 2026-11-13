@@ -86,8 +86,8 @@ export function GuardScreen() {
                 1. Open Accessibility, choose FutureFlow guard, and turn it on.
               </Text>
               <Text style={[styles.step, { color: c.text }]}>
-                2. If Android says “Restricted setting”: open App info for FutureFlow, tap ⋮,
-                choose “Allow restricted settings”, then try step 1 again.
+                2. If Android says “Restricted setting”: open App info for FutureFlow, tap ⋮, choose
+                “Allow restricted settings”, then try step 1 again.
               </Text>
             </>
           )}

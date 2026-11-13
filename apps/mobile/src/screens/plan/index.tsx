@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Banner } from '@/components/banner';
 import { useBottomPadding } from '@/components/bottom-padding';
 import { Button } from '@/components/button';
+import { haptics } from '@/lib/haptics';
 import { formatDayLabel, formatTime, localOffsetMinutes } from '@/lib/format';
 import { lockProblems, taskProblems } from '@/lib/plan-draft';
 import { space, usePalette } from '@/theme';
@@ -19,13 +20,23 @@ export function PlanScreen() {
   const { day, saved, tasks, busy, dirty } = plan;
   const locked = saved?.status === 'locked';
 
+  const scroller = useRef<ScrollView>(null);
   const confirmLock = () =>
     Alert.alert(
       'Lock this plan?',
       "A locked plan can't change. Tasks pay only once the plan is locked.",
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Lock', onPress: () => void plan.lock() },
+        {
+          text: 'Lock',
+          onPress: () =>
+            void plan.lock().then((locked) => {
+              if (!locked) return;
+              // The lock is confirmed at the top of the plan, and the button sits at the bottom.
+              haptics.success();
+              scroller.current?.scrollTo({ y: 0, animated: true });
+            }),
+        },
       ],
     );
 
@@ -35,6 +46,7 @@ export function PlanScreen() {
 
   return (
     <ScrollView
+      ref={scroller}
       style={{ backgroundColor: c.background }}
       contentContainerStyle={[styles.body, bottomPadding]}
     >
