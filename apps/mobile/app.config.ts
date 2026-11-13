@@ -46,7 +46,7 @@ const problems = releaseProblems({
 if (problems.length > 0) throw new Error(`Not a releasable build: ${problems.join('; ')}`);
 
 const config: ExpoConfig = {
-  name: 'Future Flow',
+  name: 'FutureFlow',
   slug: 'futureflow',
   scheme: 'futureflow',
   version: '1.0.0',
@@ -83,7 +83,7 @@ const config: ExpoConfig = {
       'expo-location',
       {
         locationWhenInUsePermission:
-          'Future Flow checks how far you are from home on away days. Your location never leaves the phone.',
+          'FutureFlow checks how far you are from home on away days. Your location never leaves the phone.',
       },
     ],
     ['expo-build-properties', { android: { usesCleartextTraffic: isE2E } }],

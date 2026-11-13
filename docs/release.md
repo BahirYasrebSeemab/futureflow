@@ -36,6 +36,6 @@ does the same from your laptop (the build still runs on EAS).
 ## On the phone
 
 1. Allow installing from the browser when Android asks.
-2. Open Future Flow and pair with the `SETUP_CODE`.
+2. Open FutureFlow and pair with the `SETUP_CODE`.
 3. Guard: open App info → ⋮ → **Allow restricted settings**, then switch the guard on.
 4. Work through **Keep it running** on the Guard screen.

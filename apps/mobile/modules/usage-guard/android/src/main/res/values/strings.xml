@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-  <string name="guard_service_label">Future Flow guard</string>
-  <string name="guard_service_description">Sees which apps are on screen, and the address in Chrome, Brave or Edge, so Future Flow can count and block social apps and sites when your time runs out. It reads nothing else on the screen, and the apps and sites you use never leave your phone.</string>
+  <string name="guard_service_label">FutureFlow guard</string>
+  <string name="guard_service_description">Sees which apps are on screen, and the address in Chrome, Brave or Edge, so FutureFlow can count and block social apps and sites when your time runs out. It reads nothing else on the screen, and the apps and sites you use never leave your phone.</string>
   <string name="guard_shield_title">Out of time</string>
-  <string name="guard_shield_body">Earn more by finishing a task in Future Flow.</string>
-  <string name="guard_shield_open">Open Future Flow</string>
+  <string name="guard_shield_body">Earn more by finishing a task in FutureFlow.</string>
+  <string name="guard_shield_open">Open FutureFlow</string>
   <string name="guard_shield_home">Go home</string>
   <string name="guard_shield_unlock">Emergency unlock</string>
   <string name="guard_time_channel">Time left</string>

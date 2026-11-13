@@ -71,7 +71,7 @@ export function GuardChecklist({
       id: 'battery',
       title: 'No battery limits',
       detail: status.xiaomi
-        ? 'In Battery saver, choose “No restrictions” for Future Flow.'
+        ? 'In Battery saver, choose “No restrictions” for FutureFlow.'
         : 'Lets the guard keep running in the background.',
       done: status.batteryUnrestricted || (status.xiaomi && ticked.includes('battery')),
       fix: { label: 'Remove battery limits', onPress: open('battery') },
@@ -91,7 +91,7 @@ export function GuardChecklist({
       {
         id: 'autostart',
         title: 'Autostart',
-        detail: 'Turn on Autostart for Future Flow, so the guard comes back after a restart.',
+        detail: 'Turn on Autostart for FutureFlow, so the guard comes back after a restart.',
         done: ticked.includes('autostart'),
         fix: { label: 'Open Autostart', onPress: open('autostart') },
         tickable: true,
@@ -99,7 +99,7 @@ export function GuardChecklist({
       {
         id: 'recents',
         title: 'Lock in recent apps',
-        detail: 'Open recent apps, press and hold Future Flow, and tap the lock.',
+        detail: 'Open recent apps, press and hold FutureFlow, and tap the lock.',
         done: ticked.includes('recents'),
         tickable: true,
       },

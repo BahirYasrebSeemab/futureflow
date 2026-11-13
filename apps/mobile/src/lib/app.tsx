@@ -132,7 +132,7 @@ function StartupFailure({ message }: { message: string }) {
   return (
     <View style={[styles.failure, { backgroundColor: c.background }]}>
       <Text accessibilityRole="header" style={[styles.failureTitle, { color: c.text }]}>
-        Future Flow can&apos;t start
+        FutureFlow can&apos;t start
       </Text>
       <Text style={[styles.failureBody, { color: c.muted }]}>{message}</Text>
     </View>
