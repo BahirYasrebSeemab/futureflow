@@ -335,12 +335,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
+    // A long caption wraps inside the pill instead of running off the card.
+    maxWidth: '100%',
     gap: space.xs,
-    borderRadius: radius.full,
+    borderRadius: radius.lg,
     paddingHorizontal: space.md,
     paddingVertical: 6,
   },
-  dayKindText: { fontSize: 14, fontWeight: '800' },
+  dayKindText: { fontSize: 14, fontWeight: '800', flexShrink: 1 },
   tiles: { flexDirection: 'row', gap: space.sm },
   // The touch area takes an equal share of the row; the face fills it.
   tileSlot: { flex: 1 },
