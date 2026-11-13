@@ -6,6 +6,7 @@ import { AwayScreen } from '@/screens/away';
 import { DiagnosticsScreen } from '@/screens/diagnostics';
 import { PlanScreen } from '@/screens/plan';
 import { RootStack } from '@/screens/root-stack';
+import { TabsLayout } from '@/screens/tabs';
 import { TodayScreen } from '@/screens/today';
 import { PAIRED, sampleToday, testServices } from './support/fakes';
 
@@ -31,8 +32,9 @@ async function openPlan(api: Partial<Api>) {
           <RootStack />
         </AppProvider>
       ),
-      index: TodayScreen,
-      plan: PlanScreen,
+      '(tabs)/_layout': TabsLayout,
+      '(tabs)/index': TodayScreen,
+      '(tabs)/plan': PlanScreen,
       away: AwayScreen,
       diagnostics: DiagnosticsScreen,
     },

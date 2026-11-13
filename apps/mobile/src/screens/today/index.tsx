@@ -11,12 +11,16 @@ import { Banner } from '@/components/banner';
 import { useGuardStatus } from '@/lib/guard/use-guard-status';
 import { useBottomPadding } from '@/components/bottom-padding';
 import { Button } from '@/components/button';
+import { FadeIn } from '@/components/fade-in';
+import { Icon, type IconName } from '@/components/icon';
+import { PressableScale } from '@/components/pressable-scale';
+import { ProgressBar } from '@/components/progress-bar';
 import { useApp } from '@/lib/app';
 import { mathTarget } from '@/lib/math/tasks';
 import { formatDayLabel, formatDuration, formatTime, localOffsetMinutes } from '@/lib/format';
 import type { Today } from '@/lib/api/client';
 import type { SyncReport } from '@/lib/store/types';
-import { space, usePalette } from '@/theme';
+import { radius, shadow, space, type, usePalette } from '@/theme';
 import { TaskRow, type TaskMode } from './task-row';
 import { useDayActions } from './use-day-actions';
 import { useToday } from './use-today';
@@ -102,11 +106,21 @@ export function TodayScreen() {
   const record = today.dayRecord;
   const caption = dayCaption(record);
   const tasks = today.plan?.tasks ?? [];
+  const passed = today.verdicts.filter((v) => v.outcome === 'pass').length;
+  // How much of today's time is still there: what's left over what could have been spent.
+  const ofToday = balanceSeconds / Math.max(1, view.allowanceSeconds + view.earnedSeconds);
   return (
     <ScrollView
       style={{ backgroundColor: c.background }}
       contentContainerStyle={[styles.body, bottomPadding]}
-      refreshControl={<RefreshControl refreshing={syncing} onRefresh={() => void refresh()} />}
+      refreshControl={
+        <RefreshControl
+          refreshing={syncing}
+          onRefresh={() => void refresh()}
+          colors={[c.accent]}
+          progressBackgroundColor={c.surface}
+        />
+      }
     >
       {notice !== null && <Banner tone="warning" message={notice} />}
       {actions.message !== null && <Banner tone="warning" message={actions.message} />}
@@ -121,113 +135,116 @@ export function TodayScreen() {
           }}
         />
       )}
-      <View style={styles.hero}>
-        <Text style={[styles.caption, { color: c.muted }]}>Time left</Text>
-        <Text testID="balance" style={[styles.balance, { color: c.text }]}>
-          {formatDuration(balanceSeconds)}
-        </Text>
-        <Text style={[styles.muted, { color: c.muted }]}>
-          Earned today {formatDuration(view.earnedSeconds)}
-        </Text>
-        <Text style={[styles.muted, { color: c.muted }]}>
-          Daily allowance {formatDuration(view.allowanceSeconds)}
-        </Text>
-      </View>
-      <View style={styles.actions}>
-        <View style={styles.action}>
-          <Button
-            testID="open-plan"
-            label="Plan"
-            variant="secondary"
-            onPress={() => router.push('/plan')}
+      <FadeIn>
+        <View style={[styles.hero, { backgroundColor: c.heroBg, boxShadow: shadow.raised }]}>
+          <View style={styles.heroTop}>
+            <Text style={[styles.heroLabel, { color: c.heroMuted }]}>Time left</Text>
+            <Icon name="hourglass-bottom" color={c.heroMuted} size={22} />
+          </View>
+          <Text testID="balance" style={[type.display, { color: c.heroText }]}>
+            {formatDuration(balanceSeconds)}
+          </Text>
+          <ProgressBar
+            value={ofToday}
+            fill={c.heroText}
+            track={c.heroTrack}
+            height={10}
+            label="Time left today"
           />
+          <View style={styles.heroStats}>
+            <View style={[styles.stat, { backgroundColor: c.heroTrack }]}>
+              <Icon name="bolt" color={c.heroText} size={18} />
+              <Text style={[styles.statText, { color: c.heroText }]}>
+                Earned today {formatDuration(view.earnedSeconds)}
+              </Text>
+            </View>
+            <View style={[styles.stat, { backgroundColor: c.heroTrack }]}>
+              <Icon name="wb-sunny" color={c.heroText} size={18} />
+              <Text style={[styles.statText, { color: c.heroText }]}>
+                Daily allowance {formatDuration(view.allowanceSeconds)}
+              </Text>
+            </View>
+          </View>
         </View>
-        <View style={styles.action}>
-          <Button
-            testID="open-coach"
-            label="Coach"
-            variant="secondary"
-            onPress={() => router.push('/coach')}
-          />
-        </View>
-        <View style={styles.action}>
-          <Button
-            testID="open-more"
-            label="More"
-            variant="secondary"
-            onPress={() => router.push('/more')}
-          />
-        </View>
-        <View style={styles.action}>
-          <Button
-            testID="open-math"
-            label="Math"
-            variant="secondary"
-            onPress={() => router.push('/math')}
-          />
-        </View>
-        <View style={styles.action}>
-          <Button
+      </FadeIn>
+      <FadeIn delay={80}>
+        <View style={styles.tiles}>
+          <Tile
             testID="open-away"
+            icon="flight-takeoff"
             label="Away"
-            variant="secondary"
+            detail="Away from home today"
             onPress={() => router.push('/away')}
           />
-        </View>
-        {(record === null || record.kind === 'normal') && (
-          <View style={styles.action}>
-            <Button
+          {(record === null || record.kind === 'normal') && (
+            <Tile
               testID="bad-day"
+              icon="spa"
               label="Bad day"
-              variant="secondary"
+              detail="2-minute versions count"
               disabled={actions.busy}
               onPress={actions.declareBadDay}
             />
-          </View>
-        )}
-      </View>
-      <View style={styles.dayRow}>
-        <Text accessibilityRole="header" style={[styles.heading, { color: c.text }]}>
-          {formatDayLabel(today.day)}
-        </Text>
-        {caption !== null && <Text style={[styles.caption, { color: c.muted }]}>{caption}</Text>}
-      </View>
-      {tasks.length === 0 ? (
-        <View style={styles.empty}>
-          <Text style={[styles.emptyTitle, { color: c.text }]}>No plan for today</Text>
-          <Text style={[styles.muted, { color: c.muted }]}>
-            Plans you lock for a day show up here with what each task earns.
-          </Text>
-        </View>
-      ) : (
-        <View style={styles.list}>
-          {today.plan?.status === 'draft' && (
-            <Text style={[styles.caption, { color: c.muted }]}>Draft plan, not locked yet</Text>
           )}
-          {tasks.map((task) => {
-            const verdict = today.verdicts.find((v) => v.taskId === task.id);
-            const mode = modeFor(record, task.id);
-            const canDecide =
-              today.plan?.status === 'locked' &&
-              verdict?.outcome === 'pending' &&
-              mode !== 'excused';
-            return (
-              <TaskRow
-                key={task.id}
-                task={task}
-                verdict={verdict}
-                mode={mode}
-                detail={
-                  task.verifier === 'math' && verdict?.outcome !== 'pass' && mode !== 'excused'
-                    ? mathTarget(view.mathAttempts, mode === 'small').label
-                    : undefined
-                }
-                onDecide={canDecide ? (outcome) => actions.decide(task.id, outcome) : undefined}
-              />
-            );
-          })}
         </View>
-      )}
+      </FadeIn>
+      <FadeIn delay={160}>
+        <View style={styles.section}>
+          <View style={styles.dayRow}>
+            <Text accessibilityRole="header" style={[type.heading, { color: c.text }]}>
+              {formatDayLabel(today.day)}
+            </Text>
+            {tasks.length > 0 && (
+              <Text
+                style={[styles.count, { color: c.accentSoftText, backgroundColor: c.accentSoft }]}
+              >
+                {passed} of {tasks.length} done
+              </Text>
+            )}
+          </View>
+          {caption !== null && <Text style={[styles.caption, { color: c.muted }]}>{caption}</Text>}
+          {tasks.length === 0 ? (
+            <View style={[styles.empty, { backgroundColor: c.surface, borderColor: c.border }]}>
+              <View style={[styles.emptyIcon, { backgroundColor: c.accentSoft }]}>
+                <Icon name="event-note" color={c.accentSoftText} size={28} />
+              </View>
+              <Text style={[type.headline, { color: c.text }]}>No plan for today</Text>
+              <Text style={[styles.muted, { color: c.muted }]}>
+                Plans you lock for a day show up here with what each task earns.
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.list}>
+              {today.plan?.status === 'draft' && (
+                <Text style={[styles.caption, { color: c.muted }]}>Draft plan, not locked yet</Text>
+              )}
+              {tasks.map((task, index) => {
+                const verdict = today.verdicts.find((v) => v.taskId === task.id);
+                const mode = modeFor(record, task.id);
+                const canDecide =
+                  today.plan?.status === 'locked' &&
+                  verdict?.outcome === 'pending' &&
+                  mode !== 'excused';
+                return (
+                  <TaskRow
+                    key={task.id}
+                    task={task}
+                    verdict={verdict}
+                    mode={mode}
+                    last={index === tasks.length - 1}
+                    detail={
+                      task.verifier === 'math' && verdict?.outcome !== 'pass' && mode !== 'excused'
+                        ? mathTarget(view.mathAttempts, mode === 'small').label
+                        : undefined
+                    }
+                    onDecide={canDecide ? (outcome) => actions.decide(task.id, outcome) : undefined}
+                  />
+                );
+              })}
+            </View>
+          )}
+        </View>
+      </FadeIn>
       <Link
         href="/diagnostics"
         testID="diagnostics-link"
@@ -236,6 +253,39 @@ export function TodayScreen() {
         Diagnostics
       </Link>
     </ScrollView>
+  );
+}
+
+type TileProps = Readonly<{
+  testID: string;
+  icon: IconName;
+  label: string;
+  detail: string;
+  disabled?: boolean;
+  onPress: () => void;
+}>;
+
+/** A day action: an icon on a soft square, its name and what it does. */
+function Tile({ testID, icon, label, detail, disabled, onPress }: TileProps) {
+  const c = usePalette();
+  return (
+    <PressableScale
+      testID={testID}
+      onPress={onPress}
+      disabled={disabled}
+      accessibilityLabel={label}
+      style={[
+        styles.tile,
+        { backgroundColor: c.surface, borderColor: c.border },
+        disabled === true && styles.disabled,
+      ]}
+    >
+      <View style={[styles.tileIcon, { backgroundColor: c.accentSoft }]}>
+        <Icon name={icon} color={c.accentSoftText} size={22} />
+      </View>
+      <Text style={[type.headline, { color: c.text }]}>{label}</Text>
+      <Text style={[styles.caption, { color: c.muted }]}>{detail}</Text>
+    </PressableScale>
   );
 }
 
@@ -248,22 +298,77 @@ const styles = StyleSheet.create({
     gap: space.md,
   },
   body: { padding: space.md, gap: space.lg },
-  hero: { gap: space.xs, paddingTop: space.sm },
-  caption: { fontSize: 14, fontWeight: '500' },
-  balance: { fontSize: 44, fontWeight: '700', fontVariant: ['tabular-nums'] },
-  muted: { fontSize: 15, lineHeight: 21 },
+  hero: {
+    borderRadius: radius.xl,
+    borderCurve: 'continuous',
+    padding: space.lg,
+    gap: space.md,
+  },
+  heroTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  heroLabel: { fontSize: 15, fontWeight: '700' },
+  heroStats: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
+  stat: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.xs,
+    borderRadius: radius.full,
+    paddingHorizontal: space.md,
+    paddingVertical: 6,
+  },
+  statText: { fontSize: 13, fontWeight: '700' },
+  tiles: { flexDirection: 'row', gap: space.sm },
+  tile: {
+    flex: 1,
+    borderWidth: 1,
+    borderBottomWidth: 3,
+    borderRadius: radius.lg,
+    borderCurve: 'continuous',
+    padding: space.md,
+    gap: space.xs,
+    minHeight: 48,
+  },
+  tileIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: space.xs,
+  },
+  disabled: { opacity: 0.45 },
+  section: { gap: space.md },
+  caption: { fontSize: 14, lineHeight: 19 },
+  muted: { fontSize: 15, lineHeight: 21, textAlign: 'center' },
   dayRow: {
     flexDirection: 'row',
-    alignItems: 'baseline',
+    alignItems: 'center',
     justifyContent: 'space-between',
     flexWrap: 'wrap',
     gap: space.sm,
   },
-  heading: { fontSize: 20, fontWeight: '600' },
-  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
-  action: { flexGrow: 1, flexBasis: 100 },
-  empty: { gap: space.xs },
-  emptyTitle: { fontSize: 17, fontWeight: '600' },
-  list: { gap: space.sm },
-  link: { fontSize: 15, paddingVertical: space.md, textAlign: 'center' },
+  count: {
+    fontSize: 13,
+    fontWeight: '700',
+    borderRadius: radius.full,
+    paddingHorizontal: space.md,
+    paddingVertical: 4,
+    overflow: 'hidden',
+  },
+  heading: { fontSize: 20, fontWeight: '700' },
+  empty: {
+    alignItems: 'center',
+    gap: space.sm,
+    borderWidth: 1,
+    borderRadius: radius.lg,
+    padding: space.lg,
+  },
+  emptyIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  list: { gap: 0 },
+  link: { fontSize: 15, fontWeight: '600', paddingVertical: space.md, textAlign: 'center' },
 });

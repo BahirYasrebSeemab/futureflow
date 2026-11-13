@@ -3,6 +3,7 @@ import type { Api, ApiResult } from '@/lib/api/client';
 import { AppProvider } from '@/lib/app';
 import { ReadingScreen } from '@/screens/reading';
 import { RootStack } from '@/screens/root-stack';
+import { TabsLayout } from '@/screens/tabs';
 import { TodayScreen } from '@/screens/today';
 import { PAIRED, testServices } from './support/fakes';
 
@@ -17,7 +18,8 @@ async function open(api: Partial<Api>) {
           <RootStack />
         </AppProvider>
       ),
-      index: TodayScreen,
+      '(tabs)/_layout': TabsLayout,
+      '(tabs)/index': TodayScreen,
       reading: ReadingScreen,
     },
     { initialUrl: '/reading' },

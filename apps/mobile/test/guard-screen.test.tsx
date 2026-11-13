@@ -4,6 +4,7 @@ import type { Guard } from '@/lib/guard/types';
 import { GuardScreen } from '@/screens/guard';
 import { MoreScreen } from '@/screens/more';
 import { RootStack } from '@/screens/root-stack';
+import { TabsLayout } from '@/screens/tabs';
 import { TodayScreen } from '@/screens/today';
 import { fakeGuard, PAIRED, testServices } from './support/fakes';
 
@@ -17,8 +18,9 @@ async function open(url: string, guard?: Guard) {
           <RootStack />
         </AppProvider>
       ),
-      index: TodayScreen,
-      more: MoreScreen,
+      '(tabs)/_layout': TabsLayout,
+      '(tabs)/index': TodayScreen,
+      '(tabs)/more': MoreScreen,
       guard: GuardScreen,
     },
     { initialUrl: url },

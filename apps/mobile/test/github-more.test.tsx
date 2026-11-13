@@ -9,6 +9,7 @@ import { MoreScreen } from '@/screens/more';
 import { ReadingScreen } from '@/screens/reading';
 import { RoadmapScreen } from '@/screens/roadmap';
 import { RootStack } from '@/screens/root-stack';
+import { TabsLayout } from '@/screens/tabs';
 import { TodayScreen } from '@/screens/today';
 import { PAIRED, testServices } from './support/fakes';
 
@@ -34,12 +35,13 @@ async function open(url: string, api: Partial<Api> = {}): Promise<AppServices> {
           <RootStack />
         </AppProvider>
       ),
-      index: TodayScreen,
+      '(tabs)/_layout': TabsLayout,
+      '(tabs)/index': TodayScreen,
       github: GithubScreen,
-      more: MoreScreen,
+      '(tabs)/more': MoreScreen,
       roadmap: RoadmapScreen,
       reading: ReadingScreen,
-      coach: CoachScreen,
+      '(tabs)/coach': CoachScreen,
       diagnostics: DiagnosticsScreen,
     },
     { initialUrl: url },

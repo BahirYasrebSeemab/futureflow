@@ -3,6 +3,7 @@ import type { Api, Roadmap } from '@/lib/api/client';
 import { AppProvider } from '@/lib/app';
 import { RoadmapScreen } from '@/screens/roadmap';
 import { RootStack } from '@/screens/root-stack';
+import { TabsLayout } from '@/screens/tabs';
 import { TodayScreen } from '@/screens/today';
 import { PAIRED, testServices } from './support/fakes';
 
@@ -29,7 +30,8 @@ async function open(api: Partial<Api>) {
           <RootStack />
         </AppProvider>
       ),
-      index: TodayScreen,
+      '(tabs)/_layout': TabsLayout,
+      '(tabs)/index': TodayScreen,
       roadmap: RoadmapScreen,
     },
     { initialUrl: '/roadmap' },

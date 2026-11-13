@@ -9,6 +9,7 @@ import { AwayScreen } from '@/screens/away';
 import { DiagnosticsScreen } from '@/screens/diagnostics';
 import { PlanScreen } from '@/screens/plan';
 import { RootStack } from '@/screens/root-stack';
+import { TabsLayout } from '@/screens/tabs';
 import { TodayScreen } from '@/screens/today';
 import { PAIRED, sampleToday, testServices } from './support/fakes';
 
@@ -27,9 +28,10 @@ async function openAway(api: Partial<Api>, locator?: Locator): Promise<AppServic
           <RootStack />
         </AppProvider>
       ),
-      index: TodayScreen,
+      '(tabs)/_layout': TabsLayout,
+      '(tabs)/index': TodayScreen,
       away: AwayScreen,
-      plan: PlanScreen,
+      '(tabs)/plan': PlanScreen,
       diagnostics: DiagnosticsScreen,
     },
     { initialUrl: '/away' },
@@ -133,9 +135,10 @@ test('moving an existing home asks first, and Cancel keeps it', async () => {
           <RootStack />
         </AppProvider>
       ),
-      index: TodayScreen,
+      '(tabs)/_layout': TabsLayout,
+      '(tabs)/index': TodayScreen,
       away: AwayScreen,
-      plan: PlanScreen,
+      '(tabs)/plan': PlanScreen,
       diagnostics: DiagnosticsScreen,
     },
     { initialUrl: '/away' },

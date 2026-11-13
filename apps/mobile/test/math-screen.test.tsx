@@ -10,6 +10,7 @@ import { MathScreen } from '@/screens/math';
 import { PlacementScreen } from '@/screens/math/placement';
 import { PlanScreen } from '@/screens/plan';
 import { RootStack } from '@/screens/root-stack';
+import { TabsLayout } from '@/screens/tabs';
 import { TodayScreen } from '@/screens/today';
 import { ledgerEvent, PAIRED, sampleToday, testServices } from './support/fakes';
 
@@ -36,10 +37,11 @@ async function open(api: Partial<Api> = {}, url = '/math'): Promise<AppServices>
           <RootStack />
         </AppProvider>
       ),
-      index: TodayScreen,
-      math: MathScreen,
+      '(tabs)/_layout': TabsLayout,
+      '(tabs)/index': TodayScreen,
+      '(tabs)/math': MathScreen,
       'math-placement': PlacementScreen,
-      plan: PlanScreen,
+      '(tabs)/plan': PlanScreen,
       away: AwayScreen,
       diagnostics: DiagnosticsScreen,
     },
@@ -156,8 +158,9 @@ test('a paused placement offers to continue', async () => {
           <RootStack />
         </AppProvider>
       ),
-      index: TodayScreen,
-      math: MathScreen,
+      '(tabs)/_layout': TabsLayout,
+      '(tabs)/index': TodayScreen,
+      '(tabs)/math': MathScreen,
       'math-placement': PlacementScreen,
     },
     { initialUrl: '/math' },
@@ -178,8 +181,9 @@ test('placement refuses to start over existing practice', async () => {
           <RootStack />
         </AppProvider>
       ),
-      index: TodayScreen,
-      math: MathScreen,
+      '(tabs)/_layout': TabsLayout,
+      '(tabs)/index': TodayScreen,
+      '(tabs)/math': MathScreen,
       'math-placement': PlacementScreen,
     },
     { initialUrl: '/math-placement' },
@@ -349,8 +353,9 @@ test('a review of a mastered topic skips the worked example', async () => {
           <RootStack />
         </AppProvider>
       ),
-      index: TodayScreen,
-      math: MathScreen,
+      '(tabs)/_layout': TabsLayout,
+      '(tabs)/index': TodayScreen,
+      '(tabs)/math': MathScreen,
       'math-placement': PlacementScreen,
     },
     { initialUrl: '/math' },
@@ -426,7 +431,8 @@ test('a broken bank never blocks practice', async () => {
           <RootStack />
         </AppProvider>
       ),
-      math: MathScreen,
+      '(tabs)/_layout': TabsLayout,
+      '(tabs)/math': MathScreen,
     },
     { initialUrl: '/math' },
   );
