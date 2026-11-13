@@ -155,6 +155,17 @@ export function TodayScreen() {
             height={10}
             label="Time left today"
           />
+          {caption !== null && (
+            // The kind of day changes what every task needs, so it sits with the time left.
+            <View style={[styles.dayKind, { backgroundColor: c.heroText }]}>
+              <Icon
+                name={record?.kind === 'away' ? 'flight-takeoff' : 'spa'}
+                color={c.heroBg}
+                size={18}
+              />
+              <Text style={[styles.dayKindText, { color: c.heroBg }]}>{caption}</Text>
+            </View>
+          )}
           <View style={styles.heroStats}>
             <View style={[styles.stat, { backgroundColor: c.heroChip }]}>
               <Icon name="bolt" color={c.heroText} size={18} />
@@ -206,7 +217,6 @@ export function TodayScreen() {
               </Text>
             )}
           </View>
-          {caption !== null && <Text style={[styles.caption, { color: c.muted }]}>{caption}</Text>}
           {tasks.length === 0 ? (
             <View style={[styles.empty, { backgroundColor: c.surface, borderColor: c.border }]}>
               <View style={[styles.emptyIcon, { backgroundColor: c.accentSoft }]}>
@@ -321,6 +331,16 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   statText: { fontSize: 13, fontWeight: '700' },
+  dayKind: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: space.xs,
+    borderRadius: radius.full,
+    paddingHorizontal: space.md,
+    paddingVertical: 6,
+  },
+  dayKindText: { fontSize: 14, fontWeight: '800' },
   tiles: { flexDirection: 'row', gap: space.sm },
   // The touch area takes an equal share of the row; the face fills it.
   tileSlot: { flex: 1 },
