@@ -1,12 +1,13 @@
 import { RepoNameSchema } from '@futureflow/contracts';
 import { useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TextInput } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text } from 'react-native';
 import { Banner } from '@/components/banner';
 import { useBottomPadding } from '@/components/bottom-padding';
 import { Button } from '@/components/button';
 import type { ApiFailure, GithubLink } from '@/lib/api/client';
 import { useApp } from '@/lib/app';
-import { radius, space, usePalette } from '@/theme';
+import { space, usePalette } from '@/theme';
+import { TextField } from '@/components/text-field';
 
 const MAX_REPOS = 10;
 
@@ -78,10 +79,6 @@ export function GithubScreen() {
       },
     ]);
 
-  const input = [
-    styles.input,
-    { color: c.text, borderColor: c.border, backgroundColor: c.surface },
-  ];
   return (
     <ScrollView
       style={{ backgroundColor: c.background }}
@@ -115,7 +112,7 @@ export function GithubScreen() {
             repo&apos;s default branch, made with your GitHub account&apos;s email, count.
           </Text>
           <Text style={[styles.label, { color: c.text }]}>Token</Text>
-          <TextInput
+          <TextField
             testID="github-token"
             accessibilityLabel="GitHub token"
             value={token}
@@ -123,12 +120,11 @@ export function GithubScreen() {
             secureTextEntry
             autoCapitalize="none"
             autoCorrect={false}
-            style={input}
           />
           <Text style={[styles.label, { color: c.text }]}>
             Repositories (owner/name, one per line)
           </Text>
-          <TextInput
+          <TextField
             testID="github-repos"
             accessibilityLabel="Repositories"
             value={reposText}
@@ -136,7 +132,7 @@ export function GithubScreen() {
             autoCapitalize="none"
             autoCorrect={false}
             multiline
-            style={[input, styles.repos]}
+            style={styles.repos}
           />
           <Button
             testID="link-github"
@@ -155,13 +151,5 @@ const styles = StyleSheet.create({
   title: { fontSize: 18, fontWeight: '600' },
   muted: { fontSize: 15, lineHeight: 21 },
   label: { fontSize: 15, fontWeight: '600' },
-  input: {
-    minHeight: 48,
-    borderWidth: 1,
-    borderRadius: radius.md,
-    paddingHorizontal: space.md,
-    paddingVertical: space.sm,
-    fontSize: 16,
-  },
   repos: { minHeight: 96, textAlignVertical: 'top' },
 });

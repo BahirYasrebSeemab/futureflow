@@ -1,6 +1,6 @@
 import { DEFAULT_RULES, mergeEvents, type LedgerEvent, type Rules } from '@futureflow/core';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useBottomPadding } from '@/components/bottom-padding';
 import { Button } from '@/components/button';
 import { useApp, type AppServices } from '@/lib/app';
@@ -8,6 +8,7 @@ import { currentDayKey } from '@/lib/format';
 import { projectBalance } from '@/lib/ledger';
 import { finishUnlock, startWait, waitLeftMs, type UnlockWait } from '@/lib/unlock';
 import { radius, space, usePalette } from '@/theme';
+import { TextField } from '@/components/text-field';
 
 type Phase =
   | { kind: 'loading' }
@@ -171,17 +172,14 @@ export function UnlockScreen() {
             Say why you need it. Then wait 10 minutes; after that you get 10 minutes, borrowed from
             tomorrow&apos;s earnings. Two a day at most.
           </Text>
-          <TextInput
+          <TextField
             testID="unlock-reason"
             accessibilityLabel="Why you need it"
             value={reason}
             onChangeText={setReason}
             multiline
             maxLength={500}
-            style={[
-              styles.input,
-              { borderColor: c.border, backgroundColor: c.surface, color: c.text },
-            ]}
+            style={styles.input}
           />
           <Text style={[styles.small, muted]}>
             {reason.trim().length} of at least {rules.unlockMinReasonLength} characters
@@ -238,8 +236,6 @@ const styles = StyleSheet.create({
   body15: { fontSize: 15, lineHeight: 21 },
   small: { fontSize: 13 },
   input: {
-    borderWidth: 1,
-    borderRadius: radius.md,
     padding: space.md,
     minHeight: 96,
     fontSize: 16,

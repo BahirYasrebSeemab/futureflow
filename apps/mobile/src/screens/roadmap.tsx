@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Banner } from '@/components/banner';
 import { useBottomPadding } from '@/components/bottom-padding';
 import { Button } from '@/components/button';
@@ -20,6 +20,7 @@ import {
   TEXT_LIMITS,
 } from '@/lib/roadmap-draft';
 import { radius, space, usePalette } from '@/theme';
+import { TextField } from '@/components/text-field';
 
 type Verifier = Roadmap['skills'][number]['verifier'];
 const VERIFIERS: readonly [Verifier, string][] = [
@@ -87,10 +88,6 @@ export function RoadmapScreen() {
     }
   };
 
-  const input = [
-    styles.input,
-    { color: c.text, borderColor: c.border, backgroundColor: c.surface },
-  ];
   const chip = (on: boolean) => [
     styles.chip,
     { borderColor: on ? c.accent : c.border, backgroundColor: on ? c.accent : c.surface },
@@ -106,14 +103,13 @@ export function RoadmapScreen() {
   ) => (
     <View style={styles.field}>
       <Text style={[styles.label, { color: c.muted }]}>{label}</Text>
-      <TextInput
+      <TextField
         testID={testID}
         accessibilityLabel={label}
         value={value}
         onChangeText={onChange}
         maxLength={maxLength}
         multiline={multiline}
-        style={input}
       />
     </View>
   );
@@ -313,14 +309,6 @@ const styles = StyleSheet.create({
   inner: { borderTopWidth: 1, paddingTop: space.sm, gap: space.sm },
   field: { gap: space.xs },
   label: { fontSize: 13, fontWeight: '600' },
-  input: {
-    minHeight: 48,
-    borderWidth: 1,
-    borderRadius: radius.md,
-    paddingHorizontal: space.md,
-    paddingVertical: space.sm,
-    fontSize: 16,
-  },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
   chip: {
     minHeight: 44,

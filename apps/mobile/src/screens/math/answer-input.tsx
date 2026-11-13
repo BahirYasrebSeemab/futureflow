@@ -1,5 +1,6 @@
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { radius, space, usePalette } from '@/theme';
+import { TextField } from '@/components/text-field';
 
 const KEYS: readonly [string, string][] = [
   ['x', 'x'],
@@ -17,7 +18,7 @@ export function AnswerInput({ value, onChange, editable }: Props) {
   const c = usePalette();
   return (
     <View style={styles.box}>
-      <TextInput
+      <TextField
         testID="answer-input"
         accessibilityLabel="Your answer"
         value={value}
@@ -26,8 +27,7 @@ export function AnswerInput({ value, onChange, editable }: Props) {
         autoCapitalize="none"
         autoCorrect={false}
         placeholder="Your answer"
-        placeholderTextColor={c.muted}
-        style={[styles.input, { color: c.text, borderColor: c.border, backgroundColor: c.surface }]}
+        style={styles.input}
       />
       <View style={styles.keys}>
         {KEYS.map(([key, label]) => (
@@ -55,8 +55,6 @@ const styles = StyleSheet.create({
   box: { gap: space.sm },
   input: {
     minHeight: 52,
-    borderWidth: 1,
-    borderRadius: radius.md,
     paddingHorizontal: space.md,
     fontSize: 20,
   },
